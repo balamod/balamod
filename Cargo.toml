@@ -1,0 +1,14 @@
+[package]
+name = "balamod"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+home = "0.5.5"
+zip = "0.6.6"
+image = "0.24.7"
+args = "2.2.0"
+clap = { version = "4.4.11", features = ["derive"] }
+colour = "0.7.0"
