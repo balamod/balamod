@@ -8,7 +8,8 @@ edition = "2021"
 [dependencies]
 home = "0.5.5"
 zip = "0.6.6"
-image = "0.24.7"
-args = "2.2.0"
 clap = { version = "4.4.11", features = ["derive"] }
 colour = "0.7.0"
+libflate = "2.0.0"
+downloader = "0.2.7"
+serde_json = "1.0.108"
