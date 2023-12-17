@@ -11,7 +11,7 @@ use clap::Parser;
 use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln};
 use crate::balamod::Balatro;
 
-const VERSION: &'static str = "0.1.1a";
+const VERSION: &'static str = "0.1.2a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]

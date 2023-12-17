@@ -2,6 +2,14 @@ pub fn get_mod_core() -> &'static str {
     r#"
     mods = {}
 
+if not love.filesystem.getInfo("mods", "directory") then
+    love.filesystem.createDirectory("mods")
+end
+
+if not love.filesystem.getInfo("apis", "directory") then
+    love.filesystem.createDirectory("apis")
+end
+
 current_game_code = love.data.decompress("string", "deflate", love.filesystem.read("DAT1.jkr"))
 
 function excractFunctionBody(function_name)
@@ -87,6 +95,25 @@ function G.FUNCS.show_mods(arg_733_0)
     G.FUNCS.overlay_menu({
         definition = G.UIDEF.mods()
     })
+end
+
+local apis_files = love.filesystem.getDirectoryItems("apis")
+for _, file in ipairs(apis_files) do
+    if file:sub(-4) == ".lua" then
+        local modPath = "apis/" .. file
+        local modContent, loadErr = love.filesystem.load(modPath)
+
+        if modContent then
+            local success, mod = pcall(modContent)
+            if success then
+                table.insert(mods, mod)
+            else
+                print("Error loading api: " .. modPath .. "\n" .. mod)
+            end
+        else
+            print("Error reading api: " .. modPath .. "\n" .. loadErr)
+        end
+    end
 end
 
 local files = love.filesystem.getDirectoryItems("mods")
