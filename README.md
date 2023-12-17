@@ -2,6 +2,10 @@
 
 ### https://discord.gg/p7DeW7pSzA
 
+Only working on linux with proton for now.
+
+I'll try to make it work on windows soon :)
+
 ## Cli usage
 
 At first, Balamod will try to find all your Balatro installation.
@@ -117,3 +121,7 @@ table.insert(mods,
 ```
 
 These events are not required, you can just remove them from your mod if you don't need them.
+
+
+## How to find the function names, where to inject code, etc...
+You can use the `./balamod -d` command to decompile the game and look at the code.
