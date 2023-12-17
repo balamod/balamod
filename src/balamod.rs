@@ -104,7 +104,7 @@ fn replace_file_in_exe(exe_path: &str, file_name: &str, new_contents: &[u8]) -> 
     let zip_start = find_zip_start(&exe_data).unwrap();
     let cursor = Cursor::new(&exe_data[zip_start..]);
 
-    let mut zip_archive = zip::ZipArchive::new(cursor)?;
+    let mut zip_archive = ZipArchive::new(cursor)?;
     let mut new_zip = Vec::new();
 
     {
@@ -141,6 +141,7 @@ fn find_zip_start(exe_data: &[u8]) -> Result<usize, &'static str> {
         .ok_or("ZIP start not found")
 }
 
+#[allow(dead_code)]
 fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
     fs::create_dir_all(&dst)?;
     for entry in fs::read_dir(src)? {
