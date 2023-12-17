@@ -1,6 +1,6 @@
 pub fn get_mod_core() -> &'static str {
     r#"
-    mods = {}
+mods = {}
 
 if not love.filesystem.getInfo("mods", "directory") then
     love.filesystem.createDirectory("mods")
@@ -152,5 +152,30 @@ pub fn get_mods_menu_button() -> &'static str {
                 "Mods"
             }
         })
+    "#
+}
+
+pub fn get_pre_update_event() -> &'static str {
+    r#"
+    local cancel_update = false
+    for _, mod in ipairs(mods) do
+        if mod.on_pre_update then
+            if mod.on_pre_update(mod, arg_298_1) then
+                cancel_update = true
+            end
+        end
+    end
+
+    if cancel_update then return end
+    "#
+}
+
+pub fn get_post_update_event() -> &'static str {
+    r#"
+    for _, mod in ipairs(mods) do
+        if mod.on_post_update then
+            mod.on_post_update(mod, arg_298_1)
+        end
+    end
     "#
 }

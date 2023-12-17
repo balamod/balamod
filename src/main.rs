@@ -11,7 +11,7 @@ use clap::Parser;
 use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln};
 use crate::balamod::Balatro;
 
-const VERSION: &'static str = "0.1.2a";
+const VERSION: &'static str = "0.1.3a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
@@ -304,6 +304,16 @@ fn inject_modloader(args: Args) {
 
     balatro_lua = balatro_lua.replace("OPTIONS", "OPTIONS+");
     balatro_lua = balatro_lua.replace("text = G.VERSION", format!("text = G.VERSION .. \" \\nBalamod {}\"", VERSION).as_str());
+
+    let pre_update_event = luas::get_pre_update_event();
+    let update_index = balatro_lua.find("function Game.update(this, arg_298_1)").unwrap();
+    balatro_lua.insert_str(update_index + "function Game.update(this, arg_298_1)".len(), "\n");
+    balatro_lua.insert_str(update_index + "function Game.update(this, arg_298_1)\n".len(), pre_update_event);
+
+    let post_update_event = luas::get_post_update_event();
+    let update_index = balatro_lua.find("timer_checkpoint(\"controller\", \"update\")").unwrap();
+    balatro_lua.insert_str(update_index + "timer_checkpoint(\"controller\", \"update\")".len(), "\n\n");
+    balatro_lua.insert_str(update_index + "timer_checkpoint(\"controller\", \"update\")\n\n".len(), post_update_event);
 
     let duration = start.elapsed();
 
