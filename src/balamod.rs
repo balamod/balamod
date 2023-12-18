@@ -41,9 +41,28 @@ impl Balatro {
 
 
 pub fn find_balatros() -> Vec<Balatro> {
-    let mut paths = Vec::new();
+    let mut paths: Vec<PathBuf> = Vec::new();
     if cfg!(target_os = "windows") {
-        todo!("Detect windows paths");
+        let libraryfolders_path = Path::new("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
+        if !libraryfolders_path.exists() {
+            red_ln!("'{}' not found.", libraryfolders_path.to_str().unwrap());
+            return vec![]
+        }
+
+        let libraryfolders_file = File::open(libraryfolders_path).expect("Failed to open libraryfolders.vdf");
+        let mut libraryfolders_contents = String::new();
+        let mut libraryfolders_reader = BufReader::new(libraryfolders_file);
+        libraryfolders_reader.read_to_string(&mut libraryfolders_contents).expect("Failed to read libraryfolders.vdf");
+
+        let libraryfolders_contents = libraryfolders_contents.split("\n").collect::<Vec<&str>>();
+        let mut libraryfolders_contents = libraryfolders_contents.iter();
+        while let Some(line) = libraryfolders_contents.next() {
+            if line.contains("\t\t\"path\"\t\t") {
+                let path = line.split("\"").collect::<Vec<&str>>()[3];
+                paths.push(PathBuf::from(path).join("steamapps\\common\\Balatro Demo"));
+            }
+        }
+
     } else if cfg!(target_os = "linux") {
         match home::home_dir() {
             Some(path) => {
