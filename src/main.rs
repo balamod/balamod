@@ -1,7 +1,7 @@
 use std::{env, fs, str};
 use std::io::Write;
 use std::process::Command;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use clap::Parser;
 use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln};
@@ -35,9 +35,16 @@ struct Args {
     output: Option<String>,
 }
 
+struct StepDuration {
+    duration: Duration,
+    name: String
+}
+
 
 fn main() {
     let mut args = Args::parse();
+
+    let mut durations: Vec<StepDuration> = Vec::new();
 
     if args.inject && args.decompile {
         red_ln!("You can't use -x and -d at the same time!");
@@ -99,8 +106,10 @@ fn main() {
         }
     }
 
+    let global_start = Instant::now();
+
     if args.inject {
-        inject(args.clone(), balatro.clone());
+        inject(args.clone(), balatro.clone(), &mut durations);
     }
 
     if args.auto {
@@ -121,6 +130,11 @@ fn main() {
                 fs::remove_file("Balatro.lua").expect("Error while deleting file");
             } else {
                 yellow_ln!("Leaving...");
+                for duration in durations {
+                    magenta_ln!("{} took {:?}", duration.name, duration.duration);
+                }
+                let global_duration = Instant::now().duration_since(global_start);
+                magenta_ln!("Total time: {:?}", global_duration);
                 return;
             }
         }
@@ -128,13 +142,20 @@ fn main() {
         cyan_ln!("Extracting...");
         let exctract_start = Instant::now();
         let bytes = balatro.get_file_data("DAT1.jkr").expect("Error while getting file data");
-        let exctract_duration = exctract_start.elapsed();
+        durations.push(StepDuration {
+            duration: exctract_start.elapsed(),
+            name: String::from("Extraction")
+        });
         green_ln!("Done!");
 
         cyan_ln!("Decompressing...");
         let decompress_start = Instant::now();
         let bytes = balamod::decompress_bytes(bytes.as_slice()).expect("Error while decompressing bytes");
-        let decompress_duration = decompress_start.elapsed();
+        durations.push(StepDuration {
+            duration: decompress_start.elapsed(),
+            name: String::from("Decompression")
+        });
+
         let mut file = fs::File::create("DAT1.luajit").expect("Error while creating file");
         file.write_all(bytes.as_slice()).expect("Error while writing file");
         drop(file); // close file to avoid INVALID_HANDLE_VALUE error on windows, i fucking hate windows and myself, i waste too much time on this
@@ -163,22 +184,28 @@ fn main() {
 
             let deobf_start = Instant::now();
             balatro_lua = deobf(balatro_lua);
-            let deobf_duration = deobf_start.elapsed();
+            durations.push(StepDuration {
+                duration: deobf_start.elapsed(),
+                name: String::from("Deobfuscation")
+            });
 
             let mut file = fs::File::create("Balatro.lua").expect("Error while creating file");
             file.write_all(balatro_lua.as_bytes()).expect("Error while writing file");
             green_ln!("Done!");
 
-            magenta_ln!("Extraction took {:?}\nDecompression took {:?}\nDeobfuscation took {:?}", exctract_duration, decompress_duration, deobf_duration);
-
             if args.modloader || args.auto {
-                inject_modloader(args.clone());
+                inject_modloader(args.clone(), &mut durations);
             }
 
             if args.auto {
-                inject(args.clone(), balatro.clone());
+                inject(args.clone(), balatro.clone(), &mut durations);
             }
 
+            for duration in durations {
+                magenta_ln!("{} took {:?}", duration.name, duration.duration);
+            }
+            let global_duration = Instant::now().duration_since(global_start);
+            magenta_ln!("Total time: {:?}", global_duration);
             return;
         }
 
@@ -211,7 +238,11 @@ fn main() {
                 .expect("Error while executing luajit-decompiler-v2.exe");
             green_ln!("Done!");
         }
-        let decompile_duration = decompile_start.elapsed();
+
+        durations.push(StepDuration {
+            duration: decompile_start.elapsed(),
+            name: String::from("Decompilation")
+        });
 
         cyan_ln!("Cleaning up...");
         fs::rename("output/DAT1.lua", "Balatro.lua").expect("Error while renaming file");
@@ -239,25 +270,34 @@ fn main() {
 
         let deobf_start = Instant::now();
         balatro_lua = deobf(balatro_lua);
-        let deobf_duration = deobf_start.elapsed();
+
+        durations.push(StepDuration {
+            duration: deobf_start.elapsed(),
+            name: String::from("Deobfuscation")
+        });
 
         let mut file = fs::File::create("Balatro.lua").expect("Error while creating file");
         file.write_all(balatro_lua.as_bytes()).expect("Error while writing file");
         green_ln!("Done!");
 
-        magenta_ln!("Extraction took {:?}\nDecompression took {:?}\nDecompilation took {:?}\nDeobfuscation took {:?}", exctract_duration, decompress_duration, decompile_duration, deobf_duration);
-
         if args.modloader || args.auto {
-            inject_modloader(args.clone());
+            inject_modloader(args.clone(), &mut durations);
         }
 
         if args.auto {
-            inject(args.clone(), balatro.clone());
+            inject(args.clone(), balatro.clone(), &mut durations);
         }
+
+        for duration in durations {
+            magenta_ln!("{} took {:?}", duration.name, duration.duration);
+        }
+
+        let global_duration = Instant::now().duration_since(global_start);
+        magenta_ln!("Total time: {:?}", global_duration);
     }
 }
 
-fn inject_modloader(args: Args) {
+fn inject_modloader(args: Args, durations: &mut Vec<StepDuration>) {
     cyan_ln!("Implementing modloader...");
     let mut path = std::path::PathBuf::from("Balatro.lua");
     if args.input.is_some() {
@@ -317,16 +357,18 @@ fn inject_modloader(args: Args) {
     balatro_lua.insert_str(update_index + "timer_checkpoint(\"controller\", \"update\")".len(), "\n\n");
     balatro_lua.insert_str(update_index + "timer_checkpoint(\"controller\", \"update\")\n\n".len(), post_update_event);
 
-    let duration = start.elapsed();
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Modloader implementation")
+    });
 
     let mut file = fs::File::create("Balatro.lua").expect("Error while creating file");
     file.write_all(balatro_lua.as_bytes()).expect("Error while writing file");
 
     green_ln!("Done!");
-    magenta_ln!("Modloader implementation took {:?}", duration);
 }
 
-fn inject(mut args: Args, balatro: Balatro) {
+fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
     if args.input.clone().is_none() {
         args.input = Some("Balatro.lua".to_string());
     }
@@ -336,8 +378,6 @@ fn inject(mut args: Args, balatro: Balatro) {
     }
 
     let mut need_cleanup = false;
-    let compress_start: Instant;
-    let mut compress_duration: std::time::Duration = Instant::now().duration_since(Instant::now());
     if args.compress {
         let mut compression_output: String;
         if args.output.clone().unwrap().ends_with(".lua") {
@@ -355,9 +395,13 @@ fn inject(mut args: Args, balatro: Balatro) {
         }
 
         cyan_ln!("Compressing...");
-        compress_start = Instant::now();
+        let compress_start: Instant = Instant::now();
         balamod::compress_file(args.input.clone().unwrap().as_str(), compression_output.as_str()).expect("Error while compressing file");
-        compress_duration = compress_start.elapsed();
+
+        durations.push(StepDuration {
+            duration: compress_start.elapsed(),
+            name: String::from("Compression")
+        });
         if !compression_output.eq_ignore_ascii_case(args.input.as_ref().unwrap()) {
             need_cleanup = true;
             args.input = Some(compression_output);
@@ -374,7 +418,11 @@ fn inject(mut args: Args, balatro: Balatro) {
         args.output = Some("DAT1.jkr".to_string());
     }
     balatro.replace_file(args.output.clone().unwrap().as_str(), input_bytes).expect("Error while replacing file");
-    let inject_duration = inject_start.elapsed();
+
+    durations.push(StepDuration {
+        duration: inject_start.elapsed(),
+        name: String::from("Injection")
+    });
     green_ln!("Done!");
 
     if need_cleanup {
@@ -382,11 +430,6 @@ fn inject(mut args: Args, balatro: Balatro) {
         fs::remove_file(args.input.clone().unwrap()).expect("Error while deleting file");
         green_ln!("Done!");
     }
-
-    if args.compress {
-        magenta_ln!("Compression took {:?}", compress_duration);
-    }
-    magenta_ln!("Injection took {:?}", inject_duration);
 
     if args.auto {
         yellow_ln!("Deleting injected file...");
