@@ -1,15 +1,16 @@
-use std::fs;
+use std::{env, fs, str};
 use std::io::Write;
 use std::process::Command;
 use std::time::Instant;
-use downloader::Downloader;
-
-mod balamod;
-mod luas;
 
 use clap::Parser;
 use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln};
+use downloader::Downloader;
+
 use crate::balamod::Balatro;
+
+mod balamod;
+mod luas;
 
 const VERSION: &'static str = "0.1.3a";
 
@@ -136,6 +137,7 @@ fn main() {
         let decompress_duration = decompress_start.elapsed();
         let mut file = fs::File::create("DAT1.luajit").expect("Error while creating file");
         file.write_all(bytes.as_slice()).expect("Error while writing file");
+        drop(file); // close file to avoid INVALID_HANDLE_VALUE error on windows, i fucking hate windows and myself, i waste too much time on this
         green_ln!("Done!");
 
         let mut header = [0; 13];
@@ -194,12 +196,12 @@ fn main() {
 
         let decompile_start = Instant::now();
         if cfg!(target_os = "windows") {
-            cyan_ln!("Decompiling...");
-            Command::new("luajit-decompiler-v2.exe")
+            cyan_ln!("Décompilation...");
+            Command::new(env::current_dir().unwrap().join("luajit-decompiler-v2.exe"))
                 .arg("DAT1.luajit")
+                .current_dir(env::current_dir().unwrap())
                 .output()
-                .expect("Error while executing luajit-decompiler-v2.exe");
-            green_ln!("Done!");
+                .expect("Erreur lors de l'exécution de luajit-decompiler-v2.exe");
         } else if cfg!(target_os = "linux") {
             cyan_ln!("Decompiling...");
             Command::new("wine")
@@ -337,7 +339,7 @@ fn inject(mut args: Args, balatro: Balatro) {
     let compress_start: Instant;
     let mut compress_duration: std::time::Duration = Instant::now().duration_since(Instant::now());
     if args.compress {
-        let mut compression_output : String;
+        let mut compression_output: String;
         if args.output.clone().unwrap().ends_with(".lua") {
             compression_output = args.output.clone().unwrap().split(".lua").collect::<String>();
         } else {
