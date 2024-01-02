@@ -180,6 +180,26 @@ pub fn get_post_update_event() -> &'static str {
     "#
 }
 
+pub fn get_pre_render_event() -> &'static str {
+    r#"
+    for _, mod in ipairs(mods) do
+        if mod.on_pre_render then
+            mod.on_pre_render()
+        end
+    end
+    "#
+}
+
+pub fn get_post_render_event() -> &'static str {
+    r#"
+    for _, mod in ipairs(mods) do
+        if mod.on_post_render then
+            mod.on_post_render()
+        end
+    end
+"#
+}
+
 pub fn get_key_pressed_event() -> &'static str {
     r#"
     local cancel_event = false

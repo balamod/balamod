@@ -12,7 +12,7 @@ use crate::balamod::Balatro;
 mod balamod;
 mod luas;
 
-const VERSION: &'static str = "0.1.3a";
+const VERSION: &'static str = "0.1.5a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
@@ -37,7 +37,7 @@ struct Args {
 
 struct StepDuration {
     duration: Duration,
-    name: String
+    name: String,
 }
 
 
@@ -144,7 +144,7 @@ fn main() {
         let bytes = balatro.get_file_data("DAT1.jkr").expect("Error while getting file data");
         durations.push(StepDuration {
             duration: exctract_start.elapsed(),
-            name: String::from("Extraction")
+            name: String::from("Extraction"),
         });
         green_ln!("Done!");
 
@@ -153,13 +153,29 @@ fn main() {
         let bytes = balamod::decompress_bytes(bytes.as_slice()).expect("Error while decompressing bytes");
         durations.push(StepDuration {
             duration: decompress_start.elapsed(),
-            name: String::from("Decompression")
+            name: String::from("Decompression"),
         });
 
         let mut file = fs::File::create("DAT1.luajit").expect("Error while creating file");
         file.write_all(bytes.as_slice()).expect("Error while writing file");
-        drop(file); // close file to avoid INVALID_HANDLE_VALUE error on windows, i fucking hate windows and myself, i waste too much time on this
+        drop(file);
+        // close file to avoid INVALID_HANDLE_VALUE error on windows, i fucking hate windows and myself, i waste too much time on this
         green_ln!("Done!");
+
+        if args.auto {
+            cyan_ln!("Extracting...");
+            let exctract_start = Instant::now();
+            let bytes = balatro.get_file_data("main.lua").expect("Error while getting file data");
+            durations.push(StepDuration {
+                duration: exctract_start.elapsed(),
+                name: String::from("Extraction 2"),
+            });
+            // write file
+            let mut file = fs::File::create("main.lua").expect("Error while creating file");
+            file.write_all(bytes.as_slice()).expect("Error while writing file");
+            drop(file);
+            green_ln!("Done!");
+        }
 
         let mut header = [0; 13];
         header.copy_from_slice(&bytes[3..16]);
@@ -186,7 +202,7 @@ fn main() {
             balatro_lua = deobf(balatro_lua);
             durations.push(StepDuration {
                 duration: deobf_start.elapsed(),
-                name: String::from("Deobfuscation")
+                name: String::from("Deobfuscation"),
             });
 
             let mut file = fs::File::create("Balatro.lua").expect("Error while creating file");
@@ -198,7 +214,25 @@ fn main() {
             }
 
             if args.auto {
-                inject(args.clone(), balatro.clone(), &mut durations);
+                let mut args_clone = args.clone();
+                args_clone.input = Some("Balatro.lua".to_string());
+                args_clone.output = Some("DAT1.jkr".to_string());
+                inject(args_clone.clone(), balatro.clone(), &mut durations);
+                args_clone.input = Some("main.lua".to_string());
+                args_clone.output = Some("main.lua".to_string());
+                args_clone.compress = false;
+                inject(args_clone, balatro.clone(), &mut durations);
+            }
+
+            if args.auto {
+                yellow_ln!("Deleting injected file...");
+                if fs::metadata("Balatro.lua").is_ok() {
+                    fs::remove_file("Balatro.lua").expect("Error while deleting file");
+                }
+                if fs::metadata("main.lua").is_ok() {
+                    fs::remove_file("main.lua").expect("Error while deleting file");
+                }
+                green_ln!("Done!");
             }
 
             for duration in durations {
@@ -239,15 +273,41 @@ fn main() {
             green_ln!("Done!");
         }
 
+        if args.auto {
+            if cfg!(target_os = "windows") {
+                cyan_ln!("Décompilation...");
+                Command::new(env::current_dir().unwrap().join("luajit-decompiler-v2.exe"))
+                    .arg("main.lua")
+                    .current_dir(env::current_dir().unwrap())
+                    .output()
+                    .expect("Erreur lors de l'exécution de luajit-decompiler-v2.exe");
+            } else if cfg!(target_os = "linux") {
+                cyan_ln!("Decompiling...");
+                Command::new("wine")
+                    .arg("luajit-decompiler-v2.exe")
+                    .arg("main.lua")
+                    .output()
+                    .expect("Error while executing luajit-decompiler-v2.exe");
+                green_ln!("Done!");
+            }
+        }
+
         durations.push(StepDuration {
             duration: decompile_start.elapsed(),
-            name: String::from("Decompilation")
+            name: String::from("Decompilation"),
         });
 
         cyan_ln!("Cleaning up...");
         fs::rename("output/DAT1.lua", "Balatro.lua").expect("Error while renaming file");
+        if args.auto {
+            if fs::metadata("main.lua").is_ok() {
+                fs::remove_file("main.lua").expect("Error while deleting file");
+            }
+            fs::rename("output/main.lua", "main.lua").expect("Error while renaming file");
+        }
         fs::remove_dir_all("output").expect("Error while deleting directory");
         fs::remove_file("DAT1.luajit").expect("Error while deleting file");
+
         green_ln!("Done!");
 
         if fs::metadata("deobfmap.json").is_ok() {
@@ -273,7 +333,7 @@ fn main() {
 
         durations.push(StepDuration {
             duration: deobf_start.elapsed(),
-            name: String::from("Deobfuscation")
+            name: String::from("Deobfuscation"),
         });
 
         let mut file = fs::File::create("Balatro.lua").expect("Error while creating file");
@@ -285,7 +345,25 @@ fn main() {
         }
 
         if args.auto {
-            inject(args.clone(), balatro.clone(), &mut durations);
+            let mut args_clone = args.clone();
+            args_clone.input = Some("Balatro.lua".to_string());
+            args_clone.output = Some("DAT1.jkr".to_string());
+            inject(args_clone.clone(), balatro.clone(), &mut durations);
+            args_clone.input = Some("main.lua".to_string());
+            args_clone.output = Some("main.lua".to_string());
+            args_clone.compress = false;
+            inject(args_clone, balatro.clone(), &mut durations);
+        }
+
+        if args.auto {
+            yellow_ln!("Deleting injected file...");
+            if fs::metadata("Balatro.lua").is_ok() {
+                fs::remove_file("Balatro.lua").expect("Error while deleting file");
+            }
+            if fs::metadata("main.lua").is_ok() {
+                fs::remove_file("main.lua").expect("Error while deleting file");
+            }
+            green_ln!("Done!");
         }
 
         for duration in durations {
@@ -363,13 +441,43 @@ fn inject_modloader(args: Args, durations: &mut Vec<StepDuration>) {
     balatro_lua.insert_str(key_event_index + ket_event_header.len(), "\n");
     balatro_lua.insert_str(key_event_index + ket_event_header.len() + 1, key_event);
 
-    durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Modloader implementation")
-    });
 
     let mut file = fs::File::create("Balatro.lua").expect("Error while creating file");
     file.write_all(balatro_lua.as_bytes()).expect("Error while writing file");
+
+    path = std::path::PathBuf::from("main.lua");
+
+    if !path.exists() {
+        red_ln!("File not found, cannot implement modloader because main.lua is missing >:(");
+        return;
+    }
+
+    let mut main_lua = fs::read_to_string(path).expect("Error while reading main.lua");
+    // function love.draw()
+    let draw_header = "function love.draw()";
+    let draw_event_index = main_lua.find(draw_header).unwrap();
+
+    // before end and after love.draw()
+    let preceding_code = main_lua[draw_event_index..].find("end").unwrap();
+    let end_index = draw_event_index + preceding_code;
+    let draw_event = luas::get_post_render_event();
+    main_lua.insert_str(end_index, "\n");
+    main_lua.insert_str(end_index + 1, draw_event);
+
+    let draw_event_index = main_lua.find(draw_header).unwrap();
+    let draw_event = luas::get_pre_render_event();
+    main_lua.insert_str(draw_event_index + draw_header.len(), "\n");
+    main_lua.insert_str(draw_event_index + draw_header.len() + 1, draw_event);
+
+    fs::remove_file("main.lua").expect("Error while deleting file");
+    let mut file = fs::File::create("main.lua").expect("Error while creating file");
+    file.write_all(main_lua.as_bytes()).expect("Error while writing file");
+
+
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Modloader implementation"),
+    });
 
     green_ln!("Done!");
 }
@@ -400,13 +508,13 @@ fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
             fs::remove_file(compression_output.as_str()).expect("Error while deleting file");
         }
 
-        cyan_ln!("Compressing...");
+        cyan_ln!("Compressing {} ...", args.input.clone().unwrap());
         let compress_start: Instant = Instant::now();
         balamod::compress_file(args.input.clone().unwrap().as_str(), compression_output.as_str()).expect("Error while compressing file");
 
         durations.push(StepDuration {
             duration: compress_start.elapsed(),
-            name: String::from("Compression")
+            name: String::from("Compression"),
         });
         if !compression_output.eq_ignore_ascii_case(args.input.as_ref().unwrap()) {
             need_cleanup = true;
@@ -420,26 +528,18 @@ fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
 
     cyan_ln!("Injecting...");
     let inject_start = Instant::now();
-    if args.auto {
-        args.output = Some("DAT1.jkr".to_string());
-    }
+
     balatro.replace_file(args.output.clone().unwrap().as_str(), input_bytes).expect("Error while replacing file");
 
     durations.push(StepDuration {
         duration: inject_start.elapsed(),
-        name: String::from("Injection")
+        name: String::from("Injection"),
     });
     green_ln!("Done!");
 
     if need_cleanup {
         yellow_ln!("Cleaning up...");
         fs::remove_file(args.input.clone().unwrap()).expect("Error while deleting file");
-        green_ln!("Done!");
-    }
-
-    if args.auto {
-        yellow_ln!("Deleting injected file...");
-        fs::remove_file("Balatro.lua").expect("Error while deleting file");
         green_ln!("Done!");
     }
 }
