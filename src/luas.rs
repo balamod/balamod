@@ -179,3 +179,18 @@ pub fn get_post_update_event() -> &'static str {
     end
     "#
 }
+
+pub fn get_key_pressed_event() -> &'static str {
+    r#"
+    local cancel_event = false
+    for _, mod in ipairs(mods) do
+        if mod.on_key_pressed then
+            if mod.on_key_pressed(this, key_name, arg_31_2) then
+                cancel_event = true
+            end
+        end
+    end
+
+    if cancel_event then return end
+    "#
+}

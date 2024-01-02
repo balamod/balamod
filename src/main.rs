@@ -357,6 +357,12 @@ fn inject_modloader(args: Args, durations: &mut Vec<StepDuration>) {
     balatro_lua.insert_str(update_index + "timer_checkpoint(\"controller\", \"update\")".len(), "\n\n");
     balatro_lua.insert_str(update_index + "timer_checkpoint(\"controller\", \"update\")\n\n".len(), post_update_event);
 
+    let ket_event_header = "function Controller.key_press_update(this, key_name, arg_31_2)";
+    let key_event = luas::get_key_pressed_event();
+    let key_event_index = balatro_lua.find(ket_event_header).unwrap();
+    balatro_lua.insert_str(key_event_index + ket_event_header.len(), "\n");
+    balatro_lua.insert_str(key_event_index + ket_event_header.len() + 1, key_event);
+
     durations.push(StepDuration {
         duration: start.elapsed(),
         name: String::from("Modloader implementation")
