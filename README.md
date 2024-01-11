@@ -2,9 +2,20 @@
 
 ### https://discord.gg/p7DeW7pSzA
 
-Only working on linux with proton for now.
+~Only working on linux with proton for now.~  
+~I'll try to make it work on windows soon :)~  
+  
+Working on windows too :)
 
-I'll try to make it work on windows soon :)
+# Easy install 
+## Linux
+```bash
+./balamod -a
+```
+## Windows
+```cmd
+balamod.exe -a
+```
 
 ## Cli usage
 
@@ -94,9 +105,12 @@ The `inject` function will replace the first occurence of the pattern in the des
 If you want to replace code outside a function, you can use classic overring.
 
 ### Events
-Currently *(in 0.1.3)*, the mod loader supports two events:
+Currently *(in 0.1.6)*, the mod loader supports five events:
 - `on_pre_update` called before the game update, if you return true, it will cancel the update (ticking)
 - `on_post_update` called after the game update
+- `on_pre_render` called just before rendering frame functions
+- `on_post_render` called before rendering the frame itself
+- `on_key_pressed` called when a key is pressed with 3 args (current instance, key name (string), long pressed (bool))
 
 You can register them in your mod like this:
 ```lua
@@ -115,6 +129,16 @@ table.insert(mods,
             end,
             on_post_update = function()
                 print("post update")
+            end
+            on_pre_render = function()
+                print("pre render")
+                return false
+            end,
+            on_post_render = function()
+                print("post render")
+            end
+            on_key_pressed = function(this, key_name, long_pressed)
+                print("pressed " .. key_name)
             end
         }
 )
