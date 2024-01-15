@@ -58,3 +58,22 @@ jobs:
         with:
           name: balamod-${{ github.ref_name }}-windows
           path: target/x86_64-pc-windows-gnu/release/balamod-${{ github.ref_name }}-windows.exe
+
+
+  create-release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
