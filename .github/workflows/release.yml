@@ -26,6 +26,11 @@ jobs:
           cargo build --release
           mv target/release/balamod target/release/balamod-${{ steps.get_version.outputs.VERSION }}-linux
 
+          
+      - name: Add Windows GNU target
+        run: rustup target add x86_64-pc-windows-gnu
+        
+
       # Compile for Windows
       - name: Build for Windows
         run: |
