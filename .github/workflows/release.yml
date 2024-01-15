@@ -1,0 +1,82 @@
+name: Release Workflow
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository to the GitHub Actions runner
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # Determine the version from the tag
+      - name: Get the version
+        id: get_version
+        run: echo "::set-output name=VERSION::${GITHUB_REF#refs/tags/v}"
+
+      # Compile for Linux
+      - name: Build for Linux
+        run: |
+          cargo build --release
+          mv target/release/balamod target/release/balamod-${{ steps.get_version.outputs.VERSION }}-linux
+
+      # Compile for Windows
+      - name: Build for Windows
+        run: |
+          cargo build --release --target x86_64-pc-windows-gnu
+          mv target/x86_64-pc-windows-gnu/release/balamod.exe target/x86_64-pc-windows-gnu/release/balamod-${{ steps.get_version.outputs.VERSION }}-windows.exe
+
+      # Upload Linux Artifact
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: balamod-${{ steps.get_version.outputs.VERSION }}-linux
+          path: target/release/balamod-${{ steps.get_version.outputs.VERSION }}-linux
+
+      # Upload Windows Artifact
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: balamod-${{ steps.get_version.outputs.VERSION }}-windows
+          path: target/x86_64-pc-windows-gnu/release/balamod-${{ steps.get_version.outputs.VERSION }}-windows.exe
+
+      # Create GitHub Release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          release_name: balamod-${{ steps.get_version.outputs.VERSION }}
+          body: 'Release of version ${{ steps.get_version.outputs.VERSION }}'
+          draft: false
+          prerelease: false
+
+      # Upload Linux release asset
+      - name: Upload Linux Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./target/release/balamod-${{ steps.get_version.outputs.VERSION }}-linux
+          asset_name: balamod-${{ steps.get_version.outputs.VERSION }}-linux
+          asset_content_type: application/octet-stream
+
+      # Upload Windows release asset
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./target/x86_64-pc-windows-gnu/release/balamod-${{ steps.get_version.outputs.VERSION }}-windows.exe
+          asset_name: balamod-${{ steps.get_version.outputs.VERSION }}-windows.exe
+          asset_content_type: application/octet-stream
