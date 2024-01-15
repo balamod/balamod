@@ -12,7 +12,7 @@ use crate::balamod::Balatro;
 mod balamod;
 mod luas;
 
-const VERSION: &'static str = "0.1.5a";
+const VERSION: &'static str = "0.1.6a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
