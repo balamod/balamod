@@ -67,12 +67,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: balamod-${{ github.ref_name }}-linux
 
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: balamod-${{ github.ref_name }}-windows
+      
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_PERSONAL_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
           release_name: Release ${{ github.ref_name }}
@@ -82,19 +92,19 @@ jobs:
       - name: Upload Linux Artifact to Release
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_PERSONAL_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./path_to_your_linux_artifact
+          asset_path: balamod-${{ github.ref_name }}-linux
           asset_name: balamod-${{ github.ref_name }}-linux
           asset_content_type: application/octet-stream
 
       - name: Upload Windows Artifact to Release
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_PERSONAL_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./path_to_your_windows_artifact
+          asset_path: balamod-${{ github.ref_name }}-windows
           asset_name: balamod-${{ github.ref_name }}-windows.exe
           asset_content_type: application/octet-stream
