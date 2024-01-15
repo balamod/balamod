@@ -61,25 +61,23 @@ jobs:
 
 
   create-release:
-    needs: build
+    needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
     permissions: write-all
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Download Linux Artifact
         uses: actions/download-artifact@v2
         with:
-          name: balamod-linux
+          name: balamod-${{ github.ref_name }}-linux
 
       - name: Download Windows Artifact
         uses: actions/download-artifact@v2
         with:
-          name: balamod-windows
-
-      - name: Extract the version from the tag
-        id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
-        shell: bash
+          name: balamod-${{ github.ref_name }}-windows
 
       - name: Create Release
         id: create_release
@@ -87,20 +85,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
-
-      - name: Upload Linux Artifact to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./balamod-linux
-          asset_name: balamod-${{ steps.get_version.outputs.VERSION }}-linux
-          asset_content_type: application/octet-stream
 
       - name: Upload Windows Artifact to Release
         uses: actions/upload-release-asset@v1
@@ -108,6 +96,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./balamod-windows
-          asset_name: balamod-${{ steps.get_version.outputs.VERSION }}-windows.exe
+          asset_path: balamod-${{ github.ref_name }}-windows.exe # Assurez-vous que le chemin correspond au nom du fichier après l'extraction
+          asset_name: balamod-${{ github.ref_name }}-windows.exe
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux Artifact to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: balamod-${{ github.ref_name }}-linux # De même ici
+          asset_name: balamod-${{ github.ref_name }}-linux
           asset_content_type: application/octet-stream
