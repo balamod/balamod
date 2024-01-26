@@ -1,5 +1,9 @@
 # Balamod
 
+## Patched on last demo
+
+I'll not push any update until the game release sorry
+
 ### https://discord.gg/p7DeW7pSzA
 
 ~Only working on linux with proton for now.~  
