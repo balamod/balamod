@@ -1,13 +1,8 @@
 # Balamod
 
-## Patched on last demo
-
-I'll not push any update until the game release sorry
-
 ### https://discord.gg/p7DeW7pSzA
 
-~Only working on linux with proton for now.~  
-~I'll try to make it work on windows soon :)~  
+~~Only working on linux with proton for now.~~
   
 Working on windows too :)
 
@@ -38,13 +33,7 @@ If no installation is found, you will be asked to specify one with the `-b` flag
 ./balamod -a
 ```
 
-### Decompile the game
-```bash
-./balamod -d
-```
-You can use the `-o` flag to specify the output directory
-
-### Iject file into the game
+### Inject file into the game
 ```bash
 ./balamod -x -i <file> -o <game_file_name>
 ```
@@ -57,12 +46,6 @@ Example to inject a lua file:
 ```bash
 ./balamod -x -c -i Balatro.lua -o DAT1.jkr
 ```
-
-### Implement the mod loader
-```bash
-./balamod -m
-```
-By default, the file is `Balatro.lua` but you can specify it with the `-i` flag
 
 ## Modding
 Once the mod loader is in your game, next time you will launch it, it will create an `apis` and `mods` folder.
@@ -80,18 +63,20 @@ table.insert(mods,
             name = "Planets Multiplicator",
             enabled = true,
             on_enable = function()
-                local to_replace = 'arg_616_3 = arg_616_3 or 1'
-                local replacement = 'arg_616_3 = ' .. planet_multiplicator_strength
+                local to_replace = 'amount = amount or 1'
+                local replacement = 'amount = ' .. planet_multiplicator_strength
                 local fun_name = "level_up_hand"
+                local file_name = "functions/common_events.lua"
 
-                inject(fun_name, to_replace, replacement)
+                inject(file_name, fun_name, to_replace, replacement)
             end,
             on_disable = function()
-                local replacement = 'arg_616_3 = arg_616_3 or 1'
-                local to_replace = 'arg_616_3 = ' .. planet_multiplicator_strength
+                local replacement = 'amount = amount or 1'
+                local to_replace = 'amount = ' .. planet_multiplicator_strength
                 local fun_name = "level_up_hand"
+                local file_name = "functions/common_events.lua"
 
-                inject(fun_name, to_replace, replacement)
+                inject(file_name, fun_name, to_replace, replacement)
             end,
         }
 )
@@ -109,12 +94,13 @@ The `inject` function will replace the first occurence of the pattern in the des
 If you want to replace code outside a function, you can use classic overring.
 
 ### Events
-Currently *(in 0.1.6)*, the mod loader supports five events:
+Currently *(in 0.1.7)*, the mod loader supports six events:
 - `on_pre_update` called before the game update, if you return true, it will cancel the update (ticking)
 - `on_post_update` called after the game update
 - `on_pre_render` called just before rendering frame functions
 - `on_post_render` called before rendering the frame itself
 - `on_key_pressed` called when a key is pressed with 3 args (current instance, key name (string), long pressed (bool))
+- `on_pre_load` called before the game load
 
 You can register them in your mod like this:
 ```lua
@@ -123,6 +109,8 @@ table.insert(mods,
             mod_id = "test",
             name = "test",
             enabled = true,
+            on_pre_load = function()
+            end,
             on_enable = function()
             end,
             on_disable = function()
@@ -150,6 +138,6 @@ table.insert(mods,
 
 These events are not required, you can just remove them from your mod if you don't need them.
 
-
 ## How to find the function names, where to inject code, etc...
-You can use the `./balamod -d` command to decompile the game and look at the code.
+~~You can use the `./balamod -d` command to decompile the game and look at the code.~~
+I need to fi this command
