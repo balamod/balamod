@@ -59,7 +59,7 @@ pub fn find_balatros() -> Vec<Balatro> {
         while let Some(line) = libraryfolders_contents.next() {
             if line.contains("\t\t\"path\"\t\t") {
                 let path = line.split("\"").collect::<Vec<&str>>()[3];
-                paths.push(PathBuf::from(path).join("steamapps\\common\\Balatro Demo"));
+                paths.push(PathBuf::from(path).join("steamapps\\common\\Balatro"));
             }
         }
 
@@ -67,7 +67,7 @@ pub fn find_balatros() -> Vec<Balatro> {
         match home::home_dir() {
             Some(path) => {
                 let mut path = path;
-                path.push(".local/share/Steam/steamapps/common/Balatro Demo");
+                path.push(".local/share/Steam/steamapps/common/Balatro");
                 paths.push(path);
             }
             None => red_ln!("Impossible to get your home dir!"),
