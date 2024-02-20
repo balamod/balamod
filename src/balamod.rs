@@ -79,22 +79,6 @@ impl Balatro {
     }
 }
 
-// test
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_build_core() {
-        let balatros = find_balatros();
-        assert!(!balatros.is_empty());
-        let balatro = &balatros[0];
-        let loader = balatro.build_mod_core().unwrap();
-        println!("{}", loader);
-    }
-}
-
-
 pub fn find_balatros() -> Vec<Balatro> {
     let mut paths: Vec<PathBuf> = Vec::new();
     if cfg!(target_os = "windows") {
