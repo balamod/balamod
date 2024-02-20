@@ -6,6 +6,7 @@ use std::io::{BufReader, Write, Read, Cursor};
 use colour::red_ln;
 use zip::{ZipWriter, CompressionMethod, write::FileOptions};
 use libflate::deflate::Encoder;
+use crate::luas::{get_mod_core, get_mod_loader};
 
 #[derive(Clone)]
 pub struct Balatro {
@@ -36,6 +37,50 @@ impl Balatro {
         }
         red_ln!("'{}' not found in the archive.", file_name);
         Ok(Vec::new())
+    }
+
+    pub fn get_all_lua_files(&self) -> Result<Vec<String>, std::io::Error> {
+        let exe_path_buf = self.path.join("Balatro.exe");
+        let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
+        let file = File::open(exe_path)?;
+        let mut archive = ZipArchive::new(BufReader::new(file))?;
+
+        let mut lua_files = Vec::new();
+        for i in 0..archive.len() {
+            let file = archive.by_index(i)?;
+            if file.name().ends_with(".lua") {
+                lua_files.push(file.name().to_string());
+            }
+        }
+        Ok(lua_files)
+    }
+
+    pub fn build_mod_core(&self) -> Result<String, std::io::Error> {
+        let paths = self.get_all_lua_files()?;
+        let loader = get_mod_core().to_string();
+        let mut path_string = String::new();
+        for path in paths {
+            path_string.push_str(&format!("    \"{}\",\n", path));
+        }
+        path_string.pop();
+        path_string.pop();
+        let loader = loader.replace("{paths}", &format!("{}", path_string));
+        Ok(loader)
+    }
+}
+
+// test
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_core() {
+        let balatros = find_balatros();
+        assert!(!balatros.is_empty());
+        let balatro = &balatros[0];
+        let loader = balatro.build_mod_core().unwrap();
+        println!("{}", loader);
     }
 }
 

@@ -1,17 +1,17 @@
-use std::{env, fs, str};
+use std::{fs, str};
 use std::io::Write;
-use std::process::Command;
 use std::time::{Duration, Instant};
 
 use clap::Parser;
 use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln};
 
 use crate::balamod::Balatro;
+use crate::luas::*;
 
 mod balamod;
 mod luas;
 
-const VERSION: &'static str = "0.1.6a";
+const VERSION: &'static str = "0.1.7a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
@@ -197,7 +197,7 @@ fn main() {
 
 
         if args.modloader || args.auto {
-            inject_modloader(args.clone(), &mut durations);
+            //inject_modloader(args.clone(), &mut durations);
         }
 
         if args.auto {
@@ -231,111 +231,107 @@ fn main() {
     }
 }
 
-fn inject_modloader(args: Args, durations: &mut Vec<StepDuration>) {
-    cyan_ln!("Implementing modloader...");
-    let mut path = std::path::PathBuf::from("Balatro.lua");
-    if args.input.is_some() {
-        path = std::path::PathBuf::from(args.input.unwrap());
-    }
+fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durations: &mut Vec<StepDuration>) -> (String, String) {
+    let mut new_main = main_lua.clone();
+    let mut new_uidef = uidef_lua.clone();
 
-    if !path.exists() {
-        red_ln!("File not found, cannot implement modloader >:(");
-        return;
-    }
-
-    let mut balatro_lua = fs::read_to_string(path).expect("Error while reading Balatro.lua");
+    cyan_ln!("Implementing modloader on main...");
     let start = Instant::now();
 
-    if balatro_lua.contains("mods = {}") {
-        yellow_ln!("Balatro seems to already have a modloader, skipping...");
-        return;
+    // check if the string start with "-- balamod"
+    if new_main.starts_with("-- balamod") {
+        red_ln!("The main already has the modloader, skipping...");
+    } else {
+        let mod_core = balatro.build_mod_core().unwrap();
+        new_main = format!("-- balamod\n{}\n\n{}\n", mod_core, new_main);
     }
 
-    let mod_core = luas::get_mod_core();
+    new_main = new_main.replace(
+        "function love.update( dt )",
+        format!("function love.update( dt )\n{}", get_pre_update_event()).as_str()
+    );
 
-    let mut end_index = balatro_lua.find("end").unwrap();
-    end_index += 3;
-    balatro_lua.insert_str(end_index, "\n\n");
-    balatro_lua.insert_str(end_index + 2, mod_core);
-    balatro_lua.insert_str(end_index + 2 + mod_core.len(), "\n");
+    new_main = new_main.replace(
+        "G:update(dt)",
+        format!("G:update(dt)\n{}", get_post_update_event()).as_str()
+    );
 
-    let mod_loader = luas::get_mod_loader();
+    new_main = new_main.replace(
+        "function love.draw()",
+        format!("function love.draw()\n{}", get_pre_render_event()).as_str()
+    );
 
-    balatro_lua.push_str(mod_loader);
+    new_main = new_main.replace(
+        "G:draw()",
+        format!("G:draw()\n{}", get_post_render_event()).as_str()
+    );
 
-    let mut credits_button_index = balatro_lua.find("local credits_button").unwrap();
-    credits_button_index += 20;
-    balatro_lua.insert_str(credits_button_index, "\n");
-    balatro_lua.insert_str(credits_button_index + 1, "    local mods_button\n");
-
-    let mods_menu_button_code = luas::get_mods_menu_button();
-
-    let mut credits_button_end = balatro_lua.find("credits_button = UIBox_button({").unwrap();
-    credits_button_end += balatro_lua[credits_button_end..].find("})").unwrap() + 3;
-    balatro_lua.insert_str(credits_button_end, &format!("\n{}", mods_menu_button_code));
-
-    let mut credits_button_end = balatro_lua.find("			credits_button").unwrap();
-    credits_button_end += "			credits_button".len();
-    balatro_lua.insert_str(credits_button_end, ",\n			mods_button");
-
-    balatro_lua = balatro_lua.replace("OPTIONS", "OPTIONS+");
-    balatro_lua = balatro_lua.replace("text = G.VERSION", format!("text = G.VERSION .. \" \\nBalamod {}\"", VERSION).as_str());
-
-    let pre_update_event = luas::get_pre_update_event();
-    let update_index = balatro_lua.find("function Game.update(this, arg_298_1)").unwrap();
-    balatro_lua.insert_str(update_index + "function Game.update(this, arg_298_1)".len(), "\n");
-    balatro_lua.insert_str(update_index + "function Game.update(this, arg_298_1)\n".len(), pre_update_event);
-
-    let post_update_event = luas::get_post_update_event();
-    let update_index = balatro_lua.find("timer_checkpoint(\"controller\", \"update\")").unwrap();
-    balatro_lua.insert_str(update_index + "timer_checkpoint(\"controller\", \"update\")".len(), "\n\n");
-    balatro_lua.insert_str(update_index + "timer_checkpoint(\"controller\", \"update\")\n\n".len(), post_update_event);
-
-    let ket_event_header = "function Controller.key_press_update(this, key_name, arg_31_2)";
-    let key_event = luas::get_key_pressed_event();
-    let key_event_index = balatro_lua.find(ket_event_header).unwrap();
-    balatro_lua.insert_str(key_event_index + ket_event_header.len(), "\n");
-    balatro_lua.insert_str(key_event_index + ket_event_header.len() + 1, key_event);
-
-
-    let mut file = fs::File::create("Balatro.lua").expect("Error while creating file");
-    file.write_all(balatro_lua.as_bytes()).expect("Error while writing file");
-
-    path = std::path::PathBuf::from("main.lua");
-
-    if !path.exists() {
-        red_ln!("File not found, cannot implement modloader because main.lua is missing >:(");
-        return;
-    }
-
-    let mut main_lua = fs::read_to_string(path).expect("Error while reading main.lua");
-    // function love.draw()
-    let draw_header = "function love.draw()";
-    let draw_event_index = main_lua.find(draw_header).unwrap();
-
-    // before end and after love.draw()
-    let preceding_code = main_lua[draw_event_index..].find("end").unwrap();
-    let end_index = draw_event_index + preceding_code;
-    let draw_event = luas::get_post_render_event();
-    main_lua.insert_str(end_index, "\n");
-    main_lua.insert_str(end_index + 1, draw_event);
-
-    let draw_event_index = main_lua.find(draw_header).unwrap();
-    let draw_event = luas::get_pre_render_event();
-    main_lua.insert_str(draw_event_index + draw_header.len(), "\n");
-    main_lua.insert_str(draw_event_index + draw_header.len() + 1, draw_event);
-
-    fs::remove_file("main.lua").expect("Error while deleting file");
-    let mut file = fs::File::create("main.lua").expect("Error while creating file");
-    file.write_all(main_lua.as_bytes()).expect("Error while writing file");
+    new_main = new_main.replace(
+        "function love.keypressed(key)",
+        format!("function love.keypressed(key)\n{}", get_key_pressed_event()).as_str()
+    );
 
 
     durations.push(StepDuration {
         duration: start.elapsed(),
-        name: String::from("Modloader implementation"),
+        name: String::from("Modloader implementation (main)"),
+    });
+
+
+    cyan_ln!("Implementing modloader on uidef...");
+    let start = Instant::now();
+
+    new_uidef = new_uidef.replace(
+        "\"show_credits\", minw = 5}",
+        "\"show_credits\", minw = 5}\n        mods_btn = UIBox_button{ label = {\"Mods\"}, button = \"show_mods\", minw = 5}"
+    );
+
+    new_uidef = new_uidef.replace(
+        "        your_collection,\n        credits",
+        "        your_collection,\n        credits,\n        mods_btn",
+    );
+
+    new_uidef = new_uidef.replace(
+        "    local credits = nil",
+        "    local credits = nil\n    local mods_btn = nil",
+    );
+
+    let modloader = get_mod_loader().to_string().replace("{balamod_version}", VERSION);
+
+    new_uidef.push_str(modloader.as_str());
+
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Modloader implementation (uidef)"),
     });
 
     green_ln!("Done!");
+
+    (new_main, new_uidef)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_injector() {
+        let main_lua = fs::read_to_string("main.lua").expect("Error while reading file");
+        let uidef_lua = fs::read_to_string("functions/UI_definitions.lua").expect("Error while reading file");
+
+        let balatros = balamod::find_balatros();
+        let balatro = &balatros[0];
+        let mut timings = Vec::new();
+        let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut timings);
+        // print timings
+        for timing in timings {
+            println!("{} took {:?}", timing.name, timing.duration);
+        }
+
+        // save to main_modded.lua and game_modded.lua
+        fs::write("main_modded.lua", new_main).expect("Error while writing file");
+        fs::write("functions/UI_definitions_modded.lua", new_uidef).expect("Error while writing file");
+    }
 }
 
 fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {

@@ -10,36 +10,50 @@ if not love.filesystem.getInfo("apis", "directory") then -- Create apis folder i
     love.filesystem.createDirectory("apis")
 end
 
-current_game_code = love.data.decompress("string", "deflate", love.filesystem.read("DAT1.jkr")) -- Load the game code into memory
+paths = {
+{paths}
+} -- Paths to the files that will be loaded
+-- current_game_code = love.filesystem.read(path)
+current_game_code = {}
+for i, path in ipairs(paths) do
+    current_game_code[path] = love.filesystem.read(path)
+end
 
-function excractFunctionBody(function_name) -- Extracts the body of a function from the game code
+function excractFunctionBody(path, function_name)
+    -- Extracts the body of a function from the game code
     local pattern = "\r\nfunction " .. function_name
-    local func_begin, fin = current_game_code:find(pattern)
+    --local func_begin, fin = current_game_code:find(pattern)
+    local func_begin, fin = current_game_code[path]:find(pattern)
+
     if not func_begin then
         return "C'ant find function begin " .. function_name
     end
 
-    local func_end = current_game_code:find("\n\r?end", fin)
+    local func_end = current_game_code[path]:find("\n\r?end", fin)
     if not func_end then
         return "Can't find function end " .. function_name
     end
 
-    local func_body = current_game_code:sub(func_begin, func_end + 3)
+    local func_body = current_game_code[path]:sub(func_begin, func_end + 3)
     return func_body
 end
 
-function inject(function_name, to_replace, replacement) -- Injects code into a function (replaces a string with another string inside a function)
-    local function_body = excractFunctionBody(function_name)
+function inject(path, function_name, to_replace, replacement)
+    -- Injects code into a function (replaces a string with another string inside a function)
+    local function_body = excractFunctionBody(path, function_name)
     local modified_function_code = function_body:gsub(to_replace, replacement)
     escaped_function_body = function_body:gsub("([^%w])", "%%%1") -- escape function body for use in gsub
-    current_game_code = current_game_code:gsub(escaped_function_body, modified_function_code) -- update current game code in memory
+    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code) -- update current game code in memory
 
     local new_function, load_error = load(modified_function_code) -- load modified function
-    if not new_function then -- Safeguard against errors, will be logged in %appdata%/Balatro/err1.txt
+    if not new_function then
+        -- Safeguard against errors, will be logged in %appdata%/Balatro/err1.txt
         love.filesystem.write("err1.txt", "Error loading modified function: " .. (load_error or "Unknown error"))
     end
 
-    if setfenv then setfenv(new_function, getfenv(original_testFunction)) end -- Set the environment of the new function to the same as the original function
+    if setfenv then
+        setfenv(new_function, getfenv(original_testFunction))
+    end -- Set the environment of the new function to the same as the original function
 
     local status, result = pcall(new_function) -- Execute the new function
     if status then
@@ -47,6 +61,52 @@ function inject(function_name, to_replace, replacement) -- Injects code into a f
     else
         love.filesystem.write("err2.txt", "Error executing modified function: " .. result) -- Safeguard against errors, will be logged in %appdata%/Balatro/err2.txt
     end
+end
+
+-- apis will be loaded first, then mods
+
+local apis_files = love.filesystem.getDirectoryItems("apis") -- Load all apis
+for _, file in ipairs(apis_files) do
+	if file:sub(-4) == ".lua" then -- Only load lua files
+		local modPath = "apis/" .. file
+		local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
+
+		if modContent then -- Check if the file was loaded successfully
+			local success, mod = pcall(modContent)
+			if success then -- Check if the file was executed successfully
+				table.insert(mods, mod) -- Add the api to the list of mods if there is a mod in the file
+			else
+				print("Error loading api: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
+			end
+		else
+			print("Error reading api: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
+		end
+	end
+end
+
+local files = love.filesystem.getDirectoryItems("mods") -- Load all mods
+for _, file in ipairs(files) do
+	if file:sub(-4) == ".lua" then -- Only load lua files
+		local modPath = "mods/" .. file
+		local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
+
+		if modContent then  -- Check if the file was loaded successfully
+			local success, mod = pcall(modContent) -- Execute the file
+			if success then
+				table.insert(mods, mod) -- Add the mod to the list of mods
+			else
+				print("Error loading mod: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
+			end
+		else
+			print("Error reading mod: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
+		end
+	end
+end
+
+for _, mod in ipairs(mods) do
+	if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
+		pcall(mod.on_pre_load) -- Call the on_pre_load function of the mod if it exists
+	end
 end
     "#
 }
@@ -89,7 +149,7 @@ function G.UIDEF.mods()
 
 end
 
-function G.FUNCS.show_mods(arg_733_0)
+function G.FUNCS.show_mods(e)
     G.SETTINGS.paused = true
 
     G.FUNCS.overlay_menu({
@@ -97,28 +157,7 @@ function G.FUNCS.show_mods(arg_733_0)
     })
 end
 
--- apis will be loaded first, then mods
-
-local apis_files = love.filesystem.getDirectoryItems("apis") -- Load all apis
-for _, file in ipairs(apis_files) do
-    if file:sub(-4) == ".lua" then -- Only load lua files
-        local modPath = "apis/" .. file
-        local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
-
-        if modContent then -- Check if the file was loaded successfully
-            local success, mod = pcall(modContent)
-            if success then -- Check if the file was executed successfully
-                table.insert(mods, mod) -- Add the api to the list of mods if there is a mod in the file
-            else
-                print("Error loading api: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
-            end
-        else
-            print("Error reading api: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
-        end
-    end
-end
-
-local files = love.filesystem.getDirectoryItems("mods") -- Load all mods
+local files = love.filesystem.getDirectoryItems("mods") -- Load all mods after full ui init
 for _, file in ipairs(files) do
     if file:sub(-4) == ".lua" then -- Only load lua files
         local modPath = "mods/" .. file
@@ -137,23 +176,7 @@ for _, file in ipairs(files) do
     end
 end
 
-for _, mod in ipairs(mods) do
-    if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
-        pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
-    end
-end
-    "#
-}
-
-pub fn get_mods_menu_button() -> &'static str {
-    r#"
-        mods_button = UIBox_button({
-            minw = 5,
-            button = "show_mods",
-            label = {
-                "Mods"
-            }
-        })
+G.VERSION = G.VERSION .. "\nBalamod {balamod_version}"
     "#
 }
 
