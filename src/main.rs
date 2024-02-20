@@ -1,5 +1,4 @@
 use std::{fs, str};
-use std::io::Write;
 use std::time::{Duration, Instant};
 
 use clap::Parser;
@@ -41,7 +40,7 @@ struct StepDuration {
 
 
 fn main() {
-    let mut args = Args::parse();
+    let args = Args::parse();
 
     let mut durations: Vec<StepDuration> = Vec::new();
 
@@ -50,10 +49,9 @@ fn main() {
         return;
     }
 
-    if args.auto {
-        args.compress = true;
-        args.input = Some("Balatro.lua".to_string());
-        args.output = Some("Balatro.lua".to_string());
+    if args.inject && args.auto {
+        red_ln!("You can't use -x and -a at the same time!");
+        return;
     }
 
     let balatros = balamod::find_balatros();
@@ -112,122 +110,33 @@ fn main() {
     }
 
     if args.auto {
-        if fs::metadata("Balatro.lua").is_ok() {
-            yellow_ln!("Deleting existing file...");
-            fs::remove_file("Balatro.lua").expect("Error while deleting file");
-        }
+        let main_lua = balatro.get_file_as_string("main.lua", false).expect("Error while reading file");
+        let uidef_lua = balatro.get_file_as_string("functions/UI_definitions.lua", false).expect("Error while reading file");
+
+        let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut durations);
+
+        cyan_ln!("Injecting main");
+        let start = Instant::now();
+        balatro.replace_file("main.lua", new_main.as_bytes()).expect("Error while replacing file");
+        durations.push(StepDuration {
+            duration: start.elapsed(),
+            name: String::from("Modloader injection (main)"),
+        });
+        green_ln!("Done!");
+
+        cyan_ln!("Injecting UI_definitions");
+        let start = Instant::now();
+        balatro.replace_file("functions/UI_definitions.lua", new_uidef.as_bytes()).expect("Error while replacing file");
+        durations.push(StepDuration {
+            duration: start.elapsed(),
+            name: String::from("Modloader injection (uidef)"),
+        });
+        green_ln!("Done!");
     }
 
-    if args.decompile || args.auto {
-        if fs::metadata("Balatro.lua").is_ok() {
-            blue!("Balatro.lua already exists, do you want to replace it? [y/N] ");
-            let mut input = String::new();
-            std::io::stdin().read_line(&mut input).expect("Error while reading input");
-            let input = input.trim();
-            if input.eq_ignore_ascii_case("y") || input.eq_ignore_ascii_case("yes") {
-                yellow_ln!("Deleting existing file...");
-                fs::remove_file("Balatro.lua").expect("Error while deleting file");
-            } else {
-                yellow_ln!("Leaving...");
-                for duration in durations {
-                    magenta_ln!("{} took {:?}", duration.name, duration.duration);
-                }
-                let global_duration = Instant::now().duration_since(global_start);
-                magenta_ln!("Total time: {:?}", global_duration);
-                return;
-            }
-        }
-
-        cyan_ln!("Extracting...");
-        let exctract_start = Instant::now();
-        let bytes = balatro.get_file_data("DAT1.jkr").expect("Error while getting file data");
-        durations.push(StepDuration {
-            duration: exctract_start.elapsed(),
-            name: String::from("Extraction"),
-        });
-        green_ln!("Done!");
-
-        cyan_ln!("Decompressing...");
-        let decompress_start = Instant::now();
-        let bytes = balamod::decompress_bytes(bytes.as_slice()).expect("Error while decompressing bytes");
-        durations.push(StepDuration {
-            duration: decompress_start.elapsed(),
-            name: String::from("Decompression"),
-        });
-
-        let mut file = fs::File::create("DAT1.luajit").expect("Error while creating file");
-        file.write_all(bytes.as_slice()).expect("Error while writing file");
-        drop(file);
-        // close file to avoid INVALID_HANDLE_VALUE error on windows, i fucking hate windows and myself, i waste too much time on this
-        green_ln!("Done!");
-
-        if args.auto {
-            cyan_ln!("Extracting...");
-            let exctract_start = Instant::now();
-            let bytes = balatro.get_file_data("main.lua").expect("Error while getting file data");
-            durations.push(StepDuration {
-                duration: exctract_start.elapsed(),
-                name: String::from("Extraction 2"),
-            });
-            // write file
-            let mut file = fs::File::create("main.lua").expect("Error while creating file");
-            file.write_all(bytes.as_slice()).expect("Error while writing file");
-            drop(file);
-            green_ln!("Done!");
-        }
-
-
-        cyan_ln!("Cleaning up...");
-        fs::rename("output/DAT1.lua", "Balatro.lua").expect("Error while renaming file");
-        if args.auto {
-            if fs::metadata("main.lua").is_ok() {
-                fs::remove_file("main.lua").expect("Error while deleting file");
-            }
-            fs::rename("output/main.lua", "main.lua").expect("Error while renaming file");
-        }
-        fs::remove_dir_all("output").expect("Error while deleting directory");
-        fs::remove_file("DAT1.luajit").expect("Error while deleting file");
-
-        green_ln!("Done!");
-
-        if fs::metadata("deobfmap.json").is_ok() {
-            yellow_ln!("Deleting old deobfuscation map...");
-            fs::remove_file("deobfmap.json").expect("Error while deleting file");
-        }
-
-
-        if args.modloader || args.auto {
-            //inject_modloader(args.clone(), &mut durations);
-        }
-
-        if args.auto {
-            let mut args_clone = args.clone();
-            args_clone.input = Some("Balatro.lua".to_string());
-            args_clone.output = Some("DAT1.jkr".to_string());
-            inject(args_clone.clone(), balatro.clone(), &mut durations);
-            args_clone.input = Some("main.lua".to_string());
-            args_clone.output = Some("main.lua".to_string());
-            args_clone.compress = false;
-            inject(args_clone, balatro.clone(), &mut durations);
-        }
-
-        if args.auto {
-            yellow_ln!("Deleting injected file...");
-            if fs::metadata("Balatro.lua").is_ok() {
-                fs::remove_file("Balatro.lua").expect("Error while deleting file");
-            }
-            if fs::metadata("main.lua").is_ok() {
-                fs::remove_file("main.lua").expect("Error while deleting file");
-            }
-            green_ln!("Done!");
-        }
-
-        for duration in durations {
-            magenta_ln!("{} took {:?}", duration.name, duration.duration);
-        }
-
-        let global_duration = Instant::now().duration_since(global_start);
-        magenta_ln!("Total time: {:?}", global_duration);
+    magenta_ln!("Total time: {:?}", global_start.elapsed());
+    for duration in durations {
+        magenta_ln!("{}: {:?}", duration.name, duration.duration);
     }
 }
 
@@ -240,36 +149,37 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
 
     // check if the string start with "-- balamod"
     if new_main.starts_with("-- balamod") {
-        red_ln!("The main already has the modloader, skipping...");
+        yellow_ln!("The main already has the modloader, skipping...");
     } else {
         let mod_core = balatro.build_mod_core().unwrap();
         new_main = format!("-- balamod\n{}\n\n{}\n", mod_core, new_main);
+
+
+        new_main = new_main.replace(
+            "function love.update( dt )",
+            format!("function love.update( dt )\n{}", get_pre_update_event()).as_str()
+        );
+
+        new_main = new_main.replace(
+            "G:update(dt)",
+            format!("G:update(dt)\n{}", get_post_update_event()).as_str()
+        );
+
+        new_main = new_main.replace(
+            "function love.draw()",
+            format!("function love.draw()\n{}", get_pre_render_event()).as_str()
+        );
+
+        new_main = new_main.replace(
+            "G:draw()",
+            format!("G:draw()\n{}", get_post_render_event()).as_str()
+        );
+
+        new_main = new_main.replace(
+            "function love.keypressed(key)",
+            format!("function love.keypressed(key)\n{}", get_key_pressed_event()).as_str()
+        );
     }
-
-    new_main = new_main.replace(
-        "function love.update( dt )",
-        format!("function love.update( dt )\n{}", get_pre_update_event()).as_str()
-    );
-
-    new_main = new_main.replace(
-        "G:update(dt)",
-        format!("G:update(dt)\n{}", get_post_update_event()).as_str()
-    );
-
-    new_main = new_main.replace(
-        "function love.draw()",
-        format!("function love.draw()\n{}", get_pre_render_event()).as_str()
-    );
-
-    new_main = new_main.replace(
-        "G:draw()",
-        format!("G:draw()\n{}", get_post_render_event()).as_str()
-    );
-
-    new_main = new_main.replace(
-        "function love.keypressed(key)",
-        format!("function love.keypressed(key)\n{}", get_key_pressed_event()).as_str()
-    );
 
 
     durations.push(StepDuration {
@@ -281,57 +191,39 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
     cyan_ln!("Implementing modloader on uidef...");
     let start = Instant::now();
 
-    new_uidef = new_uidef.replace(
-        "\"show_credits\", minw = 5}",
-        "\"show_credits\", minw = 5}\n        mods_btn = UIBox_button{ label = {\"Mods\"}, button = \"show_mods\", minw = 5}"
-    );
+    if new_uidef.starts_with("-- balamod") {
+        yellow_ln!("The uidef already has the modloader, skipping...");
+    } else {
+        new_uidef = format!("-- balamod\n\n{}", new_uidef);
 
-    new_uidef = new_uidef.replace(
-        "        your_collection,\n        credits",
-        "        your_collection,\n        credits,\n        mods_btn",
-    );
+        new_uidef = new_uidef.replace(
+            "\"show_credits\", minw = 5}",
+            "\"show_credits\", minw = 5}\n        mods_btn = UIBox_button{ label = {\"Mods\"}, button = \"show_mods\", minw = 5}"
+        );
 
-    new_uidef = new_uidef.replace(
-        "    local credits = nil",
-        "    local credits = nil\n    local mods_btn = nil",
-    );
+        new_uidef = new_uidef.replace(
+            "        your_collection,\n        credits",
+            "        your_collection,\n        credits,\n        mods_btn",
+        );
 
-    let modloader = get_mod_loader().to_string().replace("{balamod_version}", VERSION);
+        new_uidef = new_uidef.replace(
+            "    local credits = nil",
+            "    local credits = nil\n    local mods_btn = nil",
+        );
 
-    new_uidef.push_str(modloader.as_str());
+        let modloader = get_mod_loader().to_string().replace("{balamod_version}", VERSION);
 
-    durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Modloader implementation (uidef)"),
-    });
+        new_uidef.push_str(modloader.as_str());
+
+        durations.push(StepDuration {
+            duration: start.elapsed(),
+            name: String::from("Modloader implementation (uidef)"),
+        });
+    }
 
     green_ln!("Done!");
 
     (new_main, new_uidef)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_injector() {
-        let main_lua = fs::read_to_string("main.lua").expect("Error while reading file");
-        let uidef_lua = fs::read_to_string("functions/UI_definitions.lua").expect("Error while reading file");
-
-        let balatros = balamod::find_balatros();
-        let balatro = &balatros[0];
-        let mut timings = Vec::new();
-        let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut timings);
-        // print timings
-        for timing in timings {
-            println!("{} took {:?}", timing.name, timing.duration);
-        }
-
-        // save to main_modded.lua and game_modded.lua
-        fs::write("main_modded.lua", new_main).expect("Error while writing file");
-        fs::write("functions/UI_definitions_modded.lua", new_uidef).expect("Error while writing file");
-    }
 }
 
 fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {

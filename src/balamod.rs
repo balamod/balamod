@@ -6,7 +6,7 @@ use std::io::{BufReader, Write, Read, Cursor};
 use colour::red_ln;
 use zip::{ZipWriter, CompressionMethod, write::FileOptions};
 use libflate::deflate::Encoder;
-use crate::luas::{get_mod_core, get_mod_loader};
+use crate::luas::{get_mod_core};
 
 #[derive(Clone)]
 pub struct Balatro {
@@ -37,6 +37,16 @@ impl Balatro {
         }
         red_ln!("'{}' not found in the archive.", file_name);
         Ok(Vec::new())
+    }
+
+    pub fn get_file_as_string(&self, file_name: &str, decompress: bool) -> Result<String, std::io::Error> {
+        let data = self.get_file_data(file_name)?;
+        if decompress {
+            let decompressed = decompress_bytes(&data)?;
+            Ok(String::from_utf8(decompressed).unwrap())
+        } else {
+            Ok(String::from_utf8(data).unwrap())
+        }
     }
 
     pub fn get_all_lua_files(&self) -> Result<Vec<String>, std::io::Error> {
