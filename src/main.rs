@@ -17,14 +17,10 @@ const VERSION: &'static str = "0.1.7a";
 struct Args {
     #[clap(short = 'x', long = "inject")]
     inject: bool,
-    #[clap(short = 'd', long = "decompile")]
-    decompile: bool,
     #[clap(short = 'b', long = "balatro-path")]
     balatro_path: Option<String>,
     #[clap(short = 'c', long = "compress")]
     compress: bool,
-    #[clap(short = 'm', long = "modloader")]
-    modloader: bool,
     #[clap(short = 'a', long = "auto")]
     auto: bool,
     #[clap(short = 'i', long = "input")]
@@ -43,11 +39,6 @@ fn main() {
     let args = Args::parse();
 
     let mut durations: Vec<StepDuration> = Vec::new();
-
-    if args.inject && args.decompile {
-        red_ln!("You can't use -x and -d at the same time!");
-        return;
-    }
 
     if args.inject && args.auto {
         red_ln!("You can't use -x and -a at the same time!");
@@ -124,7 +115,7 @@ fn main() {
         });
         green_ln!("Done!");
 
-        cyan_ln!("Injecting UI_definitions");
+        cyan_ln!("Injecting uidef");
         let start = Instant::now();
         balatro.replace_file("functions/UI_definitions.lua", new_uidef.as_bytes()).expect("Error while replacing file");
         durations.push(StepDuration {
