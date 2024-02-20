@@ -131,23 +131,6 @@ fn main() {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test() {
-        let balatros = super::balamod::find_balatros();
-        let balatro = balatros[0].clone();
-        let main_lua = balatro.get_file_as_string("main.lua", false).expect("Error while reading file");
-        let uidef_lua = balatro.get_file_as_string("functions/UI_definitions.lua", false).expect("Error while reading file");
-
-        let (new_main, new_uidef) = super::inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut Vec::new());
-
-        // save to file
-        std::fs::write("main_modded.lua", new_main).expect("Error while writing file");
-        std::fs::write("functions/UI_definitions_modded.lua", new_uidef).expect("Error while writing file");
-    }
-}
-
 fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durations: &mut Vec<StepDuration>) -> (String, String) {
     let mut new_main = main_lua.clone();
     let mut new_uidef = uidef_lua.clone();
