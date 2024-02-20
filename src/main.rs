@@ -131,6 +131,23 @@ fn main() {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test() {
+        let balatros = super::balamod::find_balatros();
+        let balatro = balatros[0].clone();
+        let main_lua = balatro.get_file_as_string("main.lua", false).expect("Error while reading file");
+        let uidef_lua = balatro.get_file_as_string("functions/UI_definitions.lua", false).expect("Error while reading file");
+
+        let (new_main, new_uidef) = super::inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut Vec::new());
+
+        // save to file
+        std::fs::write("main_modded.lua", new_main).expect("Error while writing file");
+        std::fs::write("functions/UI_definitions_modded.lua", new_uidef).expect("Error while writing file");
+    }
+}
+
 fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durations: &mut Vec<StepDuration>) -> (String, String) {
     let mut new_main = main_lua.clone();
     let mut new_uidef = uidef_lua.clone();
@@ -138,7 +155,6 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
     cyan_ln!("Implementing modloader on main...");
     let start = Instant::now();
 
-    // check if the string start with "-- balamod"
     if new_main.starts_with("-- balamod") {
         yellow_ln!("The main already has the modloader, skipping...");
     } else {
@@ -170,6 +186,10 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
             "function love.keypressed(key)",
             format!("function love.keypressed(key)\n{}", get_key_pressed_event()).as_str()
         );
+
+        let modloader = get_mod_loader().to_string().replace("{balamod_version}", VERSION);
+
+        new_main.push_str(modloader.as_str());
     }
 
 
@@ -193,18 +213,14 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
         );
 
         new_uidef = new_uidef.replace(
-            "        your_collection,\n        credits",
-            "        your_collection,\n        credits,\n        mods_btn",
+            "      your_collection,\n      credits",
+            "      your_collection,\n      credits,\n      mods_btn",
         );
 
         new_uidef = new_uidef.replace(
-            "    local credits = nil",
-            "    local credits = nil\n    local mods_btn = nil",
+            "  local credits = nil",
+            "  local credits = nil\n  local mods_btn = nil",
         );
-
-        let modloader = get_mod_loader().to_string().replace("{balamod_version}", VERSION);
-
-        new_uidef.push_str(modloader.as_str());
 
         durations.push(StepDuration {
             duration: start.elapsed(),

@@ -20,9 +20,7 @@ for i, path in ipairs(paths) do
 end
 
 function excractFunctionBody(path, function_name)
-    -- Extracts the body of a function from the game code
-    local pattern = "\r\nfunction " .. function_name
-    --local func_begin, fin = current_game_code:find(pattern)
+    local pattern = "\n?%s*function%s+" .. function_name
     local func_begin, fin = current_game_code[path]:find(pattern)
 
     if not func_begin then
@@ -157,23 +155,10 @@ function G.FUNCS.show_mods(e)
     })
 end
 
-local files = love.filesystem.getDirectoryItems("mods") -- Load all mods after full ui init
-for _, file in ipairs(files) do
-    if file:sub(-4) == ".lua" then -- Only load lua files
-        local modPath = "mods/" .. file
-        local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
-
-        if modContent then  -- Check if the file was loaded successfully
-            local success, mod = pcall(modContent) -- Execute the file
-            if success then
-                table.insert(mods, mod) -- Add the mod to the list of mods
-            else
-                print("Error loading mod: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
-            end
-        else
-            print("Error reading mod: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
-        end
-    end
+for _, mod in ipairs(mods) do -- Load all mods after eveything else
+	if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
+		pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
+	end
 end
 
 G.VERSION = G.VERSION .. "\nBalamod {balamod_version}"
