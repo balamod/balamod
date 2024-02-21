@@ -50,6 +50,17 @@ Example to inject a lua file:
 ./balamod -x -c -i Balatro.lua -o DAT1.jkr
 ```
 
+### Decompile the game
+```bash
+./balamod -d
+```
+
+Decompile to a custom folder:
+```bash
+./balamod -d -o MyCustomFolder
+```
+
+
 ## Modding
 Once the mod loader is in your game, next time you will launch it, it will create an `apis` and `mods` folder.
 The `apis` folder is where you can put your api files, and it will load and inject them into the game **before** any mod.
@@ -165,5 +176,4 @@ inject(file_name, fun_name, to_replace, replacement)
 ```
 
 ## How to find the function names, where to inject code, etc...
-~~You can use the `./balamod -d` command to decompile the game and look at the code.~~
-I need to fi this command
+You can use the `./balamod -d` command to decompile the game and look at the code.
