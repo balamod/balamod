@@ -1,4 +1,7 @@
 use std::{fs, str};
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use clap::Parser;
@@ -23,6 +26,8 @@ struct Args {
     compress: bool,
     #[clap(short = 'a', long = "auto")]
     auto: bool,
+    #[clap(short = 'd', long = "decompile")]
+    decompile: bool,
     #[clap(short = 'i', long = "input")]
     input: Option<String>,
     #[clap(short = 'o', long = "output")]
@@ -42,6 +47,16 @@ fn main() {
 
     if args.inject && args.auto {
         red_ln!("You can't use -x and -a at the same time!");
+        return;
+    }
+
+    if args.inject && args.decompile {
+        red_ln!("You can't use -x and -d at the same time!");
+        return;
+    }
+
+    if args.auto && args.decompile {
+        red_ln!("You can't use -a and -d at the same time!");
         return;
     }
 
@@ -98,6 +113,10 @@ fn main() {
 
     if args.inject {
         inject(args.clone(), balatro.clone(), &mut durations);
+    }
+
+    if args.decompile {
+        decompile_game(balatro.clone(), args.output, &mut durations);
     }
 
     if args.auto {
@@ -276,4 +295,58 @@ fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
         fs::remove_file(args.input.clone().unwrap()).expect("Error while deleting file");
         green_ln!("Done!");
     }
+}
+
+fn decompile_game(balatro: Balatro, output_folder: Option<String>, durations: &mut Vec<StepDuration>) {
+    let mut output_folder = output_folder.unwrap_or_else(|| "decompiled".to_string());
+
+    if !output_folder.ends_with("/") {
+        output_folder.push_str("/");
+    }
+
+    if fs::metadata(output_folder.as_str()).is_ok() {
+        yellow_ln!("Deleting existing folder...");
+        fs::remove_dir_all(output_folder.as_str()).expect("Error while deleting folder");
+    }
+
+    cyan_ln!("Decompiling...");
+    let decompile_start = Instant::now();
+    let paths = balatro.get_all_files().unwrap();
+    for path in paths {
+        if path.ends_with("/") {
+            continue;
+        }
+        let file_bytes = balatro.get_file_data(path.as_str()).expect("Error while reading file");
+
+        let normalized_path = path.replace("\\", "/");
+        let mut full_path = PathBuf::from(&output_folder);
+        full_path.push(normalized_path);
+
+        if let Some(parent_dirs) = full_path.parent() {
+            if !parent_dirs.exists() {
+                fs::create_dir_all(parent_dirs).expect("Error while creating directories");
+            }
+        }
+
+        if full_path.as_path().is_dir() {
+            continue;
+        }
+
+        match File::create(&full_path) {
+            Ok(mut file) => {
+                file.write_all(&file_bytes).expect("Error while writing to file");
+            },
+            Err(e) => {
+                println!("Error while creating file: {:?}", e);
+                println!("Failed path: {:?}", full_path);
+                break;
+            }
+        }
+    }
+
+    green_ln!("Done!");
+    durations.push(StepDuration {
+        duration: decompile_start.elapsed(),
+        name: String::from("Decompilation"),
+    });
 }

@@ -39,6 +39,21 @@ impl Balatro {
         Ok(Vec::new())
     }
 
+    pub fn get_all_files(&self) -> Result<Vec<String>, std::io::Error> {
+        let exe_path_buf = self.path.join("Balatro.exe");
+        let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
+        let file = File::open(exe_path)?;
+        let mut archive = ZipArchive::new(BufReader::new(file))?;
+
+        let mut files = Vec::new();
+        for i in 0..archive.len() {
+            let file = archive.by_index(i)?;
+            files.push(file.name().to_string());
+        }
+        Ok(files)
+    }
+
+
     pub fn get_file_as_string(&self, file_name: &str, decompress: bool) -> Result<String, std::io::Error> {
         let data = self.get_file_data(file_name)?;
         if decompress {
