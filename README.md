@@ -1,5 +1,6 @@
 # Balamod
 
+Modloader/Injector/Decopiler that support ingame code injection for Balatro
 ### https://discord.gg/p7DeW7pSzA
 
 ~~Only working on linux with proton for now.~~
@@ -15,6 +16,8 @@ Working on windows too :)
 ```cmd
 balamod.exe -a
 ```
+
+[How to use code injection](#how-to-use-code-injection)
 
 ## Cli usage
 
@@ -137,6 +140,29 @@ table.insert(mods,
 ```
 
 These events are not required, you can just remove them from your mod if you don't need them.
+
+## How to use code injection
+
+Balamod codes with the smallest possible API that supports mods and API loader. But also there is a bundle API that allows you to "hot swap" code while the game is running.
+
+Before starting the game, balamod will retrieve all the code from and store it in a map where one file = one key. This makes it possible to know the current state of the game code and to overwrite parts of the code loaded by the engine.
+
+To use it you need 3 element:
+- The lua file where you want to inject your code
+- The function name
+- The part of the code you want to replace
+
+For that I'll quickly explain with the example of the [mod](#modding-api) that changes the multiplactor of planet cards.
+
+the `inject` function takes 4 parameters which are the 3 points seen above and the new code as 4th parameter. In the mod, it replaces the part that manages the number of cards to be activated very simply like that:
+```lua
+local to_replace = 'amount = amount or 1' -- old code
+local replacement = 'amount = ' .. planet_multiplicator_strength -- new code
+local fun_name = "level_up_hand"
+local file_name = "functions/common_events.lua"
+
+inject(file_name, fun_name, to_replace, replacement)
+```
 
 ## How to find the function names, where to inject code, etc...
 ~~You can use the `./balamod -d` command to decompile the game and look at the code.~~
