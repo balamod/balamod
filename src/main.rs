@@ -13,7 +13,7 @@ use crate::luas::*;
 mod balamod;
 mod luas;
 
-const VERSION: &'static str = "0.1.7a";
+const VERSION: &'static str = "0.1.8a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
