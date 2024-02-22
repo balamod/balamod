@@ -133,6 +133,9 @@ pub fn find_balatros() -> Vec<Balatro> {
     let mut balatros = Vec::new();
     for path in paths {
         let exe_path = path.clone().join("Balatro.exe");
+        if !exe_path.exists() {
+            continue;
+        }
         let version = get_balatro_version(exe_path.to_str().unwrap()).expect("Error while getting Balatro version");
         balatros.push(Balatro {
             path,
