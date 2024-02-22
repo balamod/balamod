@@ -215,7 +215,7 @@ pub fn get_key_pressed_event() -> &'static str {
     local cancel_event = false
     for _, mod in ipairs(mods) do
         if mod.on_key_pressed then
-            if mod.on_key_pressed(this, key_name, arg_31_2) then
+            if mod.on_key_pressed(key) then
                 cancel_event = true
             end
         end
