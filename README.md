@@ -113,7 +113,7 @@ Currently *(in 0.1.7)*, the mod loader supports six events:
 - `on_post_update` called after the game update
 - `on_pre_render` called just before rendering frame functions
 - `on_post_render` called before rendering the frame itself
-- `on_key_pressed` called when a key is pressed with 3 args (current instance, key name (string), long pressed (bool))
+- `on_key_pressed` called when a key is pressed with the [key name](https://love2d.org/wiki/KeyConstant)
 - `on_pre_load` called before the game load
 
 You can register them in your mod like this:
