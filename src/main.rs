@@ -71,7 +71,7 @@ fn main() {
     } else {
         if balatros.len() == 0 {
             red_ln!("No Balatro found!");
-            println!("Please specify the path to your Balatro installation with the -bp option");
+            println!("Please specify the path to your Balatro installation with the -b option");
             return;
         } else if balatros.len() == 1 {
             balatro = balatros[0].clone();
