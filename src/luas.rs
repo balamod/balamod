@@ -170,7 +170,7 @@ pub fn get_pre_update_event() -> &'static str {
     local cancel_update = false
     for _, mod in ipairs(mods) do
         if mod.on_pre_update then
-            if mod.on_pre_update(mod, arg_298_1) then
+            if mod.on_pre_update(dt) then
                 cancel_update = true
             end
         end
@@ -184,7 +184,7 @@ pub fn get_post_update_event() -> &'static str {
     r#"
     for _, mod in ipairs(mods) do
         if mod.on_post_update then
-            mod.on_post_update(mod, arg_298_1)
+            mod.on_post_update(dt)
         end
     end
     "#
