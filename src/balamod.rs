@@ -187,17 +187,13 @@ fn replace_file_in_exe(exe_path: &str, file_name: &str, new_contents: &[u8]) -> 
         let mut zip_writer = ZipWriter::new(Cursor::new(&mut new_zip));
 
         for i in 0..zip_archive.len() {
-            let mut file = zip_archive.by_index(i)?;
-            if file.name() != file_name {
-                let options = FileOptions::default()
-                    .compression_method(file.compression())
-                    .unix_permissions(file.unix_mode().unwrap_or(0o755));
+            let raw_file = zip_archive.by_index_raw(i)?;
 
-                zip_writer.start_file(file.name(), options)?;
-                let mut file_contents = Vec::new();
-                file.read_to_end(&mut file_contents)?;
-                zip_writer.write_all(&file_contents)?;
+            if raw_file.name() == file_name {
+                continue;
             }
+
+            zip_writer.raw_copy_file(raw_file)?;
         }
 
         zip_writer.start_file(file_name, FileOptions::default().compression_method(CompressionMethod::Stored))?;
