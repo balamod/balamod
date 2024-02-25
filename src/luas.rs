@@ -224,3 +224,17 @@ pub fn get_key_pressed_event() -> &'static str {
     if cancel_event then return end
     "#
 }
+
+pub fn get_mouse_pressed_event() -> &'static str {
+    r#"
+    local cancel_event = false
+    for _, mod in ipairs(mods) do
+        if mod.on_mouse_pressed then
+            if mod.on_mouse_pressed(x, y, button, touches) then
+                cancel_event = true
+            end
+        end
+    end
+    if cancel_event then return end
+    "#
+}

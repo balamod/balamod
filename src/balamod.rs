@@ -21,7 +21,7 @@ impl Balatro {
         replace_file_in_exe(exe_path, file_name, new_contents)
     }
 
-    pub fn get_file_data(&self, file_name: &str) -> Result<Vec<u8>, std::io::Error>{
+    pub fn get_file_data(&self, file_name: &str) -> Result<Vec<u8>, std::io::Error> {
         let exe_path_buf = self.path.join("Balatro.exe");
         let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
         let file = File::open(exe_path)?;
@@ -100,7 +100,7 @@ pub fn find_balatros() -> Vec<Balatro> {
         let libraryfolders_path = Path::new("C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf");
         if !libraryfolders_path.exists() {
             red_ln!("'{}' not found.", libraryfolders_path.to_str().unwrap());
-            return vec![]
+            return vec![];
         }
 
         let libraryfolders_file = File::open(libraryfolders_path).expect("Failed to open libraryfolders.vdf");
@@ -116,7 +116,6 @@ pub fn find_balatros() -> Vec<Balatro> {
                 paths.push(PathBuf::from(path).join("steamapps\\common\\Balatro"));
             }
         }
-
     } else if cfg!(target_os = "linux") {
         match home::home_dir() {
             Some(path) => {

@@ -13,7 +13,7 @@ use crate::luas::*;
 mod balamod;
 mod luas;
 
-const VERSION: &'static str = "0.1.8a";
+const VERSION: &'static str = "0.1.9a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
@@ -166,27 +166,32 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
 
         new_main = new_main.replace(
             "function love.update( dt )",
-            format!("function love.update( dt )\n{}", get_pre_update_event()).as_str()
+            format!("function love.update( dt )\n{}", get_pre_update_event()).as_str(),
         );
 
         new_main = new_main.replace(
             "G:update(dt)",
-            format!("G:update(dt)\n{}", get_post_update_event()).as_str()
+            format!("G:update(dt)\n{}", get_post_update_event()).as_str(),
         );
 
         new_main = new_main.replace(
             "function love.draw()",
-            format!("function love.draw()\n{}", get_pre_render_event()).as_str()
+            format!("function love.draw()\n{}", get_pre_render_event()).as_str(),
         );
 
         new_main = new_main.replace(
             "G:draw()",
-            format!("G:draw()\n{}", get_post_render_event()).as_str()
+            format!("G:draw()\n{}", get_post_render_event()).as_str(),
         );
 
         new_main = new_main.replace(
             "function love.keypressed(key)",
-            format!("function love.keypressed(key)\n{}", get_key_pressed_event()).as_str()
+            format!("function love.keypressed(key)\n{}", get_key_pressed_event()).as_str(),
+        );
+
+        new_main = new_main.replace(
+            "function love.mousepressed(x, y, button, touch)",
+            format!("function love.mousepressed(x, y, button, touch)\n{}", get_mouse_pressed_event()).as_str()
         );
 
         let modloader = get_mod_loader().to_string().replace("{balamod_version}", VERSION);
@@ -211,7 +216,7 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
 
         new_uidef = new_uidef.replace(
             "\"show_credits\", minw = 5}",
-            "\"show_credits\", minw = 5}\n        mods_btn = UIBox_button{ label = {\"Mods\"}, button = \"show_mods\", minw = 5}"
+            "\"show_credits\", minw = 5}\n        mods_btn = UIBox_button{ label = {\"Mods\"}, button = \"show_mods\", minw = 5}",
         );
 
         new_uidef = new_uidef.replace(
@@ -335,7 +340,7 @@ fn decompile_game(balatro: Balatro, output_folder: Option<String>, durations: &m
         match File::create(&full_path) {
             Ok(mut file) => {
                 file.write_all(&file_bytes).expect("Error while writing to file");
-            },
+            }
             Err(e) => {
                 println!("Error while creating file: {:?}", e);
                 println!("Failed path: {:?}", full_path);
