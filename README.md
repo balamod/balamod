@@ -1,7 +1,8 @@
 # Balamod
 
 Modloader/Injector/Decopiler that support ingame code injection for Balatro
-### https://discord.gg/p7DeW7pSzA
+
+![Discord Banner 2](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)
 
 ~~Only working on linux with proton for now.~~
   
@@ -13,11 +14,19 @@ Working on windows too :)
 ./balamod -a
 ```
 ## Windows
+If you don't know how to use a command line, put balamod.exe and [this file](https://github.com/UwUDev/balamod/blob/master/One%20click%20install.cmd) in the same folder and run the .cmd file.
+
+You can also use the command line:
+
 ```cmd
 balamod.exe -a
 ```
 
 [How to use code injection](#how-to-use-code-injection)
+
+## How to install mods
+
+Just put your mods in the `mods` folder and your api in the `apis` folder on `%appdata%/balatro` or `~/.local/share/Steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro` for linux.
 
 ## Cli usage
 
@@ -108,16 +117,19 @@ The `inject` function will replace the first occurence of the pattern in the des
 If you want to replace code outside a function, you can use classic overring.
 
 ### Events
-Currently *(in 0.1.7)*, the mod loader supports six events:
+Currently *(in 0.1.9)*, the mod loader supports seven events:
 - `on_pre_update` called before the game update, if you return true, it will cancel the update (ticking)
 - `on_post_update` called after the game update
 - `on_pre_render` called just before rendering frame functions
 - `on_post_render` called before rendering the frame itself
 - `on_key_pressed` called when a key is pressed with the [key name](https://love2d.org/wiki/KeyConstant)
 - `on_pre_load` called before the game load
+- `on_mouse_pressed` called when a mouse button is pressed, with the x and y position and the button
 
 You can register them in your mod like this:
 ```lua
+-- sendDebugMessage() function is a custom function from dev tools api
+
 table.insert(mods,
         {
             mod_id = "test",
@@ -130,21 +142,25 @@ table.insert(mods,
             on_disable = function()
             end,
             on_pre_update = function()
-                print("pre update")
-                return false
+                sendDebugMessage("pre update")
+                return false -- use true to cancel the update
             end,
             on_post_update = function()
-                print("post update")
-            end
+                sendDebugMessage("post update")
+            end,
             on_pre_render = function()
-                print("pre render")
-                return false
+                sendDebugMessage("pre render") 
+                return false -- use true to cancel the rendering
             end,
             on_post_render = function()
-                print("post render")
-            end
-            on_key_pressed = function(this, key_name, long_pressed)
-                print("pressed " .. key_name)
+                sendDebugMessage("post render")
+            end,
+            on_key_pressed = function(key_name)
+                sendDebugMessage("pressed " .. key_name)
+            end,
+            on_mouse_pressed = function(x, y, button, touches)
+                sendDebugMessage("pressed " .. button .. " at " .. x .. " " .. y)
+                return false -- use true to cancel the event
             end
         }
 )
