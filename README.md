@@ -1,6 +1,6 @@
 # Balamod
 
-Modloader/Injector/Decopiler that supports **in-game code injection for Balatro**
+Mod loader, Injector and Decompiler that supports **in-game code injection for Balatro**
 
 [![Balamod Discord](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)](https://discord.gg/p7DeW7pSzA)
 
@@ -21,7 +21,7 @@ You can also use the command line:
 balamod.exe -a
 ```
 
-[How to use code injection](#how-to-use-code-injection)
+> See [How to use Code Injection](#how-to-use-code-injection)
 
 ## How to Install Mods
 
@@ -171,7 +171,7 @@ These events are not required, you can remove them from your mod if you don't ne
 
 ## How to Use Code Injection
 
-Balamod is designed to be lightweight and make minimal changes to the original source code. There is a bundle API that allows you to "hot swap" code while the game is running.
+> Balamod is designed to be lightweight and make minimal changes to the original source code. There is a bundle API that allows you to "hot swap" code while the game is running.
 
 Before the game starts, Balamod will retrieve all the code and store it in a map where one file equals to one key. It allows Balamod to know the current state of the game code, and to overwrite parts of it already loaded by the engine.
 
@@ -196,4 +196,4 @@ inject(file_name, fun_name, to_replace, replacement)
 You can use the `./balamod -d` command to decompile the game and take a look at the code.
 
 
-I love Arch, by the way.
+> *I love Arch, by the way.*
