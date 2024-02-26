@@ -23,7 +23,7 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 # Easy Install 
 ## Linux
 > [!IMPORTANT]
-> **Balamod** currently works on **with Proton** if you are using Linux.
+> **Balamod** currently works **with Proton** if you are using Linux.
 ```bash
 ./balamod -a
 ```
