@@ -7,6 +7,19 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 > [!NOTE]
 > **Balamod** currently works on **Windows**, and **Linux with Proton only**.
 
+# Summary
+- [Easy Install](#easy-install)
+    - [Linux](#linux)
+    - [Windows](#windows)
+- [How to Install Mods](#how-to-install-mods)
+- [CLI Usage](#cli-usage)
+    - [Example of usages](#example-of-usages)
+- [Modding](#modding)
+    - [Modding API](#modding-api)
+    - [Events](#events)
+- [How to use Code Injection](#how-to-use-code-injection)
+- [How to find the function names, where to inject code, etc...](#how-to-find-the-function-names-where-to-inject-code-etc)
+
 # Easy Install 
 ## Linux
 ```bash
