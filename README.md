@@ -2,9 +2,7 @@
 
 Modloader/Injector/Decopiler that supports **in-game code injection for Balatro**
 
-![Discord Banner 2](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)
-
-[Join the Discord here](https://discord.gg/p7DeW7pSzA)
+[![Balamod Discord](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)](https://discord.gg/p7DeW7pSzA)
 
 > [!NOTE]
 > **Balamod** currently works on **Windows**, and **Linux with Proton only**.
