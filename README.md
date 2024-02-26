@@ -3,6 +3,7 @@
 Modloader/Injector/Decopiler that supports in-game code injection for Balatro
 
 ![Discord Banner 2](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)
+[Join the Discord here](https://discord.gg/p7DeW7pSzA)
 
 ~~Only works on Linux with Proton for now.~~
   
@@ -28,24 +29,24 @@ balamod.exe -a
 
 Just put your mods in the `mods` folder, and your API in the `apis` folder on `%appdata%/balatro` for Windows, or `~/.local/share/Steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro` for Linux.
 
-## Cli usage
+## CLI Usage
 
 At first, Balamod will try to find all your Balatro installations.
 If one is found, it will be used as the default installation.
 If you have multiple installations, a prompt will ask you to choose one.
 If no installation is found, you will be asked to specify one with the `-b` flag.
 
-### basic help
+### Basic Help
 ```bash
 ./balamod --help
 ```
 
-### Full auto-injection of the mod loader
+### Full Auto-Injection of the Mod Loader
 ```bash
 ./balamod -a
 ```
 
-### Inject file into the game
+### Injecting a File into the Game
 ```bash
 ./balamod -x -i <file> -o <game_file_name>
 ```
@@ -59,7 +60,7 @@ Example to inject a Lua file:
 ./balamod -x -c -i Balatro.lua -o DAT1.jkr
 ```
 
-### Decompile the game
+### Decompiling the Game
 ```bash
 ./balamod -d
 ```
@@ -168,7 +169,7 @@ table.insert(mods,
 
 These events are not required, you can remove them from your mod if you don't need them.
 
-## How to use code injection
+## How to Use Code Injection
 
 Balamod is designed to be lightweight and make minimal changes to the original source code. There is a bundle API that allows you to "hot swap" code while the game is running.
 
@@ -193,3 +194,7 @@ inject(file_name, fun_name, to_replace, replacement)
 
 ## How to find the function names, where to inject code, etc...
 You can use the `./balamod -d` command to decompile the game and take a look at the code.
+
+
+I love Arch, by the way.
+
