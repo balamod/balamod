@@ -1,0 +1,2 @@
+balamod.exe -a
+pause
