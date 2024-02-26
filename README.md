@@ -22,6 +22,8 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 
 # Easy Install 
 ## Linux
+> [!IMPORTANT]
+> **Balamod** currently works on **with Proton** if you are using Linux.
 ```bash
 ./balamod -a
 ```
@@ -29,12 +31,11 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 If you're not familiar with command prompt interfaces, place `balamod.exe` and [this file](https://github.com/UwUDev/balamod/blob/master/One%20click%20install.cmd) in the same folder, then run the `.cmd` file.
 
 You can also use the command line:
-
 ```cmd
 balamod.exe -a
 ```
 
-> See [How to use Code Injection](#how-to-use-code-injection)
+> *See [How to use Code Injection](#how-to-use-code-injection)*
 
 ## How to Install Mods
 
