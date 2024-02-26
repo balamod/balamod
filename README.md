@@ -191,5 +191,9 @@ local file_name = "functions/common_events.lua"
 inject(file_name, fun_name, to_replace, replacement)
 ```
 
+
+i love arch btw
+```
+
 ## How to find the function names, where to inject code, etc...
 You can use the `./balamod -d` command to decompile the game and look at the code.
