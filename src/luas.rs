@@ -61,6 +61,54 @@ function inject(path, function_name, to_replace, replacement)
     end
 end
 
+function injectHead(path, function_name, code) -- Injects code at the beginning of a function
+    local function_body = excractFunctionBody(path, function_name)
+    local modified_function_code = function_body:gsub("function", code .. "\nfunction", 1)
+    escaped_function_body = function_body:gsub("([^%w])", "%%%1") -- escape function body for use in gsub
+    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code) -- update current game code in memory
+
+    local new_function, load_error = load(modified_function_code) -- load modified function
+    if not new_function then
+        -- Safeguard against errors, will be logged in %appdata%/Balatro/err1.txt
+        love.filesystem.write("err1.txt", "Error loading modified function: " .. (load_error or "Unknown error"))
+    end
+
+    if setfenv then
+        setfenv(new_function, getfenv(original_testFunction))
+    end -- Set the environment of the new function to the same as the original function
+
+    local status, result = pcall(new_function) -- Execute the new function
+    if status then
+        testFunction = result -- Overwrite the original function with the result of the new function
+    else
+        love.filesystem.write("err2.txt", "Error executing modified function: " .. result) -- Safeguard against errors, will be logged in %appdata%/Balatro/err2.txt
+    end
+end
+
+function injectTail(path, function_name, code) -- Injects code at the end of a function
+    local function_body = excractFunctionBody(path, function_name)
+    local modified_function_code = function_body:gsub("end", code .. "\nend", 1)
+    escaped_function_body = function_body:gsub("([^%w])", "%%%1") -- escape function body for use in gsub
+    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code) -- update current game code in memory
+
+    local new_function, load_error = load(modified_function_code) -- load modified function
+    if not new_function then
+        -- Safeguard against errors, will be logged in %appdata%/Balatro/err1.txt
+        love.filesystem.write("err1.txt", "Error loading modified function: " .. (load_error or "Unknown error"))
+    end
+
+    if setfenv then
+        setfenv(new_function, getfenv(original_testFunction))
+    end -- Set the environment of the new function to the same as the original function
+
+    local status, result = pcall(new_function) -- Execute the new function
+    if status then
+        testFunction = result -- Overwrite the original function with the result of the new function
+    else
+        love.filesystem.write("err2.txt", "Error executing modified function: " .. result) -- Safeguard against errors, will be logged in %appdata%/Balatro/err2.txt
+    end
+end
+
 -- apis will be loaded first, then mods
 
 local apis_files = love.filesystem.getDirectoryItems("apis") -- Load all apis
