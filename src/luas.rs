@@ -61,51 +61,67 @@ function inject(path, function_name, to_replace, replacement)
     end
 end
 
-function injectHead(path, function_name, code) -- Injects code at the beginning of a function
+function injectHead(path, function_name, code)
     local function_body = excractFunctionBody(path, function_name)
-    local modified_function_code = function_body:gsub("function", code .. "\nfunction", 1)
-    escaped_function_body = function_body:gsub("([^%w])", "%%%1") -- escape function body for use in gsub
-    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code) -- update current game code in memory
 
-    local new_function, load_error = load(modified_function_code) -- load modified function
+    local pattern = "(function.-)\n"
+    local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1\n" .. code .. "\n")
+
+    if number_of_subs == 0 then
+        love.filesystem.write("err4.txt", "Error: Function start not found in function body or multiple matches encountered.")
+        return
+    end
+
+    escaped_function_body = function_body:gsub("([^%w])", "%%%1")
+    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code)
+
+    local new_function, load_error = load(modified_function_code)
     if not new_function then
-        -- Safeguard against errors, will be logged in %appdata%/Balatro/err1.txt
-        love.filesystem.write("err1.txt", "Error loading modified function: " .. (load_error or "Unknown error"))
+        love.filesystem.write("err1.txt", "Error loading modified function with head injection: " .. (load_error or "Unknown error"))
+        return
     end
 
     if setfenv then
         setfenv(new_function, getfenv(original_testFunction))
-    end -- Set the environment of the new function to the same as the original function
+    end
 
-    local status, result = pcall(new_function) -- Execute the new function
+    local status, result = pcall(new_function)
     if status then
-        testFunction = result -- Overwrite the original function with the result of the new function
+        testFunction = result
     else
-        love.filesystem.write("err2.txt", "Error executing modified function: " .. result) -- Safeguard against errors, will be logged in %appdata%/Balatro/err2.txt
+        love.filesystem.write("err2.txt", "Error executing modified function with head injection: " .. result)
     end
 end
 
-function injectTail(path, function_name, code) -- Injects code at the end of a function
+function injectTail(path, function_name, code)
     local function_body = excractFunctionBody(path, function_name)
-    local modified_function_code = function_body:gsub("end", code .. "\nend", 1)
-    escaped_function_body = function_body:gsub("([^%w])", "%%%1") -- escape function body for use in gsub
-    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code) -- update current game code in memory
 
-    local new_function, load_error = load(modified_function_code) -- load modified function
+    local pattern = "(.-)(end[ \t]*\n?)$"
+    local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1" .. code .. "%2")
+
+    if number_of_subs == 0 then
+        love.filesystem.write("err3.txt", "Error: 'end' not found in function body or multiple ends encountered.")
+        return
+    end
+
+    escaped_function_body = function_body:gsub("([^%w])", "%%%1")
+    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code)
+
+    local new_function, load_error = load(modified_function_code)
     if not new_function then
-        -- Safeguard against errors, will be logged in %appdata%/Balatro/err1.txt
-        love.filesystem.write("err1.txt", "Error loading modified function: " .. (load_error or "Unknown error"))
+        love.filesystem.write("err1.txt", "Error loading modified function with tail injection: " .. (load_error or "Unknown error"))
+        return
     end
 
     if setfenv then
         setfenv(new_function, getfenv(original_testFunction))
-    end -- Set the environment of the new function to the same as the original function
+    end
 
-    local status, result = pcall(new_function) -- Execute the new function
+    local status, result = pcall(new_function)
     if status then
-        testFunction = result -- Overwrite the original function with the result of the new function
+        testFunction = result
     else
-        love.filesystem.write("err2.txt", "Error executing modified function: " .. result) -- Safeguard against errors, will be logged in %appdata%/Balatro/err2.txt
+        love.filesystem.write("err2.txt", "Error executing modified function with tail injection: " .. result)
     end
 end
 
