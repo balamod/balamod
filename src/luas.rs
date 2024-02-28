@@ -2,6 +2,8 @@ pub fn get_mod_core() -> &'static str {
     r#"
 mods = {}
 
+balamodLoaded = false
+
 if not love.filesystem.getInfo("mods", "directory") then -- Create mods folder if it doesn't exist
     love.filesystem.createDirectory("mods")
 end
@@ -219,12 +221,6 @@ function G.FUNCS.show_mods(e)
     })
 end
 
-for _, mod in ipairs(mods) do -- Load all mods after eveything else
-	if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
-		pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
-	end
-end
-
 G.VERSION = G.VERSION .. "\nBalamod {balamod_version}"
     "#
 }
@@ -246,6 +242,15 @@ pub fn get_pre_update_event() -> &'static str {
 
 pub fn get_post_update_event() -> &'static str {
     r#"
+    if balamodLoaded == false then
+        balamodLoaded = true
+        for _, mod in ipairs(mods) do -- Load all mods after eveything else
+	        if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
+		        pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
+	        end
+        end
+    end
+
     for _, mod in ipairs(mods) do
         if mod.on_post_update then
             mod.on_post_update(dt)
