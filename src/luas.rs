@@ -217,6 +217,18 @@ function installMod(modId)
         if skipUpdate then
             return
         end
+
+        -- remove old mod
+        for i, mod in ipairs(mods) do
+            if mod.mod_id == modId then
+                if mod.on_disable then
+                    mod.on_disable()
+                end
+
+                table.remove(mods, i)
+                break
+            end
+        end
     end
 
     sendDebugMessage("Downloading mod " .. modId)
