@@ -172,6 +172,197 @@ for _, mod in ipairs(mods) do
 		pcall(mod.on_pre_load) -- Call the on_pre_load function of the mod if it exists
 	end
 end
+
+repoMods = {}
+
+function isModPresent(modId)
+    for _, mod in ipairs(mods) do
+        if mod.mod_id == modId then
+            return true
+        end
+    end
+    return false
+end
+
+function installMod(modId)
+    modInfo = repoMods[modId]
+    if modInfo == nil then
+        sendDebugMessage("Mod " .. modId .. " not found in repos")
+        return
+    end
+
+    local isModPresent = isModPresent(modId)
+    if isModPresent then
+        sendDebugMessage("Mod " .. modId .. " is already present")
+        local modVersion = modInfo.version
+        local skipUpdate = false
+        for _, mod in ipairs(mods) do
+            if mod.mod_id == modId then
+                if mod.version then
+                    if mod.version == modVersion then
+                        sendDebugMessage("Mod " .. modId .. " is up to date")
+                        skipUpdate = true
+                        break
+                    else
+                        sendDebugMessage("Mod " .. modId .. " is outdated")
+                        sendDebugMessage("Updating mod " .. modId)
+                    end
+                else
+                    sendDebugMessage("Mod " .. modId .. " is up to date")
+                    skipUpdate = true
+                    break
+                end
+            end
+        end
+        if skipUpdate then
+            return
+        end
+    end
+
+    sendDebugMessage("Downloading mod " .. modId)
+    local modUrl = modInfo.url
+
+    local owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/tree/([^/]+)/(.*)")
+
+    while path:sub(-1) == "/" do
+        path = path:sub(1, -2)
+    end
+
+    sendDebugMessage("Owner: " .. owner)
+    sendDebugMessage("Repo: " .. repo)
+    sendDebugMessage("Branch: " .. branch)
+    sendDebugMessage("Path: " .. path)
+
+    local https = require "https"
+    local code, body = https.request("https://api.github.com/repos/" .. owner .. "/" .. repo .. "/git/trees/" .. branch .. "?recursive=1")
+    if code ~= 200 then
+        sendDebugMessage("Request failed")
+        sendDebugMessage("Code: " .. code)
+        sendDebugMessage("Response: " .. body)
+        return
+    end
+
+    sendDebugMessage("Files to download:")
+
+    local paths = {}
+
+    for p, type in body:gmatch('"path":"(.-)".-"type":"(.-)"') do
+        if type == "blob" then
+            if p:sub(1, #path) == path then
+                table.insert(paths, p)
+            end
+        end
+    end
+
+    for _, p in ipairs(paths) do
+        sendDebugMessage(p)
+    end
+
+    for _, p in ipairs(paths) do
+        local code, body = https.request("https://raw.githubusercontent.com/" .. owner .. "/" .. repo .. "/" .. branch .. "/" .. p)
+        if code ~= 200 then
+            sendDebugMessage("Request failed")
+            sendDebugMessage("Code: " .. code)
+            sendDebugMessage("Response: " .. body)
+            return
+        end
+        sendDebugMessage("Downloaded " .. p)
+        local filePath = p:sub(#path + 2)
+        sendDebugMessage("Writing to " .. filePath)
+        local dir = filePath:match("(.+)/[^/]+")
+        love.filesystem.createDirectory(dir)
+        --[[if not love.filesystem.getInfo(filePath) then
+            love.filesystem.write(filePath, body)
+        else
+            sendDebugMessage("File " .. filePath .. " already exists")
+        end]]--
+        love.filesystem.write(filePath, body)
+    end
+
+    -- apis first
+    for _, p in ipairs(paths) do
+        if p:match("apis/.*%.lua") then
+            sendDebugMessage("Loading " .. p:sub(#path + 2))
+
+            local modContent, loadErr = love.filesystem.load(p:sub(#path + 2))
+
+            if modContent then
+                local success, mod = pcall(modContent)
+                if success then
+                    sendDebugMessage("API " .. p:sub(#path + 2) .. " loaded")
+                else
+                    print("Error loading api: " .. p:sub(#path + 2) .. "\n" .. mod)
+                end
+            else
+                print("Error reading api: " .. p:sub(#path + 2) .. "\n" .. loadErr)
+            end
+        end
+    end
+
+    -- mods second
+    for _, p in ipairs(paths) do
+        if p:match("mods/.*%.lua") then
+            sendDebugMessage("Loading " .. p:sub(#path + 2))
+
+            local modContent, loadErr = love.filesystem.load(p:sub(#path + 2))
+
+            if modContent then
+                local success, mod = pcall(modContent)
+                if success then
+                    table.insert(mods, mod)
+                    sendDebugMessage("Mod " .. p:sub(#path + 2) .. " loaded")
+                else
+                    print("Error loading mod: " .. p:sub(#path + 2) .. "\n" .. mod)
+                end
+            else
+                print("Error reading mod: " .. p:sub(#path + 2) .. "\n" .. loadErr)
+            end
+        end
+    end
+end
+
+function refreshRepos()
+    local reposIndex = "https://raw.githubusercontent.com/UwUDev/balamod/master/repos.index"
+    local https = require "https"
+    local code, body = https.request(reposIndex)
+
+    if code ~= 200 then
+        sendDebugMessage("Request failed")
+        sendDebugMessage("Code: " .. code)
+        sendDebugMessage("Response: " .. body)
+        return
+    end
+
+    for repoUrl in string.gmatch(body, "([^\n]+)") do
+        sendDebugMessage("Refreshing " .. repoUrl)
+        refreshRepo(repoUrl)
+        sendDebugMessage("Refreshed " .. repoUrl)
+    end
+end
+
+function refreshRepo(url)
+    local https = require "https"
+    local code, body = https.request(url)
+
+
+    if code ~= 200 then
+        sendDebugMessage("Request failed")
+        sendDebugMessage("Code: " .. code)
+        sendDebugMessage("Response: " .. body)
+        return
+    end
+
+    for modInfo in string.gmatch(body, "([^\n]+)") do
+        local modId, modVersion, modName, modDesc, modUrl = string.match(modInfo, "([^|]+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)")
+        repoMods[modId] = {name = modName, desc = modDesc, url = modUrl, version = modVersion}
+    end
+
+    sendDebugMessage("Mods available:")
+    for modId, modInfo in pairs(repoMods) do
+        local isModPresent = isModPresent(modId)
+        sendDebugMessage(modId .. " - " .. modInfo.name .. " - " .. modInfo.desc .. " - " .. tostring(isModPresent))
+    end
+end
     "#
 }
 
