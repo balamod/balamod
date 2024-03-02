@@ -157,11 +157,8 @@ fn main() {
 
 #[cfg(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm"))))]
 fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durations: &mut Vec<StepDuration>) -> (String, String) {
-    let mut new_main = main_lua.clone();
-    let mut new_uidef = uidef_lua.clone();
-
     red_ln!("Architecture is not supported, skipping modloader injection...");
-    return (new_main, new_uidef);
+    return (main_lua, uidef_lua);
 }
 
 #[cfg(not(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm")))))]
