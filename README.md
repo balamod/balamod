@@ -35,7 +35,10 @@ You can also use the command line:
 balamod.exe -a
 ```
 
-> *See [How to use Code Injection](#how-to-use-code-injection)*
+## MacOS
+Soon :tm:
+
+Will be avaliable on 0.1.9
 
 ## How to Install Mods
 
