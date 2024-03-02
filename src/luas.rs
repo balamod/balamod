@@ -1,9 +1,9 @@
 pub fn get_mod_core() -> &'static str {
-    include_str!("mod_core.lua")
+    include_str!("luas/mod_core.lua")
 }
 
 pub fn get_mod_loader() -> &'static str {
-    include_str!("mod_loader.lua")
+    include_str!("luas/mod_loader.lua")
 }
 
 pub fn get_pre_update_event() -> &'static str {
