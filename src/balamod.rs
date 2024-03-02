@@ -99,6 +99,7 @@ impl Balatro {
     }
 }
 
+#[cfg(target_os = "windows")]
 fn read_path_from_registry() -> Result<String, std::io::Error> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let steam_path = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Valve\\Steam")?;
@@ -106,17 +107,20 @@ fn read_path_from_registry() -> Result<String, std::io::Error> {
     Ok(steam_path.get_value("InstallPath")?)
 }
 
+// for other OSs
+#[cfg(not(target_os = "windows"))]
+fn read_path_from_registry() -> Result<String, std::io::Error> {
+    Ok("".to_string())
+}
+
 pub fn find_balatros() -> Vec<Balatro> {
     let mut paths: Vec<PathBuf> = Vec::new();
     if cfg!(target_os = "windows") {
         let steam_path = read_path_from_registry();
-        let mut steam_path = match  steam_path {
-            Ok(install_path) => install_path,
-            Err(_) => {
-                red_ln!("Could not read steam install path from Registry! Trying standard installation path in C:\\");
-                "C:\\Program Files (x86)\\Steam".to_owned()
-            }
-        };
+        let mut steam_path = steam_path.unwrap_or_else(|_| {
+            red_ln!("Could not read steam install path from Registry! Trying standard installation path in C:\\");
+            "C:\\Program Files (x86)\\Steam".to_owned()
+        });
 
         steam_path.push_str("\\steamapps\\libraryfolders.vdf");
         let libraryfolders_path = Path::new(&steam_path);
