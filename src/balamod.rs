@@ -7,7 +7,10 @@ use colour::red_ln;
 use zip::{ZipWriter, CompressionMethod, write::FileOptions};
 use libflate::deflate::Encoder;
 use crate::luas::{get_mod_core};
+
+#[cfg(target_os = "windows")]
 use winreg::enums::*;
+#[cfg(target_os = "windows")]
 use winreg::RegKey;
 
 #[derive(Clone)]
