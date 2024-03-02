@@ -113,8 +113,8 @@ pub fn find_balatros() -> Vec<Balatro> {
         let mut steam_path = match  steam_path {
             Ok(install_path) => install_path,
             Err(_) => {
-                red_ln!("Could not read steam install path from Registry!");
-                return vec![];
+                red_ln!("Could not read steam install path from Registry! Trying standard installation path in C:\\");
+                "C:\\Program Files (x86)\\Steam".to_owned()
             }
         };
 
