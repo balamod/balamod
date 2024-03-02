@@ -126,7 +126,7 @@ fn main() {
         let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut durations);
 
         cyan_ln!("Injecting main");
-        let start = Instant::now();
+        let start: Instant = Instant::now();
         balatro.replace_file("main.lua", new_main.as_bytes()).expect("Error while replacing file");
         durations.push(StepDuration {
             duration: start.elapsed(),
@@ -150,6 +150,16 @@ fn main() {
     }
 }
 
+#[cfg(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm"))))]
+fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durations: &mut Vec<StepDuration>) -> (String, String) {
+    let mut new_main = main_lua.clone();
+    let mut new_uidef = uidef_lua.clone();
+
+    cyan_ln!("Architecture is not supported, skipping modloader injection...");
+    return (new_main, new_uidef);
+}
+
+#[cfg(any(target_os = "windows", target_os = "linux", all(target_os = "macos", any(target_arch = "aarch64", target_arch = "arm"))))]
 fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durations: &mut Vec<StepDuration>) -> (String, String) {
     let mut new_main = main_lua.clone();
     let mut new_uidef = uidef_lua.clone();
