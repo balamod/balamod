@@ -3,7 +3,7 @@ use std::fs::File;
 use std::fs;
 use zip::ZipArchive;
 use std::io::{BufReader, Write, Read, Cursor};
-use colour::red_ln;
+use colour::{blue_ln, red_ln};
 use zip::{ZipWriter, CompressionMethod, write::FileOptions};
 use libflate::deflate::Encoder;
 use crate::luas::{get_mod_core};
@@ -16,11 +16,7 @@ pub struct Balatro {
 
 impl Balatro {
     pub fn get_exe_path_buf(&self) -> PathBuf {
-        if cfg!(target_os = "windows") || cfg!(target_os = "linux") {
-            self.path.join("Balatro.exe")
-        } else {
-            self.path.join("Balatro.app/Content/Resources/Balatro.love")
-        }
+        return add_executable_to_path(self.path.clone());
     }
 
     pub fn replace_file(&self, file_name: &str, new_contents: &[u8]) -> Result<(), std::io::Error> {
@@ -102,6 +98,13 @@ impl Balatro {
     }
 }
 
+fn add_executable_to_path(path: PathBuf) -> PathBuf {
+    if cfg!(target_os = "windows") || cfg!(target_os = "linux") {
+        return path.join("Balatro.exe");
+    }
+    return path.join("Balatro.app/Contents/Resources/Balatro.love");
+}
+
 pub fn find_balatros() -> Vec<Balatro> {
     let mut paths: Vec<PathBuf> = Vec::new();
     if cfg!(target_os = "windows") {
@@ -133,13 +136,23 @@ pub fn find_balatros() -> Vec<Balatro> {
             }
             None => red_ln!("Impossible to get your home dir!"),
         }
+    } else if cfg!(target_os = "macos") {
+        match home::home_dir() {
+            Some(path) => {
+                let mut path = path;
+                path.push("Library/Application Support/Steam/steamapps/common/Balatro");
+                paths.push(path);
+            }
+            None => red_ln!("Impossible to get your home dir!"),
+        }
     }
 
     remove_unexisting_paths(&mut paths);
 
     let mut balatros = Vec::new();
     for path in paths {
-        let exe_path = path.clone().join("Balatro.exe");
+        let exe_path = add_executable_to_path(path.clone());
+        blue_ln!("Checking {}", exe_path.to_str().unwrap());
         if !exe_path.exists() {
             continue;
         }
@@ -162,6 +175,7 @@ fn remove_unexisting_paths(paths: &mut Vec<PathBuf>) {
             i += 1;
         }
     }
+    blue_ln!("Found {} Balatro installations.", paths.len());
 }
 
 fn get_balatro_version(exe_path: &str) -> Result<String, std::io::Error> {
