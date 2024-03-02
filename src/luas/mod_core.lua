@@ -15,16 +15,16 @@ paths = {
 } -- Paths to the files that will be loaded
 -- current_game_code = love.filesystem.read(path)
 current_game_code = {}
-for i, path in ipairs(paths) do
+for _, path in ipairs(paths) do
     current_game_code[path] = love.filesystem.read(path)
 end
 
-function excractFunctionBody(path, function_name)
+function extractFunctionBody(path, function_name)
     local pattern = "\n?%s*function%s+" .. function_name
     local func_begin, fin = current_game_code[path]:find(pattern)
 
     if not func_begin then
-        return "C'ant find function begin " .. function_name
+        return "Can't find function begin " .. function_name
     end
 
     local func_end = current_game_code[path]:find("\n\r?end", fin)
@@ -38,7 +38,7 @@ end
 
 function inject(path, function_name, to_replace, replacement)
     -- Injects code into a function (replaces a string with another string inside a function)
-    local function_body = excractFunctionBody(path, function_name)
+    local function_body = extractFunctionBody(path, function_name)
     local modified_function_code = function_body:gsub(to_replace, replacement)
     escaped_function_body = function_body:gsub("([^%w])", "%%%1") -- escape function body for use in gsub
     current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code) -- update current game code in memory
@@ -62,7 +62,7 @@ function inject(path, function_name, to_replace, replacement)
 end
 
 function injectHead(path, function_name, code)
-    local function_body = excractFunctionBody(path, function_name)
+    local function_body = extractFunctionBody(path, function_name)
 
     local pattern = "(function.-)\n"
     local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1\n" .. code .. "\n")
@@ -94,7 +94,7 @@ function injectHead(path, function_name, code)
 end
 
 function injectTail(path, function_name, code)
-    local function_body = excractFunctionBody(path, function_name)
+    local function_body = extractFunctionBody(path, function_name)
 
     local pattern = "(.-)(end[ \t]*\n?)$"
     local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1" .. code .. "%2")
@@ -269,7 +269,7 @@ function installMod(modId)
     end
 
     for _, p in ipairs(paths) do
-        local code, body = https.request("https://raw.githubusercontent.com/" .. owner .. "/" .. repo .. "/" .. branch .. "/" .. p)
+        code, body = https.request("https://raw.githubusercontent.com/" .. owner .. "/" .. repo .. "/" .. branch .. "/" .. p)
         if code ~= 200 then
             sendDebugMessage("Request failed")
             sendDebugMessage("Code: " .. code)

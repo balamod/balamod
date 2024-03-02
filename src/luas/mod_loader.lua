@@ -1,6 +1,6 @@
 function G.UIDEF.mods()
     btn_nodes = {}
-    for i, mod in ipairs(mods) do
+    for _, mod in ipairs(mods) do
         col = G.C.RED
         if mod.enabled then
             col = G.C.GREEN
@@ -34,7 +34,7 @@ function G.UIDEF.mods()
 
 end
 
-function G.FUNCS.show_mods(e)
+function G.FUNCS.show_mods(_)
     G.SETTINGS.paused = true
 
     G.FUNCS.overlay_menu({
