@@ -15,14 +15,22 @@ pub struct Balatro {
 }
 
 impl Balatro {
+    pub fn get_exe_path_buf(&self) -> PathBuf {
+        if cfg!(target_os = "windows") || cfg!(target_os = "linux") {
+            self.path.join("Balatro.exe")
+        } else {
+            self.path.join("Balatro.app/Content/Resources/Balatro.love")
+        }
+    }
+
     pub fn replace_file(&self, file_name: &str, new_contents: &[u8]) -> Result<(), std::io::Error> {
-        let exe_path_buf = self.path.join("Balatro.exe");
+        let exe_path_buf = self.get_exe_path_buf();
         let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
         replace_file_in_exe(exe_path, file_name, new_contents)
     }
 
     pub fn get_file_data(&self, file_name: &str) -> Result<Vec<u8>, std::io::Error> {
-        let exe_path_buf = self.path.join("Balatro.exe");
+        let exe_path_buf = self.get_exe_path_buf();
         let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
         let file = File::open(exe_path)?;
         let mut archive = ZipArchive::new(BufReader::new(file))?;
@@ -40,7 +48,7 @@ impl Balatro {
     }
 
     pub fn get_all_files(&self) -> Result<Vec<String>, std::io::Error> {
-        let exe_path_buf = self.path.join("Balatro.exe");
+        let exe_path_buf = self.get_exe_path_buf();
         let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
         let file = File::open(exe_path)?;
         let mut archive = ZipArchive::new(BufReader::new(file))?;
@@ -65,7 +73,7 @@ impl Balatro {
     }
 
     pub fn get_all_lua_files(&self) -> Result<Vec<String>, std::io::Error> {
-        let exe_path_buf = self.path.join("Balatro.exe");
+        let exe_path_buf = self.get_exe_path_buf();
         let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
         let file = File::open(exe_path)?;
         let mut archive = ZipArchive::new(BufReader::new(file))?;
