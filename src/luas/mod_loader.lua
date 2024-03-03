@@ -278,6 +278,30 @@ end
 
 G.UIDEF.mods = function()
     local text_scale = 0.75
+    local credits_text = {
+        'A Modloader/Decompiler/Code Injector for Balatro',
+        '',
+        'Usage: ',
+        '1. Shutdown the game',
+        '2. Place the mod in the mods folder',
+        '3. Run the game and the mod will be loaded',
+        '',
+    }
+    for i, v in ipairs(credits_text) do
+        credits_text[i] = {
+            n = G.UIT.R,
+            config = {align = 'cl', padding = 0},
+            nodes = {{
+                n = G.UIT.T,
+                config = {
+                    text = v,
+                    scale = text_scale * 0.5,
+                    colour = G.C.UI.TEXT_LIGHT,
+                    shadow = true
+                }
+            }}
+        }
+    end
     local t = create_UIBox_generic_options({
         contents = {{
             n = G.UIT.R,
@@ -314,15 +338,7 @@ G.UIDEF.mods = function()
                                 }, {
                                     n = G.UIT.R,
                                     config = {align = 'cl', padding = 0},
-                                    nodes = {{
-                                        n = G.UIT.T,
-                                        config = {
-                                            text = 'Modloader/Decompiler/Code Injector for Balatro',
-                                            scale = text_scale * 0.4,
-                                            colour = G.C.UI.TEXT_LIGHT,
-                                            shadow = true
-                                        }
-                                    }}
+                                    nodes = credits_text
                                 }, {
                                     n = G.UIT.R,
                                     config = {align = 'cm', padding = 0.1, colour = G.C.CLEAR},
