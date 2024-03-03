@@ -8,7 +8,7 @@ G.FUNCS.open_balamod_discord = function(e)
 end
 G.FUNCS.taggle_mod = function(e)
     local ori_id = string.sub(e.config.id, 7)
-    local mod = getModByKeyOrInner(mods, ori_id)
+    local mod = getModByModId(mods, ori_id)
     sendDebugMessage('Taggling mod: ' .. mod.name .. ' id: ' .. ori_id)
     mod.enabled = not mod.enabled
     if mod.enabled and mod.on_enable and type(mod.on_enable) == 'function' then
@@ -32,7 +32,7 @@ function G.UIDEF.mod_description(e)
     local status_btn_id = 's_btn_' .. e.config.id
     local menu_btn_id = 'm_btn_' .. e.config.id
 
-    local mod = getModByKeyOrInner(mods, e.config.id)
+    local mod = getModByModId(mods, e.config.id)
     if not mod.description then
         mod.description = {'This mod dose not offer description'}
     end
