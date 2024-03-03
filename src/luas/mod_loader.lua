@@ -1,3 +1,6 @@
+refreshRepos()
+mods_collection = {}
+
 G.FUNCS.empty_function = function(e)
 end
 G.FUNCS.open_balamod_github = function(e)
@@ -9,6 +12,11 @@ end
 G.FUNCS.taggle_mod = function(e)
     local ori_id = string.sub(e.config.id, 7)
     local mod = getModByModId(mods, ori_id)
+    if mod == nil then
+        sendDebugMessage('Mod ' .. ori_id .. ' not found')
+        return
+    end
+
     sendDebugMessage('Taggling mod: ' .. mod.name .. ' id: ' .. ori_id)
     mod.enabled = not mod.enabled
     if mod.enabled and mod.on_enable and type(mod.on_enable) == 'function' then
@@ -27,14 +35,22 @@ G.FUNCS.taggle_mod = function(e)
     e.children[1].config.text = mod.enabled and 'Enabled' or 'Disabled'
     e.UIBox:recalculate(true)
 end
-function G.UIDEF.mod_description(e)
+G.FUNCS.install_mod = function(e)
+    local mod_id = string.sub(e.config.id, 7)
+    installMod(mod_id)
+end
+G.UIDEF.mod_description = function(e)
     local text_scale = 0.75
     local status_btn_id = 's_btn_' .. e.config.id
     local menu_btn_id = 'm_btn_' .. e.config.id
 
-    local mod = getModByModId(mods, e.config.id)
+    local mod = getModByModId(mods_collection, e.config.id)
+    local mod_present = isModPresent(e.config.id)
     if not mod.description then
         mod.description = {'This mod dose not offer description'}
+    end
+    if type(mod.description) == 'string' then
+        mod.description = {mod.description}
     end
     local menu = mod.menu or 'empty_function'
     local version = mod.version or 'v0.1'
@@ -73,13 +89,13 @@ function G.UIDEF.mod_description(e)
                 minh = 0.7,
                 r = 0.1,
                 hover = true,
-                colour = status_colour,
-                button = 'taggle_mod',
+                colour = mod_present and status_colour or G.C.GREEN,
+                button = mod_present and 'taggle_mod' or 'install_mod',
                 shadow = true,
                 id = status_btn_id
             },
-            nodes = {{n = G.UIT.T, config = {text = status_text, scale = 0.5, colour = G.C.UI.TEXT_LIGHT}}}
-        }, {
+            nodes = {{n = G.UIT.T, config = {text = mod_present and status_text or "Download", scale = 0.5, colour = G.C.UI.TEXT_LIGHT}}}
+        }, mod_present and {
             n = G.UIT.C,
             config = {
                 align = 'cm',
@@ -93,11 +109,11 @@ function G.UIDEF.mod_description(e)
                 id = menu_btn_id
             },
             nodes = {{n = G.UIT.T, config = {text = 'Menu', scale = 0.5, colour = G.C.UI.TEXT_LIGHT}}}
-        }}
+        } or nil}
     }
     local mod_description_frame = {
         n = G.UIT.C,
-        config = {align = 'cm', minw = 3, r = 0.1, colour = G.C.BLUE},
+        config = {align = 'cm', minw = 3, r = 0.1, colour = mod_present and G.C.BLUE or G.C.ORANGE},
         nodes = {{
             n = G.UIT.R,
             config = {align = 'cm', padding = 0.08, minh = 0.6},
@@ -140,20 +156,21 @@ G.FUNCS.change_mod_description = function(e)
     end
 end
 
-function G.UIDEF.mod_list_page(_page)
+G.UIDEF.mod_list_page = function(_page)
     local snapped = false
     local mod_list = {}
-    for i, mod in ipairs(mods) do
+    for i, mod in ipairs(mods_collection) do
         sendDebugMessage('Mod index ' .. i .. ' page ' .. _page .. ' name ' .. mod.name .. ' id ' .. mod.mod_id)
         if i > G.MOD_PAGE_SIZE * (_page or 0) and i <= G.MOD_PAGE_SIZE * ((_page or 0) + 1) then
             if G.CONTROLLER.focused.target and G.CONTROLLER.focused.target.config.id == 'mod_page' then
                 snapped = true
             end
+            local mod_present = isModPresent(mod.mod_id)
             mod_list[#mod_list + 1] = UIBox_button({
                 id = mod.mod_id,
                 label = {mod.name},
                 button = 'change_mod_description',
-                colour = G.C.RED,
+                colour = mod_present and G.C.RED or G.C.ORANGE,
                 minw = 4,
                 scale = 0.4,
                 minh = 0.6,
@@ -186,11 +203,26 @@ G.FUNCS.change_mod_list_page = function(args)
 end
 
 create_mod_tab_definition = function()
-    G.MOD_PAGE_SIZE = 6
+    G.MOD_PAGE_SIZE = 7
+    mods_collection = {}
+    for _, mod in ipairs(mods) do
+        if not getModByModId(mods_collection, mod.mod_id) then
+            table.insert(mods_collection, mod)
+        else
+            sendDebugMessage('Mod ' .. mod.name .. ' already in collection')
+        end
+    end
+    for _, mod in ipairs(repoMods) do
+        if not getModByModId(mods_collection, mod.mod_id) then
+            table.insert(mods_collection, mod)
+        else
+            sendDebugMessage('Mod ' .. mod.name .. ' already in collection')
+        end
+    end
     local mod_pages = {}
-    for i = 1, math.ceil(#mods / G.MOD_PAGE_SIZE) do
+    for i = 1, math.ceil(#mods_collection / G.MOD_PAGE_SIZE) do
         table.insert(mod_pages,
-                     localize('k_page') .. ' ' .. tostring(i) .. '/' .. tostring(math.ceil(#mods / G.MOD_PAGE_SIZE)))
+                     localize('k_page') .. ' ' .. tostring(i) .. '/' .. tostring(math.ceil(#mods_collection / G.MOD_PAGE_SIZE)))
     end
     G.E_MANAGER:add_event(Event({
         func = (function()
@@ -234,7 +266,7 @@ create_mod_tab_definition = function()
     }
 end
 
-function G.UIDEF.mods()
+G.UIDEF.mods = function()
     local text_scale = 0.75
     local t = create_UIBox_generic_options({
         contents = {{
@@ -313,7 +345,7 @@ function G.UIDEF.mods()
     return t
 end
 
-function G.FUNCS.show_mods(e)
+G.FUNCS.show_mods = function(e)
     G.SETTINGS.paused = true
 
     G.FUNCS.overlay_menu({definition = G.UIDEF.mods()})

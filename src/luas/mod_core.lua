@@ -373,17 +373,24 @@ function refreshRepo(url)
         return
     end
 
+    -- clear repoMods
+    repoMods = {}
     for modInfo in string.gmatch(body, '([^\n]+)') do
         local modId, modVersion, modName, modDesc, modUrl = string.match(modInfo,
                                                                          '([^|]+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)')
-        repoMods[#repoMods + 1] = {mod_id = modId, name = modName, description = modDesc, url = modUrl, version = modVersion}
+        table.insert(repoMods, {
+            mod_id = modId, 
+            name = modName, 
+            description = modDesc, 
+            url = modUrl, 
+            version = modVersion
+        })
     end
 
     sendDebugMessage('Mods available:')
     for i, modInfo in pairs(repoMods) do
         local modId = modInfo.mod_id
         local isModPresent = isModPresent(modId)
-        sendDebugMessage(modId .. ' - ' .. modInfo.name .. ' - ' .. modInfo.desc .. ' - ' .. tostring(isModPresent))
+        sendDebugMessage(modId .. ' - ' .. modInfo.name .. ' - ' .. modInfo.version .. ' - ' .. modInfo.description .. ' - ' .. tostring(isModPresent))
     end
 end
-
