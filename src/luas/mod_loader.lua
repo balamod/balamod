@@ -65,14 +65,21 @@ G.UIDEF.mod_description = function(e)
             nodes = {{n = G.UIT.T, config = {text = v, scale = 0.3, colour = G.C.UI.TEXT_DARK}}}
         }
     end
+    if not mod_present then
+        mod_description_text[#mod_description_text + 1] = {
+            n = G.UIT.R,
+            config = {align = 'cl'},
+            nodes = {{n = G.UIT.T, config = {text = mod.url or '', scale = 0.3, colour = G.C.UI.TEXT_DARK}}}
+        }
+    end
     local mod_description = {{
         n = G.UIT.R,
         config = {align = 'tm', padding = 0.1, minh = 0.5},
-        nodes = {{
+        nodes = {mod_present and {
             n = G.UIT.C,
             config = {align = 'cm', r = 0.1, padding = 0.1, colour = G.C.GREEN},
             nodes = {{n = G.UIT.T, config = {text = author, scale = 0.4, colour = G.C.WHITE, shadow = true}}}
-        }, {
+        } or nil, {
             n = G.UIT.C,
             config = {align = 'cm', r = 0.1, padding = 0.1, colour = G.C.PURPLE},
             nodes = {{n = G.UIT.T, config = {text = version, scale = 0.4, colour = G.C.WHITE, shadow = true}}}
@@ -94,7 +101,10 @@ G.UIDEF.mod_description = function(e)
                 shadow = true,
                 id = status_btn_id
             },
-            nodes = {{n = G.UIT.T, config = {text = mod_present and status_text or "Download", scale = 0.5, colour = G.C.UI.TEXT_LIGHT}}}
+            nodes = {{
+                n = G.UIT.T,
+                config = {text = mod_present and status_text or 'Download', scale = 0.5, colour = G.C.UI.TEXT_LIGHT}
+            }}
         }, mod_present and {
             n = G.UIT.C,
             config = {
@@ -221,8 +231,8 @@ create_mod_tab_definition = function()
     end
     local mod_pages = {}
     for i = 1, math.ceil(#mods_collection / G.MOD_PAGE_SIZE) do
-        table.insert(mod_pages,
-                     localize('k_page') .. ' ' .. tostring(i) .. '/' .. tostring(math.ceil(#mods_collection / G.MOD_PAGE_SIZE)))
+        table.insert(mod_pages, localize('k_page') .. ' ' .. tostring(i) .. '/' ..
+                         tostring(math.ceil(#mods_collection / G.MOD_PAGE_SIZE)))
     end
     G.E_MANAGER:add_event(Event({
         func = (function()
