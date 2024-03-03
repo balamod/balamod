@@ -182,6 +182,20 @@ function isModPresent(modId)
     return false
 end
 
+-- find mod in repoMods by key, or find in mods by inner key
+function getModByKeyOrInner(tables, keyOrInner)
+    if tables[keyOrInner] then
+        return tables[keyOrInner]
+    end
+    for _, mod in ipairs(tables) do
+        if mod.mod_id and mod.mod_id == keyOrInner then
+            return mod
+        end
+    end
+    sendDebugMessage('Mod ' .. indexOrKey .. ' not found')
+    return nil
+end
+
 function installMod(modId)
     modInfo = repoMods[modId]
     if modInfo == nil then

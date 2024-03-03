@@ -227,18 +227,13 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
         new_uidef = format!("-- balamod\n\n{}", new_uidef);
 
         new_uidef = new_uidef.replace(
-            "\"show_credits\", minw = 5}",
-            "\"show_credits\", minw = 5}\n        mods_btn = UIBox_button{ label = {\"Mods\"}, button = \"show_mods\", minw = 5}",
-        );
-
-        new_uidef = new_uidef.replace(
-            "      your_collection,\n      credits",
-            "      your_collection,\n      credits,\n      mods_btn",
-        );
-
-        new_uidef = new_uidef.replace(
-            "  local credits = nil",
-            "  local credits = nil\n  local mods_btn = nil",
+            "{n=G.UIT.O, config={object = twitter}},",
+            r#"{n=G.UIT.O, config={object = twitter}},
+        }}
+    }} or nil,
+    {n=G.UIT.R, config = {align = "cm", padding = 0.2, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK}, nodes={
+      {n=G.UIT.R, config={align = "cm", padding = 0.15, minw = 1, r = 0.1, hover = true, colour = G.C.PURPLE, button = 'show_mods', shadow = true}, nodes={
+        {n=G.UIT.T, config={text = "MODS", scale = 0.6, colour = G.C.UI.TEXT_LIGHT, shadow = true}}"#,
         );
 
         durations.push(StepDuration {
