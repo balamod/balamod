@@ -253,9 +253,11 @@ function installMod(modId)
     sendDebugMessage('Path: ' .. path)
 
     local https = require 'https'
-    local code, body = https.request(
-                           'https://api.github.com/repos/' .. owner .. '/' .. repo .. '/git/trees/' .. branch ..
-                               '?recursive=1')
+    local headers = {
+        ['User-Agent'] = 'Balamod/1.0'
+    }
+    local url = 'https://api.github.com/repos/' .. owner .. '/' .. repo .. '/git/trees/' .. branch .. '?recursive=1'
+    local code, body = https.request(url, {headers = headers})
     if code ~= 200 then
         sendDebugMessage('Request failed')
         sendDebugMessage('Code: ' .. code)
