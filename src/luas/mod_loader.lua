@@ -376,3 +376,5 @@ G.FUNCS.show_mods = function(e)
 
     G.FUNCS.overlay_menu({definition = G.UIDEF.mods()})
 end
+
+G.VERSION = G.VERSION .. "\nBalamod {balamod_version}"
