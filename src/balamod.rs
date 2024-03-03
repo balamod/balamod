@@ -6,7 +6,7 @@ use std::io::{BufReader, Write, Read, Cursor};
 use colour::{blue_ln, red_ln};
 use zip::{ZipWriter, CompressionMethod, write::FileOptions};
 use libflate::deflate::Encoder;
-use crate::luas::{get_mod_core};
+use crate::luas::get_mod_core;
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -114,7 +114,7 @@ fn add_executable_to_path(path: PathBuf) -> PathBuf {
 fn read_path_from_registry() -> Result<String, std::io::Error> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let steam_path = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Valve\\Steam")?;
-    
+
     Ok(steam_path.get_value("InstallPath")?)
 }
 
