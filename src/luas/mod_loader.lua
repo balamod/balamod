@@ -35,7 +35,18 @@ G.FUNCS.taggle_mod = function(e)
 end
 G.FUNCS.install_mod = function(e)
     local mod_id = string.sub(e.config.id, 7)
-    installMod(mod_id)
+    local ret = installMod(mod_id)
+    sendDebugMessage('Mod ' .. mod_id .. ' install status ' .. tostring(ret))
+    if ret == RESULE.SUCCESS then
+        sendDebugMessage('Reloading mod tab')
+        if G.OVERLAY_MENU then G.OVERLAY_MENU:remove(); G.OVERLAY_MENU = nil end
+        G.FUNCS.overlay_menu({definition = G.UIDEF.mods()})
+    else
+        sendDebugMessage('Mod ' .. mod_id .. ' failed to install')
+        e.config.colour = G.C.RED
+        e.children[1].config.text = 'Failed'
+        e.UIBox:recalculate(true)
+    end
 end
 G.UIDEF.mod_description = function(e)
     local text_scale = 0.75

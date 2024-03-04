@@ -2,6 +2,16 @@ mods = {}
 
 balamodLoaded = false
 
+RESULE = {
+    SUCCESS = 0,
+    MOD_NOT_FOUND_IN_REPOS = 1,
+    MOD_NOT_FOUND_IN_MODS = 2,
+    MOD_ALREADY_PRESENT = 3,
+    NETWORK_ERROR = 4,
+    MOD_FS_LOAD_ERROR = 5,
+    MOD_PCALL_ERROR = 6,
+}
+
 if not love.filesystem.getInfo("mods", "directory") then -- Create mods folder if it doesn't exist
     love.filesystem.createDirectory("mods")
 end
@@ -195,7 +205,7 @@ function installMod(modId)
     local modInfo = getModByModId(repoMods, modId)
     if modInfo == nil then
         sendDebugMessage('Mod ' .. modId .. ' not found in repos')
-        return
+        return RESULE.MOD_NOT_FOUND_IN_REPOS
     end
 
     local isModPresent = isModPresent(modId)
@@ -222,7 +232,7 @@ function installMod(modId)
             end
         end
         if skipUpdate then
-            return
+            return RESULE.SUCCESS
         end
 
         -- remove old mod
@@ -262,7 +272,7 @@ function installMod(modId)
         sendDebugMessage('Request failed')
         sendDebugMessage('Code: ' .. code)
         sendDebugMessage('Response: ' .. body)
-        return
+        return RESULE.NETWORK_ERROR
     end
 
     sendDebugMessage('Files to download:')
@@ -288,7 +298,7 @@ function installMod(modId)
             sendDebugMessage('Request failed')
             sendDebugMessage('Code: ' .. code)
             sendDebugMessage('Response: ' .. body)
-            return
+            return RESULE.NETWORK_ERROR
         end
         sendDebugMessage('Downloaded ' .. p)
         local filePath = p:sub(#path + 2)
@@ -316,9 +326,11 @@ function installMod(modId)
                     sendDebugMessage('API ' .. p:sub(#path + 2) .. ' loaded')
                 else
                     print('Error loading api: ' .. p:sub(#path + 2) .. '\n' .. mod)
+                    return RESULE.MOD_PCALL_ERROR
                 end
             else
                 print('Error reading api: ' .. p:sub(#path + 2) .. '\n' .. loadErr)
+                return RESULE.MOD_FS_LOAD_ERROR
             end
         end
     end
@@ -337,12 +349,16 @@ function installMod(modId)
                     sendDebugMessage('Mod ' .. p:sub(#path + 2) .. ' loaded')
                 else
                     print('Error loading mod: ' .. p:sub(#path + 2) .. '\n' .. mod)
+                    return RESULE.MOD_PCALL_ERROR
                 end
             else
                 print('Error reading mod: ' .. p:sub(#path + 2) .. '\n' .. loadErr)
+                return RESULE.MOD_FS_LOAD_ERROR
             end
         end
     end
+
+    return RESULE.SUCCESS
 end
 
 function refreshRepos()
