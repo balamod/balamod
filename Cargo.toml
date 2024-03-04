@@ -1,12 +1,7 @@
 [workspace]
 members = [
     "balamod_lib",
-    "src-tauri",
 ]
-
-[[bin]]
-name = "balamod"
-path = "src-tauri/main.rs"
 
 [package]
 name = "balamod"
