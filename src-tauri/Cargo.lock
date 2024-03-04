@@ -154,6 +154,8 @@ dependencies = [
  "home",
  "libflate",
  "log",
+ "serde",
+ "serde_json",
  "winreg 0.52.0",
  "zip",
 ]

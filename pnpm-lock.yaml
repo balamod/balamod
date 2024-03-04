@@ -67,6 +67,12 @@ devDependencies:
   '@smui/button':
     specifier: 7.0.0-beta.16
     version: 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+  '@smui/card':
+    specifier: 7.0.0-beta.16
+    version: 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+  '@smui/common':
+    specifier: 7.0.0-beta.16
+    version: 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
   '@smui/select':
     specifier: 7.0.0-beta.16
     version: 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
@@ -863,6 +869,20 @@ packages:
       - typescript
     dev: true
 
+  /@smui/card@7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3):
+    resolution: {integrity: sha512-oFOt5auDAdNLFXbAtFPPn2/DnV0TU2kXd/A5yeEWqBsoyTQBY0qY+o/Z0OxVvQyi/iglSqFAzXZ8sahprHlVHA==}
+    dependencies:
+      '@material/card': 14.0.0
+      '@smui/button': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+      '@smui/common': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+      '@smui/icon-button': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+      '@smui/ripple': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+      svelte2tsx: 0.6.27(svelte@4.2.12)(typescript@5.3.3)
+    transitivePeerDependencies:
+      - svelte
+      - typescript
+    dev: true
+
   /@smui/common@7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3):
     resolution: {integrity: sha512-PpqhIAWtE6ZZ6XyIkzHGXdMk+iE4QLFdzYXf20cG13O/0bFjOV5ySk2g+Vq2ZWRJawIjMaPcekbCkkowna4vgg==}
     dependencies:
@@ -878,6 +898,19 @@ packages:
     dependencies:
       '@material/floating-label': 14.0.0
       '@smui/common': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+      svelte2tsx: 0.6.27(svelte@4.2.12)(typescript@5.3.3)
+    transitivePeerDependencies:
+      - svelte
+      - typescript
+    dev: true
+
+  /@smui/icon-button@7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3):
+    resolution: {integrity: sha512-//TpkLRZH/FmSp37sBrPZEur0RoWCYXLjZnjnX5pSgKlfF6Dx/Ng2pUpc4i0CPchM+Z0QIkBuV0zyhbtY0pH9Q==}
+    dependencies:
+      '@material/density': 14.0.0
+      '@material/icon-button': 14.0.0
+      '@smui/common': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+      '@smui/ripple': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
       svelte2tsx: 0.6.27(svelte@4.2.12)(typescript@5.3.3)
     transitivePeerDependencies:
       - svelte
