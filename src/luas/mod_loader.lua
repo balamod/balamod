@@ -299,14 +299,14 @@ G.UIDEF.mods = function()
     for i, v in ipairs(credits_text) do
         credits_text[i] = {
             n = G.UIT.R,
-            config = {align = 'cl', padding = 0},
+            config = {align = 'cl', padding = 0.1},
             nodes = {{
                 n = G.UIT.T,
                 config = {
                     text = v,
                     scale = text_scale * 0.5,
                     colour = G.C.UI.TEXT_LIGHT,
-                    shadow = true
+                    shadow = true,
                 }
             }}
         }
@@ -335,15 +335,7 @@ G.UIDEF.mods = function()
                                 nodes = {{
                                     n = G.UIT.R,
                                     config = {align = 'cm', padding = 0.1},
-                                    nodes = {{
-                                        n = G.UIT.T,
-                                        config = {
-                                            text = 'Balamod',
-                                            scale = text_scale * 0.6,
-                                            colour = G.C.GREEN,
-                                            shadow = true
-                                        }
-                                    }}
+                                    nodes = {create_badge('Balamod', G.C.DARK_EDITION, G.C.UI.TEXT_LIGHT, 1.5)}
                                 }, {
                                     n = G.UIT.R,
                                     config = {align = 'cl', padding = 0},
