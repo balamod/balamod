@@ -1,3 +1,13 @@
+[workspace]
+members = [
+    "balamod_lib",
+    "src-tauri",
+]
+
+[[bin]]
+name = "balamod"
+path = "src-tauri/main.rs"
+
 [package]
 name = "balamod"
 version = "0.1.0"
@@ -7,10 +17,9 @@ edition = "2021"
 
 [dependencies]
 home = "0.5.5"
-zip = "0.6.6"
 clap = { version = "4.4.11", features = ["derive"] }
 colour = "0.7.0"
-libflate = "2.0.0"
+balamod_lib = { path = "balamod_lib" }
 
 
 [target.'cfg(target_os = "windows")'.dependencies]

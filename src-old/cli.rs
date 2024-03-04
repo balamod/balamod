@@ -1,24 +1,18 @@
-use std::{fs, str};
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::str;
+use std::time::Instant;
 
 use clap::Parser;
-use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln};
+use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow};
 
-use crate::balamod::Balatro;
-use crate::balamod::injector;
-use crate::luas::*;
-
-mod balamod;
-mod luas;
+use balamod_lib::balamod::{Balatro, find_balatros};
+use balamod_lib::duration::StepDuration;
+use balamod_lib::injector::{inject, decompile_game, inject_modloader};
 
 const VERSION: &'static str = "0.1.9a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
-struct Args {
+pub struct Args {
     #[clap(short = 'x', long = "inject")]
     inject: bool,
     #[clap(short = 'b', long = "balatro-path")]
@@ -33,16 +27,11 @@ struct Args {
     input: Option<String>,
     #[clap(short = 'o', long = "output")]
     output: Option<String>,
+    #[clap(long = "gui", default_value = "true")]
+    pub gui: bool,
 }
 
-struct StepDuration {
-    duration: Duration,
-    name: String,
-}
-
-
-pub fn main_cli() {
-    let args = Args::parse();
+pub fn main_cli(args: Args) {
 
     let mut durations: Vec<StepDuration> = Vec::new();
 
@@ -61,7 +50,7 @@ pub fn main_cli() {
         return;
     }
 
-    let balatros = balamod::find_balatros();
+    let balatros = find_balatros();
 
     let balatro: Balatro;
     if let Some(ref path) = args.balatro_path {
@@ -74,7 +63,8 @@ pub fn main_cli() {
             red_ln!("No Balatro found!");
             println!("Please specify the path to your Balatro installation with the -b option");
             return;
-        } else if balatros.len() == 1 {
+        }
+        if balatros.len() == 1 {
             balatro = balatros[0].clone();
             green!("Balatro ");
             yellow!("v{}", balatro.version);
@@ -113,7 +103,7 @@ pub fn main_cli() {
     let global_start = Instant::now();
 
     if args.inject {
-        inject(args.clone(), balatro.clone(), &mut durations);
+        inject(args.input.clone(), args.output.clone(), balatro.clone(), &mut durations, args.compress);
     }
 
     if args.decompile {

@@ -1,23 +1,21 @@
-use std::{fs, str};
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use clap::Parser;
-use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln};
-
-use crate::balamod::Balatro;
 use crate::luas::*;
-
-mod balamod;
-mod luas;
+use crate::balamod::{Balatro,compress_file};
+use crate::duration::StepDuration;
+use log::{warn, info};
+#[cfg(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm"))))]
+use log::error;
 
 const VERSION: &'static str = "0.1.9a";
 
 #[cfg(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm"))))]
 pub fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durations: &mut Vec<StepDuration>) -> (String, String) {
-    red_ln!("Architecture is not supported, skipping modloader injection...");
+    error!("Architecture is not supported, skipping modloader injection...");
     return (main_lua, uidef_lua);
 }
 
@@ -26,11 +24,11 @@ pub fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, d
     let mut new_main = main_lua.clone();
     let mut new_uidef = uidef_lua.clone();
 
-    cyan_ln!("Implementing modloader on main...");
+    info!("Implementing modloader on main...");
     let start = Instant::now();
 
     if new_main.starts_with("-- balamod") {
-        yellow_ln!("The main already has the modloader, skipping...");
+        warn!("The main already has the modloader, skipping...");
     } else {
         let mod_core = balatro.build_mod_core().unwrap();
         new_main = format!("-- balamod\n{}\n\n{}\n", mod_core, new_main);
@@ -78,11 +76,11 @@ pub fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, d
     });
 
 
-    cyan_ln!("Implementing modloader on uidef...");
+    info!("Implementing modloader on uidef...");
     let start = Instant::now();
 
     if new_uidef.starts_with("-- balamod") {
-        yellow_ln!("The uidef already has the modloader, skipping...");
+        warn!("The uidef already has the modloader, skipping...");
     } else {
         new_uidef = format!("-- balamod\n\n{}", new_uidef);
 
@@ -107,70 +105,70 @@ pub fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, d
         });
     }
 
-    green_ln!("Done!");
+    info!("Done!");
 
     (new_main, new_uidef)
 }
 
-pub fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
-    if args.input.clone().is_none() {
-        args.input = Some("Balatro.lua".to_string());
+pub fn inject(mut input: Option<String>, mut output: Option<String>, balatro: Balatro, durations: &mut Vec<StepDuration>, compress: bool) {
+    if input.clone().is_none() {
+        input = Some("Balatro.lua".to_string());
     }
 
-    if args.output.clone().is_none() {
-        args.output = Some("DAT1.jkr".to_string());
+    if output.clone().is_none() {
+        output = Some("DAT1.jkr".to_string());
     }
 
     let mut need_cleanup = false;
-    if args.compress {
+    if compress {
         let mut compression_output: String;
-        if args.output.clone().unwrap().ends_with(".lua") {
-            compression_output = args.output.clone().unwrap().split(".lua").collect::<String>();
+        if output.clone().unwrap().ends_with(".lua") {
+            compression_output = output.clone().unwrap().split(".lua").collect::<String>();
         } else {
-            compression_output = args.output.clone().unwrap().clone();
+            compression_output = output.clone().unwrap().clone();
         }
         if !compression_output.ends_with(".jkr") {
             compression_output.push_str(".jkr");
         }
 
         if fs::metadata(compression_output.as_str()).is_ok() {
-            yellow_ln!("Deleting existing file...");
+            warn!("Deleting existing file...");
             fs::remove_file(compression_output.as_str()).expect("Error while deleting file");
         }
 
-        cyan_ln!("Compressing {} ...", args.input.clone().unwrap());
+        info!("Compressing {} ...", input.clone().unwrap());
         let compress_start: Instant = Instant::now();
-        balamod::compress_file(args.input.clone().unwrap().as_str(), compression_output.as_str()).expect("Error while compressing file");
+        compress_file(input.clone().unwrap().as_str(), compression_output.as_str()).expect("Error while compressing file");
 
         durations.push(StepDuration {
             duration: compress_start.elapsed(),
             name: String::from("Compression"),
         });
-        if !compression_output.eq_ignore_ascii_case(args.input.as_ref().unwrap()) {
+        if !compression_output.eq_ignore_ascii_case(input.as_ref().unwrap()) {
             need_cleanup = true;
-            args.input = Some(compression_output);
+            input = Some(compression_output);
         }
-        green_ln!("Done!");
+        info!("Done!");
     }
 
-    let input_bytes = fs::read(args.input.clone().unwrap()).expect("Error while reading input file");
+    let input_bytes = fs::read(input.clone().unwrap()).expect("Error while reading input file");
     let input_bytes = input_bytes.as_slice();
 
-    cyan_ln!("Injecting...");
+    info!("Injecting...");
     let inject_start = Instant::now();
 
-    balatro.replace_file(args.output.clone().unwrap().as_str(), input_bytes).expect("Error while replacing file");
+    balatro.replace_file(output.clone().unwrap().as_str(), input_bytes).expect("Error while replacing file");
 
     durations.push(StepDuration {
         duration: inject_start.elapsed(),
         name: String::from("Injection"),
     });
-    green_ln!("Done!");
+    info!("Done!");
 
     if need_cleanup {
-        yellow_ln!("Cleaning up...");
-        fs::remove_file(args.input.clone().unwrap()).expect("Error while deleting file");
-        green_ln!("Done!");
+        warn!("Cleaning up...");
+        fs::remove_file(input.clone().unwrap()).expect("Error while deleting file");
+        info!("Done!");
     }
 }
 
@@ -182,11 +180,11 @@ pub fn decompile_game(balatro: Balatro, output_folder: Option<String>, durations
     }
 
     if fs::metadata(output_folder.as_str()).is_ok() {
-        yellow_ln!("Deleting existing folder...");
+        warn!("Deleting existing folder...");
         fs::remove_dir_all(output_folder.as_str()).expect("Error while deleting folder");
     }
 
-    cyan_ln!("Decompiling...");
+    info!("Decompiling...");
     let decompile_start = Instant::now();
     let paths = balatro.get_all_files().unwrap();
     for path in paths {
@@ -221,7 +219,7 @@ pub fn decompile_game(balatro: Balatro, output_folder: Option<String>, durations
         }
     }
 
-    green_ln!("Done!");
+    info!("Done!");
     durations.push(StepDuration {
         duration: decompile_start.elapsed(),
         name: String::from("Decompilation"),

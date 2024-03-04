@@ -1,0 +1,13 @@
+[package]
+name = "balamod_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+home = "0.5.5"
+zip = "0.6.6"
+libflate = "2.0.0"
+log = "0.4"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winreg = "0.52"

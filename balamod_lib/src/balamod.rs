@@ -3,10 +3,10 @@ use std::fs::File;
 use std::fs;
 use zip::ZipArchive;
 use std::io::{BufReader, Write, Read, Cursor};
-use colour::{blue_ln, red_ln};
 use zip::{ZipWriter, CompressionMethod, write::FileOptions};
 use libflate::deflate::Encoder;
 use crate::luas::get_mod_core;
+use log::{error, info};
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -15,13 +15,13 @@ use winreg::RegKey;
 
 #[derive(Clone)]
 pub struct Balatro {
-    pub(crate) path: PathBuf,
-    pub(crate) version: String,
+    pub path: PathBuf,
+    pub version: String,
 }
 
 impl Balatro {
     pub fn get_exe_path_buf(&self) -> PathBuf {
-        return add_executable_to_path(self.path.clone());
+        add_executable_to_path(self.path.clone())
     }
 
     pub fn replace_file(&self, file_name: &str, new_contents: &[u8]) -> Result<(), std::io::Error> {
@@ -44,7 +44,7 @@ impl Balatro {
                 return Ok(contents);
             }
         }
-        red_ln!("'{}' not found in the archive.", file_name);
+        error!("'{}' not found in the archive.", file_name);
         Ok(Vec::new())
     }
 
@@ -129,14 +129,14 @@ pub fn find_balatros() -> Vec<Balatro> {
     if cfg!(target_os = "windows") {
         let steam_path = read_path_from_registry();
         let mut steam_path = steam_path.unwrap_or_else(|_| {
-            red_ln!("Could not read steam install path from Registry! Trying standard installation path in C:\\");
+            error!("Could not read steam install path from Registry! Trying standard installation path in C:\\");
             "C:\\Program Files (x86)\\Steam".to_owned()
         });
 
         steam_path.push_str("\\steamapps\\libraryfolders.vdf");
         let libraryfolders_path = Path::new(&steam_path);
         if !libraryfolders_path.exists() {
-            red_ln!("'{}' not found.", libraryfolders_path.to_str().unwrap());
+            error!("'{}' not found.", libraryfolders_path.to_str().unwrap());
             return vec![];
         }
 
@@ -160,7 +160,7 @@ pub fn find_balatros() -> Vec<Balatro> {
                 path.push(".local/share/Steam/steamapps/common/Balatro");
                 paths.push(path);
             }
-            None => red_ln!("Impossible to get your home dir!"),
+            None => error!("Impossible to get your home dir!"),
         }
     } else if cfg!(target_os = "macos") {
         match home::home_dir() {
@@ -169,7 +169,7 @@ pub fn find_balatros() -> Vec<Balatro> {
                 path.push("Library/Application Support/Steam/steamapps/common/Balatro");
                 paths.push(path);
             }
-            None => red_ln!("Impossible to get your home dir!"),
+            None => error!("Impossible to get your home dir!"),
         }
     }
 
@@ -178,7 +178,7 @@ pub fn find_balatros() -> Vec<Balatro> {
     let mut balatros = Vec::new();
     for path in paths {
         let exe_path = add_executable_to_path(path.clone());
-        blue_ln!("Checking {}", exe_path.to_str().unwrap());
+        info!("Checking {}", exe_path.to_str().unwrap());
         if !exe_path.exists() {
             continue;
         }
@@ -201,7 +201,7 @@ fn remove_unexisting_paths(paths: &mut Vec<PathBuf>) {
             i += 1;
         }
     }
-    blue_ln!("Found {} Balatro installations.", paths.len());
+    info!("Found {} Balatro installations.", paths.len());
 }
 
 fn get_balatro_version(exe_path: &str) -> Result<String, std::io::Error> {
@@ -217,7 +217,7 @@ fn get_balatro_version(exe_path: &str) -> Result<String, std::io::Error> {
             return Ok(version);
         }
     }
-    red_ln!("'version.jkr' not found in the archive.");
+    error!("'version.jkr' not found in the archive.");
     Ok("0.0.0".to_string())
 }
 
