@@ -4,9 +4,6 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 
 [![Balamod Discord](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)](https://discord.gg/p7DeW7pSzA)
 
-> [!NOTE]
-> **Balamod** currently works on **Windows**, and **Linux with Proton only**.
-
 # Summary
 - [Easy Install](#easy-install)
     - [Linux](#linux)
@@ -21,22 +18,23 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 - [How to find the function names, where to inject code, etc...](#how-to-find-the-function-names-where-to-inject-code-etc)
 
 # Easy Install 
-## Linux
 > [!IMPORTANT]
-> **Balamod** currently works **with Proton** if you are using Linux.
+> **Balamod** currently don't work on macOS i86, but it will work on ARM64 aka M1/M2/M3.
+## Linux
+
 ```bash
-./balamod -a
+./balamod-v0.1.9-linux -a
 ```
 ## Windows
-If you're not familiar with command prompt interfaces, place `balamod.exe` and [this file](https://github.com/UwUDev/balamod/blob/master/One%20click%20install.cmd) in the same folder, then run the `.cmd` file.
 
-You can also use the command line:
 ```cmd
-balamod.exe -a
+balamod-v0.1.9-windows.exe -a
 ```
 
 ## MacOS
-Soon :tm:
+```bash
+./balamod-v0.1.9-mac -a
+```
 
 Will be avaliable on 0.1.9
 
