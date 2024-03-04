@@ -1,6 +1,3 @@
-refreshRepos()
-mods_collection = {}
-
 G.FUNCS.open_balamod_github = function(e)
     love.system.openURL('https://github.com/UwUDev/balamod')
 end
@@ -222,6 +219,11 @@ G.FUNCS.change_mod_list_page = function(args)
 end
 
 create_mod_tab_definition = function()
+    if refreshRepos() == RESULT.SUCCESS then
+        sendDebugMessage('Repo mods refreshed')
+    else
+        sendDebugMessage('Failed to refresh repo mods')
+    end
     G.MOD_PAGE_SIZE = 7
     mods_collection = {}
     for _, mod in ipairs(mods) do

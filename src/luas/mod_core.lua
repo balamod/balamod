@@ -370,14 +370,17 @@ function refreshRepos()
         sendDebugMessage('Request failed')
         sendDebugMessage('Code: ' .. code)
         sendDebugMessage('Response: ' .. body)
-        return
+        return RESULE.NETWORK_ERROR
     end
 
     for repoUrl in string.gmatch(body, '([^\n]+)') do
         sendDebugMessage('Refreshing ' .. repoUrl)
-        refreshRepo(repoUrl)
+        if refreshRepo(repoUrl) ~= RESULE.SUCCESS then
+            return RESULE.NETWORK_ERROR
+        end
         sendDebugMessage('Refreshed ' .. repoUrl)
     end
+    return RESULE.SUCCESS
 end
 
 function refreshRepo(url)
@@ -388,7 +391,7 @@ function refreshRepo(url)
         sendDebugMessage('Request failed')
         sendDebugMessage('Code: ' .. code)
         sendDebugMessage('Response: ' .. body)
-        return
+        return RESULE.NETWORK_ERROR
     end
 
     -- clear repoMods
@@ -411,4 +414,5 @@ function refreshRepo(url)
         local isModPresent = isModPresent(modId)
         sendDebugMessage(modId .. ' - ' .. modInfo.name .. ' - ' .. modInfo.version .. ' - ' .. modInfo.description .. ' - ' .. tostring(isModPresent))
     end
+    return RESULE.SUCCESS
 end
