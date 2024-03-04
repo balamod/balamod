@@ -12,6 +12,11 @@ RESULT = {
     MOD_PCALL_ERROR = 6,
 }
 
+if (sendDebugMessage == nil) then
+    sendDebugMessage = function(_)
+    end
+end
+
 if not love.filesystem.getInfo("mods", "directory") then -- Create mods folder if it doesn't exist
     love.filesystem.createDirectory("mods")
 end
