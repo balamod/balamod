@@ -2,7 +2,7 @@ mods = {}
 
 balamodLoaded = false
 
-RESULE = {
+RESULT = {
     SUCCESS = 0,
     MOD_NOT_FOUND_IN_REPOS = 1,
     MOD_NOT_FOUND_IN_MODS = 2,
@@ -205,7 +205,7 @@ function installMod(modId)
     local modInfo = getModByModId(repoMods, modId)
     if modInfo == nil then
         sendDebugMessage('Mod ' .. modId .. ' not found in repos')
-        return RESULE.MOD_NOT_FOUND_IN_REPOS
+        return RESULT.MOD_NOT_FOUND_IN_REPOS
     end
 
     local isModPresent = isModPresent(modId)
@@ -232,7 +232,7 @@ function installMod(modId)
             end
         end
         if skipUpdate then
-            return RESULE.SUCCESS
+            return RESULT.SUCCESS
         end
 
         -- remove old mod
@@ -272,7 +272,7 @@ function installMod(modId)
         sendDebugMessage('Request failed')
         sendDebugMessage('Code: ' .. code)
         sendDebugMessage('Response: ' .. body)
-        return RESULE.NETWORK_ERROR
+        return RESULT.NETWORK_ERROR
     end
 
     sendDebugMessage('Files to download:')
@@ -298,7 +298,7 @@ function installMod(modId)
             sendDebugMessage('Request failed')
             sendDebugMessage('Code: ' .. code)
             sendDebugMessage('Response: ' .. body)
-            return RESULE.NETWORK_ERROR
+            return RESULT.NETWORK_ERROR
         end
         sendDebugMessage('Downloaded ' .. p)
         local filePath = p:sub(#path + 2)
@@ -326,11 +326,11 @@ function installMod(modId)
                     sendDebugMessage('API ' .. p:sub(#path + 2) .. ' loaded')
                 else
                     print('Error loading api: ' .. p:sub(#path + 2) .. '\n' .. mod)
-                    return RESULE.MOD_PCALL_ERROR
+                    return RESULT.MOD_PCALL_ERROR
                 end
             else
                 print('Error reading api: ' .. p:sub(#path + 2) .. '\n' .. loadErr)
-                return RESULE.MOD_FS_LOAD_ERROR
+                return RESULT.MOD_FS_LOAD_ERROR
             end
         end
     end
@@ -349,16 +349,16 @@ function installMod(modId)
                     sendDebugMessage('Mod ' .. p:sub(#path + 2) .. ' loaded')
                 else
                     print('Error loading mod: ' .. p:sub(#path + 2) .. '\n' .. mod)
-                    return RESULE.MOD_PCALL_ERROR
+                    return RESULT.MOD_PCALL_ERROR
                 end
             else
                 print('Error reading mod: ' .. p:sub(#path + 2) .. '\n' .. loadErr)
-                return RESULE.MOD_FS_LOAD_ERROR
+                return RESULT.MOD_FS_LOAD_ERROR
             end
         end
     end
 
-    return RESULE.SUCCESS
+    return RESULT.SUCCESS
 end
 
 function refreshRepos()
@@ -370,17 +370,17 @@ function refreshRepos()
         sendDebugMessage('Request failed')
         sendDebugMessage('Code: ' .. code)
         sendDebugMessage('Response: ' .. body)
-        return RESULE.NETWORK_ERROR
+        return RESULT.NETWORK_ERROR
     end
 
     for repoUrl in string.gmatch(body, '([^\n]+)') do
         sendDebugMessage('Refreshing ' .. repoUrl)
-        if refreshRepo(repoUrl) ~= RESULE.SUCCESS then
-            return RESULE.NETWORK_ERROR
+        if refreshRepo(repoUrl) ~= RESULT.SUCCESS then
+            return RESULT.NETWORK_ERROR
         end
         sendDebugMessage('Refreshed ' .. repoUrl)
     end
-    return RESULE.SUCCESS
+    return RESULT.SUCCESS
 end
 
 function refreshRepo(url)
@@ -391,7 +391,7 @@ function refreshRepo(url)
         sendDebugMessage('Request failed')
         sendDebugMessage('Code: ' .. code)
         sendDebugMessage('Response: ' .. body)
-        return RESULE.NETWORK_ERROR
+        return RESULT.NETWORK_ERROR
     end
 
     -- clear repoMods
@@ -414,5 +414,5 @@ function refreshRepo(url)
         local isModPresent = isModPresent(modId)
         sendDebugMessage(modId .. ' - ' .. modInfo.name .. ' - ' .. modInfo.version .. ' - ' .. modInfo.description .. ' - ' .. tostring(isModPresent))
     end
-    return RESULE.SUCCESS
+    return RESULT.SUCCESS
 end

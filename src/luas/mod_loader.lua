@@ -34,9 +34,12 @@ G.FUNCS.install_mod = function(e)
     local mod_id = string.sub(e.config.id, 7)
     local ret = installMod(mod_id)
     sendDebugMessage('Mod ' .. mod_id .. ' install status ' .. tostring(ret))
-    if ret == RESULE.SUCCESS then
+    if ret == RESULT.SUCCESS then
         sendDebugMessage('Reloading mod tab')
-        if G.OVERLAY_MENU then G.OVERLAY_MENU:remove(); G.OVERLAY_MENU = nil end
+        if G.OVERLAY_MENU then
+            G.OVERLAY_MENU:remove()
+            G.OVERLAY_MENU = nil
+        end
         G.FUNCS.overlay_menu({definition = G.UIDEF.mods()})
     else
         sendDebugMessage('Mod ' .. mod_id .. ' failed to install')
@@ -45,10 +48,23 @@ G.FUNCS.install_mod = function(e)
         e.UIBox:recalculate(true)
     end
 end
+
+check_need_update = function(mod_id)
+    if getModByModId(repoMods, mod_id) and getModByModId(mods, mod_id) then
+        local repo_mod = getModByModId(repoMods, mod_id)
+        local mod = getModByModId(mods, mod_id)
+        if repo_mod.version ~= mod.version then
+            return true
+        end
+    end
+    return false
+end
+
 G.UIDEF.mod_description = function(e)
     local text_scale = 0.75
     local status_btn_id = 's_btn_' .. e.config.id
     local menu_btn_id = 'm_btn_' .. e.config.id
+    local dl_up_btn_id = 'd_btn_' .. e.config.id
 
     local mod = getModByModId(mods_collection, e.config.id)
     local mod_present = isModPresent(e.config.id)
@@ -63,6 +79,11 @@ G.UIDEF.mod_description = function(e)
     local author = mod.author or 'Jone Doe'
     local status_text = mod.enabled and 'Enabled' or 'Disabled'
     local status_colour = mod.enabled and G.C.GREEN or G.C.RED
+    local need_update = check_need_update(mod.mod_id)
+    local new_version = need_update and 'New ' .. getModByModId(repoMods, mod.mod_id).version or version
+    local show_download_btn = not mod_present or need_update
+    sendDebugMessage('Mod ' .. mod.name .. ' present ' .. tostring(mod_present) .. ' need update ' ..
+                         tostring(need_update) .. ' new version ' .. new_version)
     local mod_description_text = {}
     for _, v in ipairs(mod.description) do
         mod_description_text[#mod_description_text + 1] = {
@@ -94,7 +115,7 @@ G.UIDEF.mod_description = function(e)
     local mod_description_btns = {
         n = G.UIT.R,
         config = {align = 'cm', minh = 0.9, padding = 0.1},
-        nodes = {{
+        nodes = {mod_present and {
             n = G.UIT.C,
             config = {
                 align = 'cm',
@@ -102,8 +123,8 @@ G.UIDEF.mod_description = function(e)
                 minh = 0.7,
                 r = 0.1,
                 hover = true,
-                colour = mod_present and status_colour or G.C.GREEN,
-                button = mod_present and 'taggle_mod' or 'install_mod',
+                colour = status_colour,
+                button = 'taggle_mod',
                 shadow = true,
                 id = status_btn_id
             },
@@ -111,7 +132,7 @@ G.UIDEF.mod_description = function(e)
                 n = G.UIT.T,
                 config = {text = mod_present and status_text or 'Download', scale = 0.5, colour = G.C.UI.TEXT_LIGHT}
             }}
-        }, (mod_present and menu) and {
+        } or nil, (mod_present and menu) and {
             n = G.UIT.C,
             config = {
                 align = 'cm',
@@ -125,6 +146,23 @@ G.UIDEF.mod_description = function(e)
                 id = menu_btn_id
             },
             nodes = {{n = G.UIT.T, config = {text = 'Menu', scale = 0.5, colour = G.C.UI.TEXT_LIGHT}}}
+        } or nil, (not mod_present or need_update) and {
+            n = G.UIT.C,
+            config = {
+                align = 'cm',
+                padding = 0.1,
+                minh = 0.7,
+                r = 0.1,
+                hover = true,
+                colour = G.C.GREEN,
+                button = 'install_mod',
+                shadow = true,
+                id = dl_up_btn_id
+            },
+            nodes = {{
+                n = G.UIT.T,
+                config = {text = mod_present and new_version or 'Download', scale = 0.5, colour = G.C.UI.TEXT_LIGHT}
+            }}
         } or nil}
     }
     local mod_description_frame = {
@@ -218,12 +256,14 @@ G.FUNCS.change_mod_list_page = function(args)
     end
 end
 
+if refreshRepos() == RESULT.SUCCESS then
+    sendDebugMessage('Repo mods refreshed')
+else
+    sendDebugMessage('Failed to refresh repo mods')
+end
+mods_collection = {}
+
 create_mod_tab_definition = function()
-    if refreshRepos() == RESULT.SUCCESS then
-        sendDebugMessage('Repo mods refreshed')
-    else
-        sendDebugMessage('Failed to refresh repo mods')
-    end
     G.MOD_PAGE_SIZE = 7
     mods_collection = {}
     for _, mod in ipairs(mods) do
@@ -233,8 +273,9 @@ create_mod_tab_definition = function()
             sendDebugMessage('Mod ' .. mod.name .. ' already in collection')
         end
     end
-    for _, mod in ipairs(repoMods) do
-        if not getModByModId(mods_collection, mod.mod_id) then
+    for index, mod in ipairs(repoMods) do
+        local cur_mod = getModByModId(mods_collection, mod.mod_id)
+        if not cur_mod then
             table.insert(mods_collection, mod)
         else
             sendDebugMessage('Mod ' .. mod.name .. ' already in collection')
@@ -289,6 +330,7 @@ end
 
 G.UIDEF.mods = function()
     local text_scale = 0.75
+    -- LuaFormatter off
     local credits_text = {
         'A Modloader/Decompiler/Code Injector for Balatro',
         '',
@@ -298,18 +340,14 @@ G.UIDEF.mods = function()
         '3. Run the game and the mod will be loaded',
         '',
     }
+    -- LuaFormatter on
     for i, v in ipairs(credits_text) do
         credits_text[i] = {
             n = G.UIT.R,
             config = {align = 'cl', padding = 0.1},
             nodes = {{
                 n = G.UIT.T,
-                config = {
-                    text = v,
-                    scale = text_scale * 0.5,
-                    colour = G.C.UI.TEXT_LIGHT,
-                    shadow = true,
-                }
+                config = {text = v, scale = text_scale * 0.5, colour = G.C.UI.TEXT_LIGHT, shadow = true}
             }}
         }
     end
@@ -338,11 +376,7 @@ G.UIDEF.mods = function()
                                     n = G.UIT.R,
                                     config = {align = 'cm', padding = 0.1},
                                     nodes = {create_badge('Balamod', G.C.DARK_EDITION, G.C.UI.TEXT_LIGHT, 1.5)}
-                                }, {
-                                    n = G.UIT.R,
-                                    config = {align = 'cl', padding = 0},
-                                    nodes = credits_text
-                                }, {
+                                }, {n = G.UIT.R, config = {align = 'cl', padding = 0}, nodes = credits_text}, {
                                     n = G.UIT.R,
                                     config = {align = 'cm', padding = 0.1, colour = G.C.CLEAR},
                                     nodes = {G.F_EXTERNAL_LINKS and {
@@ -380,4 +414,4 @@ G.FUNCS.show_mods = function(e)
     G.FUNCS.overlay_menu({definition = G.UIDEF.mods()})
 end
 
-G.VERSION = G.VERSION .. "\nBalamod {balamod_version}"
+G.VERSION = G.VERSION .. '\nBalamod {balamod_version}'
