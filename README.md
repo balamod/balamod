@@ -184,6 +184,24 @@ table.insert(mods,
 
 These events are not required, you can remove them from your mod if you don't need them.
 
+## How to add you mods to the repos
+There's now a rest or "marketplace" system integrated directly into balamod via the mod menu. You can add your mods via the [indexes](https://github.com/UwUDev/balamod/blob/master/repos.index)
+
+For the moment there's only one because I'm going to try and regulate malicious mods and the like, but there's bound to be many more in the future.
+
+If you want to add your mod to an index, make a pull request to the index and add your mod to the bottom of the `mods.index` file.
+
+The format is as follows:
+```
+mod_id|version|name|description|url
+```
+
+> [!WARNING]
+> Your mod need to have an id that is unique, and the version 
+
+All the files in the current folder and subfolders *(based on the url path)* will be added to the Balatro AppData folder.
+
+
 ## How to Use Code Injection
 
 > Balamod is designed to be lightweight and make minimal changes to the original source code. There is a bundle API that allows you to "hot swap" code while the game is running.
