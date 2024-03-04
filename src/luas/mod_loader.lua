@@ -1,8 +1,6 @@
 refreshRepos()
 mods_collection = {}
 
-G.FUNCS.empty_function = function(e)
-end
 G.FUNCS.open_balamod_github = function(e)
     love.system.openURL('https://github.com/UwUDev/balamod')
 end
@@ -52,7 +50,7 @@ G.UIDEF.mod_description = function(e)
     if type(mod.description) == 'string' then
         mod.description = {mod.description}
     end
-    local menu = mod.menu or 'empty_function'
+    local menu = mod.menu or nil
     local version = mod.version or 'v0.1'
     local author = mod.author or 'Jone Doe'
     local status_text = mod.enabled and 'Enabled' or 'Disabled'
@@ -105,7 +103,7 @@ G.UIDEF.mod_description = function(e)
                 n = G.UIT.T,
                 config = {text = mod_present and status_text or 'Download', scale = 0.5, colour = G.C.UI.TEXT_LIGHT}
             }}
-        }, mod_present and {
+        }, (mod_present and menu) and {
             n = G.UIT.C,
             config = {
                 align = 'cm',
