@@ -43,6 +43,14 @@ function extractFunctionBody(path, function_name)
     end
 
     local func_end = current_game_code[path]:find("\n\r?end", fin)
+
+    -- This is to catch functions that have incorrect ending indentation by catching the next function in line.
+    -- Can be removed once Card:calculate_joker no longer has this typo.
+    local typocatch_func_end = current_game_code[path]:find("\n\r?function", fin)
+    if typocatch_func_end and typocatch_func_end < func_end then
+        func_end = typocatch_func_end - 3
+    end
+
     if not func_end then
         return "Can't find function end " .. function_name
     end
@@ -56,7 +64,8 @@ function inject(path, function_name, to_replace, replacement)
     local function_body = extractFunctionBody(path, function_name)
     local modified_function_code = function_body:gsub(to_replace, replacement)
     escaped_function_body = function_body:gsub("([^%w])", "%%%1") -- escape function body for use in gsub
-    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code) -- update current game code in memory
+    escaped_modified_function_code = modified_function_code:gsub("([^%w])", "%%%1")
+    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, escaped_modified_function_code) -- update current game code in memory
 
     local new_function, load_error = load(modified_function_code) -- load modified function
     if not new_function then
@@ -79,7 +88,7 @@ end
 function injectHead(path, function_name, code)
     local function_body = extractFunctionBody(path, function_name)
 
-    local pattern = "(function.-)\n"
+    local pattern = "(function%s+" .. function_name .. ".-)\n"
     local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1\n" .. code .. "\n")
 
     if number_of_subs == 0 then
@@ -88,7 +97,8 @@ function injectHead(path, function_name, code)
     end
 
     escaped_function_body = function_body:gsub("([^%w])", "%%%1")
-    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code)
+    escaped_modified_function_code = modified_function_code:gsub("([^%w])", "%%%1")
+    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, escaped_modified_function_code)
 
     local new_function, load_error = load(modified_function_code)
     if not new_function then
@@ -120,7 +130,8 @@ function injectTail(path, function_name, code)
     end
 
     escaped_function_body = function_body:gsub("([^%w])", "%%%1")
-    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, modified_function_code)
+    escaped_modified_function_code = modified_function_code:gsub("([^%w])", "%%%1")
+    current_game_code[path] = current_game_code[path]:gsub(escaped_function_body, escaped_modified_function_code)
 
     local new_function, load_error = load(modified_function_code)
     if not new_function then
