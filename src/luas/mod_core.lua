@@ -256,7 +256,11 @@ function installMod(modId)
     sendDebugMessage('Downloading mod ' .. modId)
     local modUrl = modInfo.url
 
-    local owner, repo, branch, path = modUrl:match('https://github%.com/([^/]+)/([^/]+)/tree/([^/]+)/(.*)')
+    local owner, repo, branch, path = modUrl:match('https://github%.com/([^/]+)/([^/]+)/(tree/blob)/([^/]+)/(.*)')
+
+    if path == nil then
+        owner, repo, branch, path = modUrl:match('https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)')
+    end
 
     while path:sub(-1) == '/' do
         path = path:sub(1, -2)
