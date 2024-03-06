@@ -1,5 +1,6 @@
-import type { Balatros } from "$lib/interfaces";
+import type { Balatros, IBalatroPageData } from "$lib/interfaces";
 import { invoke } from "@tauri-apps/api/tauri";
+// import { path } from '@tauri-apps/api';
 
 export function entries() {
   return [{ index: "1" }];
@@ -18,7 +19,11 @@ async function getBalatros(): Promise<Balatros> {
   }
 }
 
-export async function load({ params }: {params: Params}) {
+export async function load({ params }: {params: Params}): Promise<IBalatroPageData> {
   const balatros = await getBalatros();
-  return balatros[params.index];
+  const defaultOutput = window.__TAURI__ ? "/balatro_src" : ".";
+  return {
+    balatro: balatros[params.index],
+    defaultOutput,
+  };
 }

@@ -8,13 +8,14 @@ use libflate::deflate::Encoder;
 use crate::luas::get_mod_core;
 use log::{error, info};
 use serde::Serialize;
+use serde::Deserialize;
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Balatro {
     pub path: PathBuf,
     pub version: String,

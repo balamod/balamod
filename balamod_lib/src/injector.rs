@@ -225,3 +225,40 @@ pub fn decompile_game(balatro: Balatro, output_folder: Option<String>, durations
         name: String::from("Decompilation"),
     });
 }
+
+pub fn auto_injection(balatro: Balatro, mut durations: &mut Vec<StepDuration>) {
+  let main_lua = balatro.get_file_as_string("main.lua", false).expect("Error while reading file");
+  let uidef_lua = balatro.get_file_as_string("functions/UI_definitions.lua", false).expect("Error while reading file");
+
+  let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut durations);
+
+  info!("Injecting main");
+  let start: Instant = Instant::now();
+  balatro.replace_file("main.lua", new_main.as_bytes()).expect("Error while replacing file");
+  durations.push(StepDuration {
+      duration: start.elapsed(),
+      name: String::from("Modloader injection (main)"),
+  });
+  info!("Done!");
+
+  info!("Injecting uidef");
+  let start = Instant::now();
+  balatro.replace_file("functions/UI_definitions.lua", new_uidef.as_bytes()).expect("Error while replacing file");
+  durations.push(StepDuration {
+      duration: start.elapsed(),
+      name: String::from("Modloader injection (uidef)"),
+  });
+  info!("Done!");
+}
+
+pub fn backup_balatro_exe(balatro: Balatro) {
+    let mut backup_path = balatro.path.clone();
+    backup_path.set_extension("bak");
+    fs::copy(balatro.path.clone(), backup_path).expect("Error while creating backup");
+}
+
+pub fn restore_balatro_backup(balatro: Balatro) {
+    let mut backup_path = balatro.path.clone();
+    backup_path.set_extension("bak");
+    fs::copy(backup_path, balatro.path).expect("Error while restoring backup");
+}

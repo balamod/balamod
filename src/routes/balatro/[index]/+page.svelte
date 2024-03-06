@@ -1,24 +1,50 @@
 <script lang="ts">
   import Button from "@smui/button";
-  import { type Balatro } from "$lib/interfaces";
-  export let data: Balatro;
+  import { type Balatro, type IBalatroPageData } from "$lib/interfaces";
+  import { invoke } from "@tauri-apps/api/tauri";
+  import { open } from '@tauri-apps/api/dialog';
 
-  function decompile() {}
+  export let data: IBalatroPageData;
+  export let outputDirectory = data.defaultOutput;
 
-  function install() {}
+  async function decompile(balatro: Balatro, output: string) {
+    await invoke("tauri_decompile", { balatro, output_folder: output })
+  }
 
-  function restore() {}
+  async function install(balatro: Balatro) {
+    await invoke("tauri_install", { balatro })
+  }
 
-  function goBack() {
+  async function restore(balatro: Balatro) {
+    await invoke("tauri_restore", { balatro })
+  }
+
+  async function goBack() {
     window.location.href = "/balatro";
+  }
+
+  async function selectOutputDirectory() {
+    const directory = await open({
+      multiple: false,
+      directory: true,
+      title: 'Select decompile output directory',
+      defaultPath: outputDirectory
+    });
+    if (directory) {
+      if (Array.isArray(directory)) {
+        outputDirectory = directory[0];
+      } else {
+        outputDirectory = directory as string;
+      }
+    }
   }
 </script>
 
 <div>
-  <h1>Balatro {data.version}</h1>
-  <p>{data.path}</p>
-  <Button on:click={() => goBack()}><i></i></Button>
-  <Button on:click={() => decompile()}></Button>
-  <Button on:click={() => install()}></Button>
-  <Button on:click={() => restore()}></Button>
+  <h1>Balatro {data.balatro.version}</h1>
+  <p>{data.balatro.path}</p>
+  <Button on:click={() => goBack()}>Go Back</Button>
+  <span><Button on:click={() => decompile(data.balatro, outputDirectory)}>Decompile</Button> <Button on:click={() => selectOutputDirectory()}>Choose directory (Current: {outputDirectory})</Button></span>
+  <Button on:click={() => install(data.balatro)}>Install Balamod</Button>
+  <Button on:click={() => restore(data.balatro)}>Uninstall Balamod</Button>
 </div>

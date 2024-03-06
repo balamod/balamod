@@ -6,7 +6,7 @@ use colour::{blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, 
 
 use balamod_lib::balamod::{Balatro, find_balatros};
 use balamod_lib::duration::StepDuration;
-use balamod_lib::injector::{inject, decompile_game, inject_modloader};
+use balamod_lib::injector::{inject, decompile_game, inject_modloader, auto_injection};
 
 const VERSION: &'static str = "0.1.9a";
 
@@ -115,28 +115,7 @@ pub fn main_cli(args: Args) {
         if cfg!(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm")))) {
             red_ln!("Architecture is not supported, skipping modloader injection...");
         } else {
-            let main_lua = balatro.get_file_as_string("main.lua", false).expect("Error while reading file");
-            let uidef_lua = balatro.get_file_as_string("functions/UI_definitions.lua", false).expect("Error while reading file");
-
-            let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut durations);
-
-            cyan_ln!("Injecting main");
-            let start: Instant = Instant::now();
-            balatro.replace_file("main.lua", new_main.as_bytes()).expect("Error while replacing file");
-            durations.push(StepDuration {
-                duration: start.elapsed(),
-                name: String::from("Modloader injection (main)"),
-            });
-            green_ln!("Done!");
-
-            cyan_ln!("Injecting uidef");
-            let start = Instant::now();
-            balatro.replace_file("functions/UI_definitions.lua", new_uidef.as_bytes()).expect("Error while replacing file");
-            durations.push(StepDuration {
-                duration: start.elapsed(),
-                name: String::from("Modloader injection (uidef)"),
-            });
-            green_ln!("Done!");
+            auto_injection(balatro, &mut durations);
         }
     }
 

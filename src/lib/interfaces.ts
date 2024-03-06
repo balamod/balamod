@@ -4,3 +4,8 @@ export interface Balatro {
 }
 
 export type Balatros = Record<string, Balatro>;
+
+export interface IBalatroPageData {
+  balatro: Balatro;
+  defaultOutput: string;
+}
