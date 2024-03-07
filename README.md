@@ -23,20 +23,18 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 ## Linux
 
 ```bash
-./balamod-v0.1.9-linux -a
+./balamod-v0.1.10-linux -a
 ```
 ## Windows
 
 ```cmd
-balamod-v0.1.9-windows.exe -a
+balamod-v0.1.10-windows.exe -a
 ```
 
 ## MacOS
 ```bash
-./balamod-v0.1.9-mac -a
+./balamod-v0.1.10-mac -a
 ```
-
-Will be avaliable on 0.1.9
 
 ## How to Install Mods
 
@@ -133,7 +131,7 @@ The `inject` function will replace the first occurence of the pattern in the des
 If you want to replace code outside a function, you can use classic overring.
 
 ### Events
-Currently *(in 0.1.9)*, the mod loader supports 7 events:
+Currently *(in 0.1.10)*, the mod loader supports 7 events:
 - `on_pre_update` is called before the game update, if true is returned, it will cancel the update (ticking)
 - `on_post_update` is called after the game update
 - `on_pre_render` is called just before rendering frame functions
