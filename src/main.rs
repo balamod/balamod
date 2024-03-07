@@ -251,6 +251,15 @@ fn uninstall(balatro: Balatro, durations: &mut Vec<StepDuration>) {
         duration: start.elapsed(),
         name: String::from("Restoration of executable"),
     });
+    if cfg!(target_os = "macos") && cfg!(any(target_arch = "aarch64", target_arch = "arm")) {
+        cyan_ln!("Uninstalling dependencies (macOS)");
+        let start = Instant::now();
+        balatro.remove_dependencies().expect("Error while uninstalling dependencies");
+        durations.push(StepDuration {
+            duration: start.elapsed(),
+            name: String::from("Dependency uninstallation"),
+        });
+    }
 }
 
 fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
@@ -260,8 +269,8 @@ fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
     if fs::metadata(backup_path.as_path()).is_ok() {
         yellow_ln!("Deleting existing backup...");
         fs::remove_file(backup_path.as_path()).expect("Error while deleting file");
-        fs::copy(balatro.get_exe_path_buf(), backup_path.as_path()).expect("Error while copying file");
     }
+    fs::copy(balatro.get_exe_path_buf(), backup_path.as_path()).expect("Error while copying file");
     durations.push(StepDuration {
         duration: start.elapsed(),
         name: String::from("Backup of executable"),

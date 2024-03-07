@@ -28,9 +28,16 @@ impl Balatro {
     pub fn inject_dependencies(&self) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path_buf();
         let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
-        copy_file_in_resources(self.get_exe_path_buf().parent().unwrap(), get_ssl_so())?;
+        copy_file_in_resources(exe_path_buf.parent().unwrap(), get_ssl_so(), "ssl.so")?;
         add_file_in_exe(exe_path, get_ssl_lua().as_bytes().to_vec(), "ssl.lua")?;
         add_file_in_exe(exe_path, get_https_lua().as_bytes().to_vec(), "https.lua")?;
+        Ok(())
+    }
+
+    pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
+        let exe_path_buf = self.get_exe_path_buf();
+        let resource_dir = exe_path_buf.parent().unwrap();
+        fs::remove_file(resource_dir.join("ssl.so"))?;
         Ok(())
     }
 
@@ -231,8 +238,8 @@ fn get_balatro_version(exe_path: &str) -> Result<String, std::io::Error> {
     Ok("0.0.0".to_string())
 }
 
-fn copy_file_in_resources(dst: &Path, file_data: &[u8]) -> Result<(), std::io::Error> {
-    let mut file = File::create(dst.join("ssl.so"))?;
+fn copy_file_in_resources(dst: &Path, file_data: &[u8], file_name: &str) -> Result<(), std::io::Error> {
+    let mut file = File::create(dst.join(file_name))?;
     file.write_all(file_data)?;
     Ok(())
 }
