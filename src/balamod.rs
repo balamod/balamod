@@ -6,7 +6,8 @@ use std::io::{BufReader, Write, Read, Cursor};
 use colour::{blue_ln, red_ln};
 use zip::{ZipWriter, CompressionMethod, write::FileOptions};
 use libflate::deflate::Encoder;
-use crate::luas::{get_mod_core};
+use crate::luas::get_mod_core;
+use crate::dependencies::{get_https_lua, get_ssl_lua, get_ssl_so};
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -22,6 +23,15 @@ pub struct Balatro {
 impl Balatro {
     pub fn get_exe_path_buf(&self) -> PathBuf {
         return add_executable_to_path(self.path.clone());
+    }
+
+    pub fn inject_dependencies(&self) -> Result<(), std::io::Error> {
+        let exe_path_buf = self.get_exe_path_buf();
+        let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
+        copy_file_in_resources(self.get_exe_path_buf().parent().unwrap(), get_ssl_so())?;
+        add_file_in_exe(exe_path, get_ssl_lua().as_bytes().to_vec(), "ssl.lua")?;
+        add_file_in_exe(exe_path, get_https_lua().as_bytes().to_vec(), "https.lua")?;
+        Ok(())
     }
 
     pub fn replace_file(&self, file_name: &str, new_contents: &[u8]) -> Result<(), std::io::Error> {
@@ -114,7 +124,7 @@ fn add_executable_to_path(path: PathBuf) -> PathBuf {
 fn read_path_from_registry() -> Result<String, std::io::Error> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let steam_path = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Valve\\Steam")?;
-    
+
     Ok(steam_path.get_value("InstallPath")?)
 }
 
@@ -219,6 +229,39 @@ fn get_balatro_version(exe_path: &str) -> Result<String, std::io::Error> {
     }
     red_ln!("'version.jkr' not found in the archive.");
     Ok("0.0.0".to_string())
+}
+
+fn copy_file_in_resources(dst: &Path, file_data: &[u8]) -> Result<(), std::io::Error> {
+    let mut file = File::create(dst.join("ssl.so"))?;
+    file.write_all(file_data)?;
+    Ok(())
+}
+
+fn add_file_in_exe(exe_path: &str, file_data: Vec<u8>, file_dst: &str) -> Result<(), std::io::Error> {
+    let mut exe_data = fs::read(exe_path)?;
+
+    let zip_start = find_zip_start(&exe_data).unwrap();
+    let cursor = Cursor::new(&exe_data[zip_start..]);
+
+    let mut zip_archive = ZipArchive::new(cursor)?;
+    let mut new_zip = Vec::new();
+
+    {
+        let mut zip_writer = ZipWriter::new(Cursor::new(&mut new_zip));
+
+        for i in 0..zip_archive.len() {
+            let raw_file = zip_archive.by_index_raw(i)?;
+            zip_writer.raw_copy_file(raw_file)?;
+        }
+        zip_writer.start_file(file_dst, FileOptions::default().compression_method(CompressionMethod::Stored))?;
+        zip_writer.write_all(&file_data)?;
+
+        zip_writer.finish()?;
+    }
+
+    exe_data.splice(zip_start.., new_zip.into_iter());
+    fs::write(exe_path, exe_data)?;
+    Ok(())
 }
 
 fn replace_file_in_exe(exe_path: &str, file_name: &str, new_contents: &[u8]) -> Result<(), std::io::Error> {

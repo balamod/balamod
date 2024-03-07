@@ -12,6 +12,7 @@ use crate::luas::*;
 
 mod balamod;
 mod luas;
+mod dependencies;
 
 const VERSION: &'static str = "0.1.9a";
 
@@ -32,6 +33,8 @@ struct Args {
     input: Option<String>,
     #[clap(short = 'o', long = "output")]
     output: Option<String>,
+    #[clap(short = 'u', long = "uninstall")]
+    uninstall: bool,
 }
 
 struct StepDuration {
@@ -111,6 +114,11 @@ fn main() {
 
     let global_start = Instant::now();
 
+    if args.uninstall {
+        uninstall(balatro.clone(), &mut durations);
+        return;
+    }
+
     if args.inject {
         inject(args.clone(), balatro.clone(), &mut durations);
     }
@@ -124,28 +132,7 @@ fn main() {
         if cfg!(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm")))) {
             red_ln!("Architecture is not supported, skipping modloader injection...");
         } else {
-            let main_lua = balatro.get_file_as_string("main.lua", false).expect("Error while reading file");
-            let uidef_lua = balatro.get_file_as_string("functions/UI_definitions.lua", false).expect("Error while reading file");
-
-            let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, balatro.clone(), &mut durations);
-
-            cyan_ln!("Injecting main");
-            let start: Instant = Instant::now();
-            balatro.replace_file("main.lua", new_main.as_bytes()).expect("Error while replacing file");
-            durations.push(StepDuration {
-                duration: start.elapsed(),
-                name: String::from("Modloader injection (main)"),
-            });
-            green_ln!("Done!");
-
-            cyan_ln!("Injecting uidef");
-            let start = Instant::now();
-            balatro.replace_file("functions/UI_definitions.lua", new_uidef.as_bytes()).expect("Error while replacing file");
-            durations.push(StepDuration {
-                duration: start.elapsed(),
-                name: String::from("Modloader injection (uidef)"),
-            });
-            green_ln!("Done!");
+            install(balatro, &mut durations);
         }
     }
 
@@ -245,6 +232,72 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
     green_ln!("Done!");
 
     (new_main, new_uidef)
+}
+
+fn uninstall(balatro: Balatro, durations: &mut Vec<StepDuration>) {
+    // restore from the backup
+    let start = Instant::now();
+    let backup_path = balatro.get_exe_path_buf().clone().with_extension("bak");
+    if fs::metadata(backup_path.as_path()).is_ok() {
+        yellow_ln!("Restoring backup...");
+        fs::remove_file(balatro.get_exe_path_buf()).expect("Error while deleting file");
+        fs::copy(backup_path.as_path(), balatro.get_exe_path_buf()).expect("Error while copying file");
+        fs::remove_file(backup_path.as_path()).expect("Error while deleting file");
+        green_ln!("Done!");
+    } else {
+        red_ln!("No backup found!");
+    }
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Restoration of executable"),
+    });
+}
+
+fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
+    let start = Instant::now();
+    // Copy the balatro executable to back it up and restore it later if needed
+    let backup_path = balatro.get_exe_path_buf().clone().with_extension("bak");
+    if fs::metadata(backup_path.as_path()).is_ok() {
+        yellow_ln!("Deleting existing backup...");
+        fs::remove_file(backup_path.as_path()).expect("Error while deleting file");
+        fs::copy(balatro.get_exe_path_buf(), backup_path.as_path()).expect("Error while copying file");
+    }
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Backup of executable"),
+    });
+
+    let main_lua = balatro.get_file_as_string("main.lua", false).expect("Error while reading file");
+    let uidef_lua = balatro.get_file_as_string("functions/UI_definitions.lua", false).expect("Error while reading file");
+
+    let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, balatro.clone(), durations);
+
+    cyan_ln!("Injecting main");
+    let start: Instant = Instant::now();
+    balatro.replace_file("main.lua", new_main.as_bytes()).expect("Error while replacing file");
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Modloader injection (main)"),
+    });
+    green_ln!("Done!");
+
+    cyan_ln!("Injecting uidef");
+    let start = Instant::now();
+    balatro.replace_file("functions/UI_definitions.lua", new_uidef.as_bytes()).expect("Error while replacing file");
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Modloader injection (uidef)"),
+    });
+    if cfg!(target_os = "macos") && cfg!(any(target_arch = "aarch64", target_arch = "arm")) {
+        cyan_ln!("Injecting dependencies (macOS)");
+        let start = Instant::now();
+        balatro.inject_dependencies().expect("Error while injecting dependencies");
+        durations.push(StepDuration {
+            duration: start.elapsed(),
+            name: String::from("Dependency injection"),
+        });
+    }
+    green_ln!("Done!");
 }
 
 fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {

@@ -420,10 +420,10 @@ function refreshRepo(url)
         local modId, modVersion, modName, modDesc, modUrl = string.match(modInfo,
                                                                          '([^|]+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)')
         table.insert(repoMods, {
-            mod_id = modId, 
-            name = modName, 
-            description = modDesc, 
-            url = modUrl, 
+            mod_id = modId,
+            name = modName,
+            description = modDesc,
+            url = modUrl,
             version = modVersion
         })
     end
