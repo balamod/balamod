@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "balamod",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "tauri": {
     "allowlist": {
@@ -29,7 +29,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.test-tauri",
+      "identifier": "com.balamod",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -59,7 +59,7 @@
         "height": 600,
         "resizable": false,
         "title": "Balamod",
-        "width": 800
+        "width": 480
       }
     ]
   }

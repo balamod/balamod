@@ -1,10 +1,18 @@
-import { invoke } from "@tauri-apps/api/tauri";
+import type { Balatro, IBalatroPageData, IDataError } from "$lib/interfaces";
 
-export async function load({ params }: { params: null}) {
+export async function load({ params }): Promise<IBalatroPageData | IDataError> {
   try {
-    return await invoke("tauri_find_balatros");
-  } catch (e) {
-    console.error(e);
-    return { "0": { "version": "0.0.0", "path": "/test"}}
+    const { invoke } = await import("@tauri-apps/api");
+    const balatro: Balatro = await invoke("tauri_find_balatro", params);
+    const defaultOutput = balatro.path + "/src";
+    return {
+      balatro,
+      defaultOutput,
+    };
+  } catch (error) {
+    return {
+      balatro: {version: '1.0.0L', path: '/tmp/balatro'},
+      defaultOutput: '/tmp/balatro/src',
+    }
   }
 }

@@ -9,3 +9,7 @@ export interface IBalatroPageData {
   balatro: Balatro;
   defaultOutput: string;
 }
+
+export interface IDataError {
+  error: string;
+}

@@ -4,11 +4,12 @@
 
 <style>
   .body {
-    padding: 1rem;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    height: 100%;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    margin-top: 2rem;
+    width: 480px;
+    height: 600px;
   }
 </style>

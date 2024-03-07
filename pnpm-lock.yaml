@@ -73,7 +73,13 @@ devDependencies:
   '@smui/common':
     specifier: 7.0.0-beta.16
     version: 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+  '@smui/icon-button':
+    specifier: 7.0.0-beta.16
+    version: 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
   '@smui/select':
+    specifier: 7.0.0-beta.16
+    version: 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+  '@smui/top-app-bar':
     specifier: 7.0.0-beta.16
     version: 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
   '@sveltejs/adapter-auto':
@@ -706,6 +712,20 @@ packages:
       '@material/elevation': 14.0.0
     dev: true
 
+  /@material/top-app-bar@14.0.0:
+    resolution: {integrity: sha512-uPej5vHgZnlSB1+koiA9FnabXrHh3O/Npl2ifpUgDVwHDSOxKvLp2LNjyCO71co1QLNnNHIU0xXv3B97Gb0rpA==}
+    dependencies:
+      '@material/animation': 14.0.0
+      '@material/base': 14.0.0
+      '@material/elevation': 14.0.0
+      '@material/ripple': 14.0.0
+      '@material/rtl': 14.0.0
+      '@material/shape': 14.0.0
+      '@material/theme': 14.0.0
+      '@material/typography': 14.0.0
+      tslib: 2.6.2
+    dev: true
+
   /@material/touch-target@14.0.0:
     resolution: {integrity: sha512-o3kvxmS4HkmZoQTvtzLJrqSG+ezYXkyINm3Uiwio1PTg67pDgK5FRwInkz0VNaWPcw9+5jqjUQGjuZMtjQMq8w==}
     dependencies:
@@ -1008,6 +1028,18 @@ packages:
       '@smui/menu-surface': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
       '@smui/notched-outline': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
       '@smui/ripple': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
+      svelte2tsx: 0.6.27(svelte@4.2.12)(typescript@5.3.3)
+    transitivePeerDependencies:
+      - svelte
+      - typescript
+    dev: true
+
+  /@smui/top-app-bar@7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3):
+    resolution: {integrity: sha512-rPKQW0HsR0QRSNh3qLMqTnn3wrfAx8sDnWIPHBr+Tr97IFyB1kx1w49zdCIE7L8cSXa4eynNQR32BxL17zT1/g==}
+    dependencies:
+      '@material/feature-targeting': 14.0.0
+      '@material/top-app-bar': 14.0.0
+      '@smui/common': 7.0.0-beta.16(svelte@4.2.12)(typescript@5.3.3)
       svelte2tsx: 0.6.27(svelte@4.2.12)(typescript@5.3.3)
     transitivePeerDependencies:
       - svelte
