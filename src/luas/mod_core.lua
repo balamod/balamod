@@ -291,20 +291,21 @@ function installMod(modId)
     sendDebugMessage('Downloading mod ' .. modId)
     local modUrl = modInfo.url
 
-    local owner, repo, branch, path = modUrl:match('https://github%.com/([^/]+)/([^/]+)/(tree/blob)/([^/]+)/(.*)')
+    local owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/tree/([^/]+)/?(.*)")
 
-    if path == nil then
-        owner, repo, branch, path = modUrl:match('https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/(.*)')
+    if not owner or not repo or not branch then
+        owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/?(.*)")
     end
+
+    sendDebugMessage('Url: ' .. modUrl)
+    sendDebugMessage('Owner: ' .. (owner or 'nil'))
+    sendDebugMessage('Repo: ' .. (repo or 'nil'))
+    sendDebugMessage('Branch: ' .. (branch or 'nil'))
+    sendDebugMessage('Path: ' .. (path or 'nil'))
 
     while path:sub(-1) == '/' do
         path = path:sub(1, -2)
     end
-
-    sendDebugMessage('Owner: ' .. owner)
-    sendDebugMessage('Repo: ' .. repo)
-    sendDebugMessage('Branch: ' .. branch)
-    sendDebugMessage('Path: ' .. path)
 
     local https = require 'https'
     local headers = {
