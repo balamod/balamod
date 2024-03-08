@@ -69,8 +69,11 @@ function inject(path, function_name, to_replace, replacement)
 
     local new_function, load_error = load(modified_function_code) -- load modified function
     if not new_function then
-        -- Safeguard against errors, will be logged in %appdata%/Balatro/err1.txt
-        love.filesystem.write("err1.txt", "Error loading modified function: " .. (load_error or "Unknown error"))
+        local timeString = os.date("%Y-%m-%d %H:%M:%S")
+        local errorFileName = "LoadError " .. timeString .. ".txt"
+
+        sendDebugMessage(errorFileName .. " created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write(errorFileName, "Error loading modified function: " .. (load_error or "Unknown error") .. "\n" .. modified_function_code)
     end
 
     if setfenv then
@@ -81,7 +84,10 @@ function inject(path, function_name, to_replace, replacement)
     if status then
         testFunction = result -- Overwrite the original function with the result of the new function
     else
-        love.filesystem.write("err2.txt", "Error executing modified function: " .. result) -- Safeguard against errors, will be logged in %appdata%/Balatro/err2.txt
+        local timeString = os.date("%Y-%m-%d %H:%M:%S")
+        local errorFileName = "ExecutionError " .. timeString .. ".txt"
+        sendDebugMessage(errorFileName .. " created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write(errorFileName, "Error executing modified function: " .. result .. "\n" .. modified_function_code) -- Safeguard against errors
     end
 end
 
@@ -92,7 +98,10 @@ function injectHead(path, function_name, code)
     local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1\n" .. code .. "\n")
 
     if number_of_subs == 0 then
-        love.filesystem.write("err4.txt", "Error: Function start not found in function body or multiple matches encountered.")
+        local timeString = os.date("%Y-%m-%d %H:%M:%S")
+        local errorFileName = "NoFunctionError " .. timeString .. ".txt"
+        sendDebugMessage(errorFileName .. " created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write(errorFileName "Error: Function start not found in function body or multiple matches encountered." .. "\n" .. modified_function_code)
         return
     end
 
@@ -102,7 +111,10 @@ function injectHead(path, function_name, code)
 
     local new_function, load_error = load(modified_function_code)
     if not new_function then
-        love.filesystem.write("err1.txt", "Error loading modified function with head injection: " .. (load_error or "Unknown error"))
+        local timeString = os.date("%Y-%m-%d %H:%M:%S")
+        local errorFileName = "LoadError " .. timeString .. ".txt"
+        sendDebugMessage(errorFileName .. " created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write(errorFileName, "Error loading modified function with head injection: " .. (load_error or "Unknown error") .. "\n" .. modified_function_code)
         return
     end
 
@@ -114,7 +126,10 @@ function injectHead(path, function_name, code)
     if status then
         testFunction = result
     else
-        love.filesystem.write("err2.txt", "Error executing modified function with head injection: " .. result)
+        local timeString = os.date("%Y-%m-%d %H:%M:%S")
+        local errorFileName = "ExecutionError " .. timeString .. ".txt"
+        sendDebugMessage(errorFileName .. " created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write(errorFileName, "Error executing modified function with head injection: " .. result .. "\n" .. modified_function_code)
     end
 end
 
@@ -122,10 +137,13 @@ function injectTail(path, function_name, code)
     local function_body = extractFunctionBody(path, function_name)
 
     local pattern = "(.-)(end[ \t]*\n?)$"
-    local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1" .. code .. "%2")
+    local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1" .. string.gsub(code, '(.-)%s*$', '%1') .. "\n" .. "%2")
 
     if number_of_subs == 0 then
-        love.filesystem.write("err3.txt", "Error: 'end' not found in function body or multiple ends encountered.")
+        local timeString = os.date("%Y-%m-%d %H:%M:%S")
+        local errorFileName = "NoFunctionError " .. timeString .. ".txt"
+        sendDebugMessage(errorFileName .. " created because of an injectTail into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write(errorFileName, "Error: 'end' not found in function body or multiple ends encountered." .. "\n" .. modified_function_code)
         return
     end
 
@@ -135,7 +153,10 @@ function injectTail(path, function_name, code)
 
     local new_function, load_error = load(modified_function_code)
     if not new_function then
-        love.filesystem.write("err1.txt", "Error loading modified function with tail injection: " .. (load_error or "Unknown error"))
+        local timeString = os.date("%Y-%m-%d %H:%M:%S")
+        local errorFileName = "LoadError " .. timeString .. ".txt"
+        sendDebugMessage(errorFileName .. " created because of an injectTail into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write(errorFileName, "Error loading modified function with tail injection: " .. (load_error or "Unknown error") .. "\n" .. modified_function_code)
         return
     end
 
@@ -147,7 +168,10 @@ function injectTail(path, function_name, code)
     if status then
         testFunction = result
     else
-        love.filesystem.write("err2.txt", "Error executing modified function with tail injection: " .. result)
+        local timeString = os.date("%Y-%m-%d %H:%M:%S")
+        local errorFileName = "ExecutionError " .. timeString .. ".txt"
+        sendDebugMessage(errorFileName .. " created because of an injectTail into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write(errorFileName, "Error executing modified function with tail injection: " .. result .. "\n" .. modified_function_code)
     end
 end
 
@@ -164,10 +188,10 @@ for _, file in ipairs(apis_files) do
 			if success then -- Check if the file was executed successfully
 				table.insert(mods, mod) -- Add the api to the list of mods if there is a mod in the file
 			else
-				print("Error loading api: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
+				sendDebugMessage("Error loading api: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
 			end
 		else
-			print("Error reading api: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
+			sendDebugMessage("Error reading api: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
 		end
 	end
 end
@@ -183,10 +207,10 @@ for _, file in ipairs(files) do
 			if success then
 				table.insert(mods, mod) -- Add the mod to the list of mods
 			else
-				print("Error loading mod: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
+				sendDebugMessage("Error loading mod: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
 			end
 		else
-			print("Error reading mod: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
+			sendDebugMessage("Error reading mod: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
 		end
 	end
 end
@@ -345,11 +369,11 @@ function installMod(modId)
                 if success then
                     sendDebugMessage('API ' .. p:sub(#path + 2) .. ' loaded')
                 else
-                    print('Error loading api: ' .. p:sub(#path + 2) .. '\n' .. mod)
+                    sendDebugMessage('Error loading api: ' .. p:sub(#path + 2) .. '\n' .. mod)
                     return RESULT.MOD_PCALL_ERROR
                 end
             else
-                print('Error reading api: ' .. p:sub(#path + 2) .. '\n' .. loadErr)
+                sendDebugMessage('Error reading api: ' .. p:sub(#path + 2) .. '\n' .. loadErr)
                 return RESULT.MOD_FS_LOAD_ERROR
             end
         end
@@ -368,11 +392,11 @@ function installMod(modId)
                     table.insert(mods, mod)
                     sendDebugMessage('Mod ' .. p:sub(#path + 2) .. ' loaded')
                 else
-                    print('Error loading mod: ' .. p:sub(#path + 2) .. '\n' .. mod)
+                    sendDebugMessage('Error loading mod: ' .. p:sub(#path + 2) .. '\n' .. mod)
                     return RESULT.MOD_PCALL_ERROR
                 end
             else
-                print('Error reading mod: ' .. p:sub(#path + 2) .. '\n' .. loadErr)
+                sendDebugMessage('Error reading mod: ' .. p:sub(#path + 2) .. '\n' .. loadErr)
                 return RESULT.MOD_FS_LOAD_ERROR
             end
         end
