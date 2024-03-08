@@ -70,7 +70,8 @@ function inject(path, function_name, to_replace, replacement)
     local new_function, load_error = load(modified_function_code) -- load modified function
     if not new_function then
         -- Safeguard against errors, will be logged in %appdata%/Balatro/err1.txt
-        love.filesystem.write("err1.txt", "Error loading modified function: " .. (load_error or "Unknown error"))
+        print("err1.txt created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write("err1.txt", "Error loading modified function: " .. (load_error or "Unknown error") .. "\n" .. modified_function_code)
     end
 
     if setfenv then
@@ -81,7 +82,8 @@ function inject(path, function_name, to_replace, replacement)
     if status then
         testFunction = result -- Overwrite the original function with the result of the new function
     else
-        love.filesystem.write("err2.txt", "Error executing modified function: " .. result) -- Safeguard against errors, will be logged in %appdata%/Balatro/err2.txt
+        print("err2.txt created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write("err2.txt", "Error executing modified function: " .. result .. "\n" .. modified_function_code) -- Safeguard against errors, will be logged in %appdata%/Balatro/err2.txt
     end
 end
 
@@ -92,7 +94,8 @@ function injectHead(path, function_name, code)
     local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1\n" .. code .. "\n")
 
     if number_of_subs == 0 then
-        love.filesystem.write("err4.txt", "Error: Function start not found in function body or multiple matches encountered.")
+        print("err4.txt created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write("err4.txt", "Error: Function start not found in function body or multiple matches encountered." .. "\n" .. modified_function_code)
         return
     end
 
@@ -102,7 +105,8 @@ function injectHead(path, function_name, code)
 
     local new_function, load_error = load(modified_function_code)
     if not new_function then
-        love.filesystem.write("err1.txt", "Error loading modified function with head injection: " .. (load_error or "Unknown error"))
+        print("err1.txt created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write("err1.txt", "Error loading modified function with head injection: " .. (load_error or "Unknown error") .. "\n" .. modified_function_code)
         return
     end
 
@@ -114,7 +118,8 @@ function injectHead(path, function_name, code)
     if status then
         testFunction = result
     else
-        love.filesystem.write("err2.txt", "Error executing modified function with head injection: " .. result)
+        print("err2.txt created because of an injectHead into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write("err2.txt", "Error executing modified function with head injection: " .. result .. "\n" .. modified_function_code)
     end
 end
 
@@ -125,7 +130,8 @@ function injectTail(path, function_name, code)
     local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1" .. string.gsub(code, '(.-)%s*$', '%1') .. "\n" .. "%2")
 
     if number_of_subs == 0 then
-        love.filesystem.write("err3.txt", "Error: 'end' not found in function body or multiple ends encountered.")
+        print("err3.txt created because of an injectTail into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write("err3.txt", "Error: 'end' not found in function body or multiple ends encountered." .. "\n" .. modified_function_code)
         return
     end
 
@@ -135,7 +141,8 @@ function injectTail(path, function_name, code)
 
     local new_function, load_error = load(modified_function_code)
     if not new_function then
-        love.filesystem.write("err1.txt", "Error loading modified function with tail injection: " .. (load_error or "Unknown error"))
+        print("err1.txt created because of an injectTail into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write("err1.txt", "Error loading modified function with tail injection: " .. (load_error or "Unknown error") .. "\n" .. modified_function_code)
         return
     end
 
@@ -147,7 +154,8 @@ function injectTail(path, function_name, code)
     if status then
         testFunction = result
     else
-        love.filesystem.write("err2.txt", "Error executing modified function with tail injection: " .. result)
+        print("err2.txt created because of an injectTail into " .. function_name .. "! Check the file for your error!");
+        love.filesystem.write("err2.txt", "Error executing modified function with tail injection: " .. result .. "\n" .. modified_function_code)
     end
 end
 
