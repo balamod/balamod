@@ -415,3 +415,4 @@ G.FUNCS.show_mods = function(e)
 end
 
 G.VERSION = G.VERSION .. '\nBalamod {balamod_version}'
+dec_api.hook()

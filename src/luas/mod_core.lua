@@ -151,6 +151,99 @@ function injectTail(path, function_name, code)
     end
 end
 
+-- BEGIN: API definition
+dec_api = {}
+dec_api.decorations = {}
+
+-- Retrieves a global function by its name.
+-- Searches for a global function based on the provided name.
+-- @param (string) name The name of the function.
+-- @return (function) The global function, or nil if it doesn't exist.
+dec_api.__getGlobalFuncByName = function(name)
+    local t = _G
+    for part in string.gmatch(name, "[^.]+") do
+        if not t[part] then
+            return nil
+        end
+        t = t[part]
+    end
+    return t
+end
+
+-- Decorates a function with injectHead and injectTail actions.
+-- @param (string) func_str The name of the function to decorate.
+-- @param (function) injectHead The function to execute before the decorated function.
+-- @param (function) injectTail The function to execute after the decorated function.
+-- @return (function) The decorated function.
+dec_api.__decorate = function(func_str, injectHead, injectTail)
+    local func = dec_api.__getGlobalFuncByName(func_str)
+    if not func then
+        error("Function " .. func_str .. " not found")
+    end
+    if not injectHead then
+        injectHead = function(...) return {...} end
+    end
+    if not injectTail then
+        injectTail = function(arg) return arg end
+    end
+    return function(...)
+        local args = injectHead(...)
+        local res = func(table.unpack(args))
+        local final = injectTail(res)
+        return final
+    end
+end
+
+-- Updates a global function with the specified name to a new function.
+-- The name can be a nested table path, separated by dots.
+-- If the nested tables do not exist, they will be created.
+-- 
+-- @param name (string) The name of the global function to update.
+-- @param new_func (function) The new function to assign to the global function.
+dec_api.__updateGlobal = function(name, new_func)
+    local t = _G
+    local parts = {}
+    for part in string.gmatch(name, "[^.]+") do
+        table.insert(parts, part)
+    end
+    for i = 1, #parts - 1 do
+        local part = parts[i]
+        if not t[part] then
+            t[part] = {}
+        end
+        t = t[part]
+    end
+    t[parts[#parts]] = new_func
+end
+
+-- Appends a decoration to the `dec_api.decorations` table.
+-- @param func_str (string) The name of the function to be decorated.
+-- @param injectHead (string) The code to be injected at the beginning of the function.
+-- @param injectTail (string) The code to be injected at the end of the function.
+-- @param priority (number) The priority of the decoration.
+dec_api.append = function(func_str, injectHead, injectTail, priority)
+    table.insert(dec_api.decorations, {
+        func_str = func_str,
+        injectHead = injectHead,
+        injectTail = injectTail,
+        priority = priority
+    })
+end
+
+-- This function hooks the decorations in the dec_api table by sorting them based on priority and updating their functions.
+-- It iterates through each decoration and decorates the function by injecting code at the head and tail.
+-- Finally, it updates the global function with the decorated function.
+dec_api.hook = function()
+    table.sort(dec_api.decorations, function(a, b)
+        return a.priority < b.priority
+    end)
+    for _, decoration in ipairs(dec_api.decorations) do
+        local new_func = dec_api.__decorate(decoration.func_str, decoration.injectHead, decoration.injectTail)
+        dec_api.__updateGlobal(decoration.func_str, new_func)
+    end
+end
+-- END: API definition
+
 -- apis will be loaded first, then mods
 
 local apis_files = love.filesystem.getDirectoryItems("apis") -- Load all apis
