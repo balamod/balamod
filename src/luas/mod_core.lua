@@ -122,7 +122,7 @@ function injectTail(path, function_name, code)
     local function_body = extractFunctionBody(path, function_name)
 
     local pattern = "(.-)(end[ \t]*\n?)$"
-    local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1" .. code .. "%2")
+    local modified_function_code, number_of_subs = function_body:gsub(pattern, "%1" .. string.gsub(code, '(.-)%s*$', '%1') .. "\n" .. "%2")
 
     if number_of_subs == 0 then
         love.filesystem.write("err3.txt", "Error: 'end' not found in function body or multiple ends encountered.")
