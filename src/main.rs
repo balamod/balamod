@@ -189,6 +189,16 @@ fn inject_modloader(main_lua: String, uidef_lua: String, balatro: Balatro, durat
         );
 
         new_main = new_main.replace(
+            "function love.keyreleased(key)",
+            format!("function love.keyreleased(key)\n{}", get_key_released_event()).as_str(),
+        );
+
+        new_main = new_main.replace(
+            "function love.mousereleased(x, y, button)",
+            format!("function love.mousereleased(x, y, button)\n{}", get_mouse_released_event()).as_str(),
+        );
+
+        new_main = new_main.replace(
             "function love.mousepressed(x, y, button, touch)",
             format!("function love.mousepressed(x, y, button, touch)\n{}", get_mouse_pressed_event()).as_str()
         );
