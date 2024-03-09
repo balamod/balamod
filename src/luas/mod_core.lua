@@ -40,9 +40,9 @@ function request(url)
     local code
     local response
     if love.system.getOS() == 'OS X' then
-        response, code = https.request(url, {headers = {['User-Agent'] = 'Balamod-Client'}})
+        response, code = https.request(url)
     else
-        code, response = https.request(url, {headers = {['User-Agent'] = 'Balamod-Client'}})
+        code, response = https.request(url)
     end
     return code, response
 end
@@ -362,15 +362,13 @@ function installMod(modId)
         local filePath = p:sub(#path + 2)
         sendDebugMessage('Writing to ' .. filePath)
         local dir = filePath:match('(.+)/[^/]+')
-		if dir ~= nil then
-			love.filesystem.createDirectory(dir)
-			--[[if not love.filesystem.getInfo(filePath) then
-				love.filesystem.write(filePath, body)
-			else
-				sendDebugMessage("File " .. filePath .. " already exists")
-			end]] --
-			love.filesystem.write(filePath, body)
-		end
+        love.filesystem.createDirectory(dir)
+        --[[if not love.filesystem.getInfo(filePath) then
+            love.filesystem.write(filePath, body)
+        else
+            sendDebugMessage("File " .. filePath .. " already exists")
+        end]] --
+        love.filesystem.write(filePath, body)
     end
 
     -- apis first
