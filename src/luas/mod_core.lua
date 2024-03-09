@@ -362,13 +362,15 @@ function installMod(modId)
         local filePath = p:sub(#path + 2)
         sendDebugMessage('Writing to ' .. filePath)
         local dir = filePath:match('(.+)/[^/]+')
-        love.filesystem.createDirectory(dir)
-        --[[if not love.filesystem.getInfo(filePath) then
-            love.filesystem.write(filePath, body)
-        else
-            sendDebugMessage("File " .. filePath .. " already exists")
-        end]] --
-        love.filesystem.write(filePath, body)
+		if dir ~= nil then
+			love.filesystem.createDirectory(dir)
+			--[[if not love.filesystem.getInfo(filePath) then
+				love.filesystem.write(filePath, body)
+			else
+				sendDebugMessage("File " .. filePath .. " already exists")
+			end]] --
+			love.filesystem.write(filePath, body)
+		end
     end
 
     -- apis first
