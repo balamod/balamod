@@ -300,6 +300,10 @@ function installMod(modId)
             end
         end
     end
+	
+	for _, dependency in ipairs(modInfo.dependencies) do
+		installMod(dependency)
+	end
 
     sendDebugMessage('Downloading mod ' .. modId)
     local modUrl = modInfo.url
@@ -449,14 +453,15 @@ function refreshRepo(url)
     -- clear repoMods
     repoMods = {}
     for modInfo in string.gmatch(body, '([^\n]+)') do
-        local modId, modVersion, modName, modDesc, modUrl = string.match(modInfo,
-                                                                         '([^|]+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)')
+        local modId, modVersion, modName, modDesc, modUrl, dependencies = string.match(modInfo,
+                                                                         '([^|]+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)')
         table.insert(repoMods, {
             mod_id = modId,
             name = modName,
             description = modDesc,
             url = modUrl,
-            version = modVersion
+            version = modVersion, 
+			dependencies = dependencies
         })
     end
 
