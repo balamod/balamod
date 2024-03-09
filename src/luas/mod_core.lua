@@ -442,6 +442,21 @@ function refreshRepos()
     return RESULT.SUCCESS
 end
 
+function stringToArray(inputString)
+    -- Remove curly braces from the string
+    local strippedString = inputString:gsub("{(.-)}", "%1")
+
+    -- Initialize an empty table to store the values
+    local array = {}
+
+    -- Iterate over the values using string.gmatch
+    for value in strippedString:gmatch("[^,%s]+") do
+        table.insert(array, value)
+    end
+
+    return array
+end
+
 function refreshRepo(url)
     local code, body = request(url)
 
@@ -463,7 +478,7 @@ function refreshRepo(url)
             description = modDesc,
             url = modUrl,
             version = modVersion, 
-			dependencies = dependencies
+			dependencies = stringToArray(dependencies)
         })
     end
 
