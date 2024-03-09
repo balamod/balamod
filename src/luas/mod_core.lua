@@ -34,6 +34,19 @@ for _, path in ipairs(paths) do
     current_game_code[path] = love.filesystem.read(path)
 end
 
+function request(url)
+    sendDebugMessage('Request made with url: ' .. url)
+    local https = require 'https'
+    local code
+    local response
+    if love.system.getOS() == 'OS X' then
+        response, code = https.request(url)
+    else
+        code, response = https.request(url)
+    end
+    return code, response
+end
+
 function extractFunctionBody(path, function_name)
     local pattern = "\n?%s*function%s+" .. function_name
     local func_begin, fin = current_game_code[path]:find(pattern)
@@ -307,12 +320,8 @@ function installMod(modId)
         path = path:sub(1, -2)
     end
 
-    local https = require 'https'
-    local headers = {
-        ['User-Agent'] = 'Balamod/1.0'
-    }
     local url = 'https://api.github.com/repos/' .. owner .. '/' .. repo .. '/git/trees/' .. branch .. '?recursive=1'
-    local code, body = https.request(url, {headers = headers})
+    local code, body = request(url)
     if code ~= 200 then
         sendDebugMessage('Request failed')
         sendDebugMessage('Code: ' .. code)
@@ -337,7 +346,7 @@ function installMod(modId)
     end
 
     for _, p in ipairs(paths) do
-        code, body = https.request(
+        code, body = request(
                          'https://raw.githubusercontent.com/' .. owner .. '/' .. repo .. '/' .. branch .. '/' .. p)
         if code ~= 200 then
             sendDebugMessage('Request failed')
@@ -408,8 +417,7 @@ end
 
 function refreshRepos()
     local reposIndex = 'https://raw.githubusercontent.com/UwUDev/balamod/master/repos.index'
-    local https = require 'https'
-    local code, body = https.request(reposIndex)
+    local code, body = request(reposIndex)
 
     if code ~= 200 then
         sendDebugMessage('Request failed')
@@ -429,8 +437,7 @@ function refreshRepos()
 end
 
 function refreshRepo(url)
-    local https = require 'https'
-    local code, body = https.request(url)
+    local code, body = request(url)
 
     if code ~= 200 then
         sendDebugMessage('Request failed')
