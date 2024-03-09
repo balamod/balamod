@@ -75,6 +75,35 @@ pub fn get_key_pressed_event() -> &'static str {
     "#
 }
 
+pub fn get_key_released_event() -> &'static str {
+    r#"
+    local cancel_event = false
+    for _, mod in ipairs(mods) do
+        if mod.on_key_released then
+            if mod.on_key_released(key) then
+                cancel_event = true
+            end
+        end
+    end
+
+    if cancel_event then return end
+    "#
+}
+
+pub fn get_mouse_released_event() -> &'static str {
+    r#"
+    local cancel_event = false
+    for _, mod in ipairs(mods) do
+        if mod.on_mouse_released then
+            if mod.on_mouse_released(x, y, button) then
+                cancel_event = true
+            end
+        end
+    end
+    if cancel_event then return end
+    "#
+}
+
 pub fn get_mouse_pressed_event() -> &'static str {
     r#"
     local cancel_event = false
