@@ -366,7 +366,9 @@ function installMod(modId)
 				sendDebugMessage("File " .. filePath .. " already exists")
 			end]] --
 			love.filesystem.write(filePath, body)
-		end
+		else
+            sendDebugMessage("File " .. filePath .. " is in the root directory and will not be installed")
+        end
     end
 
     -- apis first
