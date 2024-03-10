@@ -440,12 +440,16 @@ function refreshRepos()
     return RESULT.SUCCESS
 end
 
-function stringToArray(inputString)
+function stringToArray(inputString)    
+-- Initialize an empty table to store the values
+    local array = {}
+	
+	if inputString == nil then
+		return array
+	end
+	
     -- Remove curly braces from the string
     local strippedString = inputString:gsub("{(.-)}", "%1")
-
-    -- Initialize an empty table to store the values
-    local array = {}
 
     -- Iterate over the values using string.gmatch
     for value in strippedString:gmatch("[^,%s]+") do
