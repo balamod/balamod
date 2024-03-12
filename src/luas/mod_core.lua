@@ -40,7 +40,7 @@ function request(url)
     local code
     local response
     if love.system.getOS() == 'OS X' then
-        response, code = https.request(url, {headers = {['User-Agent'] = 'Balamod-Client'}})
+        response, code = https.request(url)
     else
         code, response = https.request(url, {headers = {['User-Agent'] = 'Balamod-Client'}})
     end
