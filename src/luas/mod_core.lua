@@ -25,10 +25,35 @@ if not love.filesystem.getInfo("apis", "directory") then -- Create apis folder i
     love.filesystem.createDirectory("apis")
 end
 
-paths = {
-    {paths}
-} -- Paths to the files that will be loaded
+function buildPaths(root,ignore)
+    local items = love.filesystem.getDirectoryItems(root)
+    for _, file in ipairs(items) do
+        if root ~= "" then
+            file = root.."/"..file
+        end
+        local info = love.filesystem.getInfo(file)
+        if info then
+            if info.type == "file" and file:match("%.lua$") then
+                table.insert(paths,file)
+            elseif info.type == "directory" then
+                local valid = true
+                for _, i in ipairs(ignore) do
+                    if i == file then
+                        valid = false
+                    end
+                end
+                if valid then
+                    buildPaths(file,ignore)
+                end
+            end
+        end
+    end
+end
+
+paths = {} -- Paths to the files that will be loaded
+buildPaths("",{"mods","apis","resources","localization"})
 -- current_game_code = love.filesystem.read(path)
+buildPaths = nil -- prevent rerunning (i think)
 current_game_code = {}
 for _, path in ipairs(paths) do
     current_game_code[path] = love.filesystem.read(path)
