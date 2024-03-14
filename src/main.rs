@@ -16,7 +16,7 @@ mod balamod;
 mod dependencies;
 mod luas;
 
-const VERSION: &'static str = "0.1.9a";
+const VERSION: &'static str = "0.1.11a";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
