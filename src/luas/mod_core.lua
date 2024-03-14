@@ -41,6 +41,7 @@ if not love.filesystem.getInfo(apiDir, "directory") then
     love.filesystem.createDirectory("apis")
 end
 
+
 function buildPaths(root,ignore)
     local items = love.filesystem.getDirectoryItems(root)
     for _, file in ipairs(items) do
@@ -70,6 +71,7 @@ paths = {} -- Paths to the files that will be loaded
 buildPaths("",{"mods","apis","resources","localization"})
 -- current_game_code = love.filesystem.read(path)
 buildPaths = nil -- prevent rerunning (i think)
+
 current_game_code = {}
 for _, path in ipairs(paths) do
     current_game_code[path] = love.filesystem.read(path)
