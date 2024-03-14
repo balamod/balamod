@@ -283,6 +283,10 @@ end
 repoMods = {}
 
 function getModByModId(tables, mod_id)
+    if not mod_id then
+        sendDebugMessage('Mod id is nil')
+        return nil
+    end
     for _, mod in ipairs(tables) do
         if mod.mod_id and mod.mod_id == mod_id then
             return mod
@@ -293,6 +297,10 @@ function getModByModId(tables, mod_id)
 end
 
 function isModPresent(modId)
+    if not modId then
+        sendDebugMessage('Mod id is nil')
+        return false
+    end
     if getModByModId(mods, modId) then
         return true
     else
@@ -301,6 +309,11 @@ function isModPresent(modId)
 end
 
 function installMod(modId)
+    if not modId then
+        sendDebugMessage('Mod id is nil')
+        return RESULT.MOD_NOT_FOUND_IN_REPOS
+    end
+
     local modInfo = getModByModId(repoMods, modId)
     if modInfo == nil then
         sendDebugMessage('Mod ' .. modId .. ' not found in repos')
