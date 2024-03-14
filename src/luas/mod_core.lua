@@ -17,21 +17,82 @@ if (sendDebugMessage == nil) then
     end
 end
 
-if not love.filesystem.getInfo("mods", "directory") then -- Create mods folder if it doesn't exist
+if not rootDir then
+    rootDir = love.filesystem.getSaveDirectory()
+end
+
+if not modsDir then
+    modsDir = love.filesystem.getSaveDirectory() .. "/mods"
+end
+
+if not apiDir then
+    apiDir = love.filesystem.getSaveDirectory() .. "/apis"
+end
+
+if not love.filesystem.getInfo(rootDir, "directory") then
+    love.filesystem.createDirectory(rootDir)
+end
+
+if not love.filesystem.getInfo(modsDir, "directory") then
     love.filesystem.createDirectory("mods")
 end
 
-if not love.filesystem.getInfo("apis", "directory") then -- Create apis folder if it doesn't exist
+if not love.filesystem.getInfo(apiDir, "directory") then
     love.filesystem.createDirectory("apis")
 end
 
-paths = {
-    {paths}
-} -- Paths to the files that will be loaded
+
+function buildPaths(root,ignore)
+    local items = love.filesystem.getDirectoryItems(root)
+    for _, file in ipairs(items) do
+        if root ~= "" then
+            file = root.."/"..file
+        end
+        local info = love.filesystem.getInfo(file)
+        if info then
+            if info.type == "file" and file:match("%.lua$") then
+                table.insert(paths,file)
+            elseif info.type == "directory" then
+                local valid = true
+                for _, i in ipairs(ignore) do
+                    if i == file then
+                        valid = false
+                    end
+                end
+                if valid then
+                    buildPaths(file,ignore)
+                end
+            end
+        end
+    end
+end
+
+paths = {} -- Paths to the files that will be loaded
+buildPaths("",{"mods","apis","resources","localization"})
 -- current_game_code = love.filesystem.read(path)
+buildPaths = nil -- prevent rerunning (i think)
+
 current_game_code = {}
 for _, path in ipairs(paths) do
     current_game_code[path] = love.filesystem.read(path)
+end
+
+function listFiles(directory)
+    local i, t, popen = 0, {}, io.popen
+    local pfile = popen('dir "'..directory..'" /b')
+    for filename in pfile:lines() do
+        i = i + 1
+        t[i] = filename
+    end
+    pfile:close()
+    return t
+end
+
+function fileToString(path)
+    local file = io.open(path, "r")
+    local content = file:read("*all")
+    file:close()
+    return content
 end
 
 function request(url)
@@ -190,43 +251,55 @@ end
 
 -- apis will be loaded first, then mods
 
-local apis_files = love.filesystem.getDirectoryItems("apis") -- Load all apis
+local apis_files = listFiles(apiDir)
 for _, file in ipairs(apis_files) do
-	if file:sub(-4) == ".lua" then -- Only load lua files
-		local modPath = "apis/" .. file
-		local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
+    if file:sub(-4) == ".lua" then
+        local apiPath = apiDir .. "/" .. file
+        local modContent, loadErr = fileToString(apiPath)
 
-		if modContent then -- Check if the file was loaded successfully
-			local success, mod = pcall(modContent)
-			if success then -- Check if the file was executed successfully
-				table.insert(mods, mod) -- Add the api to the list of mods if there is a mod in the file
-			else
-				sendDebugMessage("Error loading api: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
-			end
-		else
-			sendDebugMessage("Error reading api: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
-		end
-	end
+        if modContent then
+            local modFunction, err = load(modContent, "@"..apiPath, "t")
+            if modFunction then
+                local success, mod = pcall(modFunction)
+                if success then
+                    table.insert(mods, mod)
+                else
+                    sendDebugMessage("Error running api: " .. apiPath .. "\n" .. tostring(mod))
+                end
+            else
+                sendDebugMessage("Error compiling api: " .. apiPath .. "\n" .. err)
+            end
+        else
+            sendDebugMessage("Error reading api: " .. apiPath .. "\n" .. tostring(loadErr)) -- Log file read errors
+        end
+    end
 end
 
-local files = love.filesystem.getDirectoryItems("mods") -- Load all mods
+
+local files = listFiles(modsDir)
 for _, file in ipairs(files) do
-	if file:sub(-4) == ".lua" then -- Only load lua files
-		local modPath = "mods/" .. file
-		local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
+    if file:sub(-4) == ".lua" then
+        local modPath = modsDir .. "/" .. file
+        local modContent, loadErr = fileToString(modPath)
 
-		if modContent then  -- Check if the file was loaded successfully
-			local success, mod = pcall(modContent) -- Execute the file
-			if success then
-				table.insert(mods, mod) -- Add the mod to the list of mods
-			else
-				sendDebugMessage("Error loading mod: " .. modPath .. "\n" .. mod) -- Log the error to the console Todo: Log to file
-			end
-		else
-			sendDebugMessage("Error reading mod: " .. modPath .. "\n" .. loadErr) -- Log the error to the console Todo: Log to file
-		end
-	end
+        if modContent then
+            local modFunction, err = load(modContent, "@"..modPath, "t")
+            if modFunction then
+                local success, mod = pcall(modFunction)
+                if success then
+                    table.insert(mods, mod)
+                else
+                    sendDebugMessage("Error running mod: " .. modPath .. "\n" .. tostring(mod))
+                end
+            else
+                sendDebugMessage("Error compiling mod: " .. modPath .. "\n" .. err)
+            end
+        else
+            sendDebugMessage("Error reading mod: " .. modPath .. "\n" .. tostring(loadErr))
+        end
+    end
 end
+
 
 for _, mod in ipairs(mods) do
 	if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
@@ -237,6 +310,10 @@ end
 repoMods = {}
 
 function getModByModId(tables, mod_id)
+    if not mod_id then
+        sendDebugMessage('Mod id is nil')
+        return nil
+    end
     for _, mod in ipairs(tables) do
         if mod.mod_id and mod.mod_id == mod_id then
             return mod
@@ -247,6 +324,10 @@ function getModByModId(tables, mod_id)
 end
 
 function isModPresent(modId)
+    if not modId then
+        sendDebugMessage('Mod id is nil')
+        return false
+    end
     if getModByModId(mods, modId) then
         return true
     else
@@ -255,6 +336,11 @@ function isModPresent(modId)
 end
 
 function installMod(modId)
+    if not modId then
+        sendDebugMessage('Mod id is nil')
+        return RESULT.MOD_NOT_FOUND_IN_REPOS
+    end
+
     local modInfo = getModByModId(repoMods, modId)
     if modInfo == nil then
         sendDebugMessage('Mod ' .. modId .. ' not found in repos')
@@ -358,13 +444,17 @@ function installMod(modId)
         local filePath = p:sub(#path + 2)
         sendDebugMessage('Writing to ' .. filePath)
         local dir = filePath:match('(.+)/[^/]+')
-        love.filesystem.createDirectory(dir)
-        --[[if not love.filesystem.getInfo(filePath) then
-            love.filesystem.write(filePath, body)
-        else
-            sendDebugMessage("File " .. filePath .. " already exists")
-        end]] --
-        love.filesystem.write(filePath, body)
+		if dir ~= nil then
+			love.filesystem.createDirectory(dir)
+			--[[if not love.filesystem.getInfo(filePath) then
+				love.filesystem.write(filePath, body)
+			else
+				sendDebugMessage("File " .. filePath .. " already exists")
+			end]] --
+			love.filesystem.write(filePath, body)
+		else
+            sendDebugMessage("File " .. filePath .. " is in the root directory and will not be installed")
+        end
     end
 
     -- apis first

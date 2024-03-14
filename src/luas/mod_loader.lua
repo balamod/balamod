@@ -213,7 +213,16 @@ end
 G.UIDEF.mod_list_page = function(_page)
     local snapped = false
     local mod_list = {}
+    -- cleanup mods collection by removing mods with no mod_id
+
+    for i = #mods_collection, 1, -1 do
+        if not mods_collection[i].mod_id then
+            table.remove(mods_collection, i)
+        end
+    end
+
     for i, mod in ipairs(mods_collection) do
+
         sendDebugMessage('Mod index ' .. i .. ' page ' .. _page .. ' name ' .. mod.name .. ' id ' .. mod.mod_id)
         if i > G.MOD_PAGE_SIZE * (_page or 0) and i <= G.MOD_PAGE_SIZE * ((_page or 0) + 1) then
             if G.CONTROLLER.focused.target and G.CONTROLLER.focused.target.config.id == 'mod_page' then
