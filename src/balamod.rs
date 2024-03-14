@@ -1,13 +1,13 @@
-use std::path::{Path, PathBuf};
-use std::fs::File;
-use std::fs;
-use zip::ZipArchive;
-use std::io::{BufReader, Write, Read, Cursor};
-use colour::{blue_ln, red_ln};
-use zip::{ZipWriter, CompressionMethod, write::FileOptions};
-use libflate::deflate::Encoder;
-use crate::luas::get_mod_core;
 use crate::dependencies::{get_https_lua, get_ssl_lua, get_ssl_so};
+// use crate::luas::get_mod_core;
+use colour::{blue_ln, red_ln};
+use libflate::deflate::Encoder;
+use std::fs;
+use std::fs::File;
+use std::io::{BufReader, Cursor, Read, Write};
+use std::path::{Path, PathBuf};
+use zip::ZipArchive;
+use zip::{write::FileOptions, CompressionMethod, ZipWriter};
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -27,7 +27,9 @@ impl Balatro {
 
     pub fn inject_dependencies(&self) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path_buf();
-        let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
+        let exe_path = exe_path_buf
+            .to_str()
+            .expect("Failed to convert exe_path to str");
         copy_file_in_resources(exe_path_buf.parent().unwrap(), get_ssl_so(), "ssl.so")?;
         add_file_in_exe(exe_path, get_ssl_lua().as_bytes().to_vec(), "ssl.lua")?;
         add_file_in_exe(exe_path, get_https_lua().as_bytes().to_vec(), "https.lua")?;
@@ -43,13 +45,17 @@ impl Balatro {
 
     pub fn replace_file(&self, file_name: &str, new_contents: &[u8]) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path_buf();
-        let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
+        let exe_path = exe_path_buf
+            .to_str()
+            .expect("Failed to convert exe_path to str");
         replace_file_in_exe(exe_path, file_name, new_contents)
     }
 
     pub fn get_file_data(&self, file_name: &str) -> Result<Vec<u8>, std::io::Error> {
         let exe_path_buf = self.get_exe_path_buf();
-        let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
+        let exe_path = exe_path_buf
+            .to_str()
+            .expect("Failed to convert exe_path to str");
         let file = File::open(exe_path)?;
         let mut archive = ZipArchive::new(BufReader::new(file))?;
 
@@ -67,7 +73,9 @@ impl Balatro {
 
     pub fn get_all_files(&self) -> Result<Vec<String>, std::io::Error> {
         let exe_path_buf = self.get_exe_path_buf();
-        let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
+        let exe_path = exe_path_buf
+            .to_str()
+            .expect("Failed to convert exe_path to str");
         let file = File::open(exe_path)?;
         let mut archive = ZipArchive::new(BufReader::new(file))?;
 
@@ -79,8 +87,11 @@ impl Balatro {
         Ok(files)
     }
 
-
-    pub fn get_file_as_string(&self, file_name: &str, decompress: bool) -> Result<String, std::io::Error> {
+    pub fn get_file_as_string(
+        &self,
+        file_name: &str,
+        decompress: bool,
+    ) -> Result<String, std::io::Error> {
         let data = self.get_file_data(file_name)?;
         if decompress {
             let decompressed = decompress_bytes(&data)?;
@@ -90,34 +101,36 @@ impl Balatro {
         }
     }
 
-    pub fn get_all_lua_files(&self) -> Result<Vec<String>, std::io::Error> {
-        let exe_path_buf = self.get_exe_path_buf();
-        let exe_path = exe_path_buf.to_str().expect("Failed to convert exe_path to str");
-        let file = File::open(exe_path)?;
-        let mut archive = ZipArchive::new(BufReader::new(file))?;
+    // pub fn get_all_lua_files(&self) -> Result<Vec<String>, std::io::Error> {
+    //     let exe_path_buf = self.get_exe_path_buf();
+    //     let exe_path = exe_path_buf
+    //         .to_str()
+    //         .expect("Failed to convert exe_path to str");
+    //     let file = File::open(exe_path)?;
+    //     let mut archive = ZipArchive::new(BufReader::new(file))?;
 
-        let mut lua_files = Vec::new();
-        for i in 0..archive.len() {
-            let file = archive.by_index(i)?;
-            if file.name().ends_with(".lua") {
-                lua_files.push(file.name().to_string());
-            }
-        }
-        Ok(lua_files)
-    }
+    //     let mut lua_files = Vec::new();
+    //     for i in 0..archive.len() {
+    //         let file = archive.by_index(i)?;
+    //         if file.name().ends_with(".lua") {
+    //             lua_files.push(file.name().to_string());
+    //         }
+    //     }
+    //     Ok(lua_files)
+    // }
 
-    pub fn build_mod_core(&self) -> Result<String, std::io::Error> {
-        let paths = self.get_all_lua_files()?;
-        let loader = get_mod_core().to_string();
-        let mut path_string = String::new();
-        for path in paths {
-            path_string.push_str(&format!("    \"{}\",\n", path));
-        }
-        path_string.pop();
-        path_string.pop();
-        let loader = loader.replace("{paths}", &format!("{}", path_string));
-        Ok(loader)
-    }
+    // pub fn build_mod_core(&self) -> Result<String, std::io::Error> {
+    //     let paths = self.get_all_lua_files()?;
+    //     let loader = get_mod_core().to_string();
+    //     let mut path_string = String::new();
+    //     for path in paths {
+    //         path_string.push_str(&format!("    \"{}\",\n", path));
+    //     }
+    //     path_string.pop();
+    //     path_string.pop();
+    //     let loader = loader.replace("{paths}", &format!("{}", path_string));
+    //     Ok(loader)
+    // }
 }
 
 fn add_executable_to_path(path: PathBuf) -> PathBuf {
@@ -157,10 +170,13 @@ pub fn find_balatros() -> Vec<Balatro> {
             return vec![];
         }
 
-        let libraryfolders_file = File::open(libraryfolders_path).expect("Failed to open libraryfolders.vdf");
+        let libraryfolders_file =
+            File::open(libraryfolders_path).expect("Failed to open libraryfolders.vdf");
         let mut libraryfolders_contents = String::new();
         let mut libraryfolders_reader = BufReader::new(libraryfolders_file);
-        libraryfolders_reader.read_to_string(&mut libraryfolders_contents).expect("Failed to read libraryfolders.vdf");
+        libraryfolders_reader
+            .read_to_string(&mut libraryfolders_contents)
+            .expect("Failed to read libraryfolders.vdf");
 
         let libraryfolders_contents = libraryfolders_contents.split("\n").collect::<Vec<&str>>();
         let mut libraryfolders_contents = libraryfolders_contents.iter();
@@ -199,11 +215,9 @@ pub fn find_balatros() -> Vec<Balatro> {
         if !exe_path.exists() {
             continue;
         }
-        let version = get_balatro_version(exe_path.to_str().unwrap()).expect("Error while getting Balatro version");
-        balatros.push(Balatro {
-            path,
-            version,
-        });
+        let version = get_balatro_version(exe_path.to_str().unwrap())
+            .expect("Error while getting Balatro version");
+        balatros.push(Balatro { path, version });
     }
 
     balatros
@@ -238,13 +252,21 @@ fn get_balatro_version(exe_path: &str) -> Result<String, std::io::Error> {
     Ok("0.0.0".to_string())
 }
 
-fn copy_file_in_resources(dst: &Path, file_data: &[u8], file_name: &str) -> Result<(), std::io::Error> {
+fn copy_file_in_resources(
+    dst: &Path,
+    file_data: &[u8],
+    file_name: &str,
+) -> Result<(), std::io::Error> {
     let mut file = File::create(dst.join(file_name))?;
     file.write_all(file_data)?;
     Ok(())
 }
 
-fn add_file_in_exe(exe_path: &str, file_data: Vec<u8>, file_dst: &str) -> Result<(), std::io::Error> {
+fn add_file_in_exe(
+    exe_path: &str,
+    file_data: Vec<u8>,
+    file_dst: &str,
+) -> Result<(), std::io::Error> {
     let mut exe_data = fs::read(exe_path)?;
 
     let zip_start = find_zip_start(&exe_data).unwrap();
@@ -260,7 +282,10 @@ fn add_file_in_exe(exe_path: &str, file_data: Vec<u8>, file_dst: &str) -> Result
             let raw_file = zip_archive.by_index_raw(i)?;
             zip_writer.raw_copy_file(raw_file)?;
         }
-        zip_writer.start_file(file_dst, FileOptions::default().compression_method(CompressionMethod::Stored))?;
+        zip_writer.start_file(
+            file_dst,
+            FileOptions::default().compression_method(CompressionMethod::Stored),
+        )?;
         zip_writer.write_all(&file_data)?;
 
         zip_writer.finish()?;
@@ -271,7 +296,11 @@ fn add_file_in_exe(exe_path: &str, file_data: Vec<u8>, file_dst: &str) -> Result
     Ok(())
 }
 
-fn replace_file_in_exe(exe_path: &str, file_name: &str, new_contents: &[u8]) -> Result<(), std::io::Error> {
+fn replace_file_in_exe(
+    exe_path: &str,
+    file_name: &str,
+    new_contents: &[u8],
+) -> Result<(), std::io::Error> {
     let mut exe_data = fs::read(exe_path)?;
 
     let zip_start = find_zip_start(&exe_data).unwrap();
@@ -293,7 +322,10 @@ fn replace_file_in_exe(exe_path: &str, file_name: &str, new_contents: &[u8]) -> 
             zip_writer.raw_copy_file(raw_file)?;
         }
 
-        zip_writer.start_file(file_name, FileOptions::default().compression_method(CompressionMethod::Stored))?;
+        zip_writer.start_file(
+            file_name,
+            FileOptions::default().compression_method(CompressionMethod::Stored),
+        )?;
         zip_writer.write_all(new_contents)?;
 
         zip_writer.finish()?;
@@ -306,7 +338,9 @@ fn replace_file_in_exe(exe_path: &str, file_name: &str, new_contents: &[u8]) -> 
 
 fn find_zip_start(exe_data: &[u8]) -> Result<usize, &'static str> {
     let zip_signature: [u8; 4] = [0x50, 0x4b, 0x03, 0x04];
-    exe_data.windows(4).position(|window| window == zip_signature)
+    exe_data
+        .windows(4)
+        .position(|window| window == zip_signature)
         .ok_or("ZIP start not found")
 }
 
