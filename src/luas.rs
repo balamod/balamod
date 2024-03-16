@@ -127,3 +127,39 @@ pub fn get_error_handler() -> &'static str {
     end
     "#
 }
+
+pub fn get_load_handler() -> &'static str {
+    r#"
+    for _, mod in ipairs(mods) do
+        if mod.on_load then
+            mod.on_load(args)
+        end
+    end
+    "#
+}
+
+pub fn get_quit_handler() -> &'static str {
+    r#"
+    for _, mod in ipairs(mods) do
+        if mod.on_unload then
+            mod.on_quit()
+        end
+    end
+    "#
+}
+
+pub fn get_mousewheel_event() -> &'static str {
+    r#"
+    function love.wheelmoved(x, y)
+        local cancel_event = false
+        for _, mod in ipairs(mods) do
+            if mod.on_mousewheel then
+                if mod.on_mousewheel(x, y) then
+                    cancel_event = true
+                end
+            end
+            if cancel_event then return end
+        end
+    end
+    "#
+}
