@@ -236,6 +236,14 @@ fn inject_modloader(
             .as_str(),
         );
 
+        new_main = new_main.replace(
+            "function love.errhand(msg)",
+            format!(
+                "function love.errhand(msg)\n{}",
+                get_error_handler()
+            ).as_str(),
+        );
+
         let modloader = get_mod_loader()
             .to_string()
             .replace("{balamod_version}", VERSION);

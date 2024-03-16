@@ -117,3 +117,13 @@ pub fn get_mouse_pressed_event() -> &'static str {
     if cancel_event then return end
     "#
 }
+
+pub fn get_error_handler() -> &'static str {
+    r#"
+    for _, mod in ipairs(mods) do
+        if mod.on_error then
+            mod.on_error(msg)
+        end
+    end
+    "#
+}
