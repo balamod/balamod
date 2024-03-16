@@ -141,7 +141,7 @@ pub fn get_load_handler() -> &'static str {
 pub fn get_quit_handler() -> &'static str {
     r#"
     for _, mod in ipairs(mods) do
-        if mod.on_unload then
+        if mod.on_quit then
             mod.on_quit()
         end
     end
