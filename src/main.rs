@@ -236,6 +236,34 @@ fn inject_modloader(
             .as_str(),
         );
 
+        new_main = new_main.replace(
+            "function love.errhand(msg)",
+            format!(
+                "function love.errhand(msg)\n{}",
+                get_error_handler()
+            ).as_str(),
+        );
+
+        new_main = new_main.replace(
+            "function love.load()",
+            format!(
+                "function love.load(args)\n{}",
+                get_load_handler()
+            ).as_str(),
+        );
+
+        new_main = new_main.replace(
+            "function love.quit()",
+            format!(
+                "function love.quit()\n{}",
+                get_quit_handler()
+            ).as_str(),
+        );
+
+        new_main.push_str(
+            get_mousewheel_event()
+        );
+
         let modloader = get_mod_loader()
             .to_string()
             .replace("{balamod_version}", VERSION);
