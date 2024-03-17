@@ -5,35 +5,49 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 [![Balamod Discord](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)](https://discord.gg/p7DeW7pSzA)
 
 # Summary
+- [Balamod](#balamod)
+- [Summary](#summary)
 - [Easy Install](#easy-install)
-    - [Linux](#linux)
-    - [Windows](#windows)
-- [How to Install Mods](#how-to-install-mods)
-- [CLI Usage](#cli-usage)
+  - [Linux](#linux)
+  - [Windows](#windows)
+  - [MacOS](#macos)
+  - [How to Install Mods](#how-to-install-mods)
+  - [CLI Usage](#cli-usage)
     - [Example of usages](#example-of-usages)
-- [Modding](#modding)
+  - [Modding](#modding)
     - [Modding API](#modding-api)
     - [Events](#events)
-- [How to use Code Injection](#how-to-use-code-injection)
-- [How to find the function names, where to inject code, etc...](#how-to-find-the-function-names-where-to-inject-code-etc)
+  - [How to add you mods to the repos](#how-to-add-you-mods-to-the-repos)
+  - [How to Use Code Injection](#how-to-use-code-injection)
+  - [How to find the function names, where to inject code, etc...](#how-to-find-the-function-names-where-to-inject-code-etc)
 
-# Easy Install 
+# Easy Install
 > [!IMPORTANT]
 > **Balamod** currently don't work on macOS i86, but it will work on ARM64 aka M1/M2/M3.
 ## Linux
 
 ```bash
-./balamod-v0.1.10-linux -a
+./balamod-v0.1.11-linux -a
 ```
 ## Windows
 
 ```cmd
-balamod-v0.1.10-windows.exe -a
+balamod-v0.1.11-windows.exe -a
 ```
 
 ## MacOS
+
+Double click the downloaded installer, which will install `balamod` in `/usr/bin/local` by default,
+after you went through the installation process.
+Then, in a terminal, run :
 ```bash
-./balamod-v0.1.10-mac -a
+balamod -a
+```
+
+If `/usr/local/bin` is not in your `PATH` environment variable, you can run balamod like so:
+
+```bash
+PATH=/usr/local/bin balamod -a
 ```
 
 ## How to Install Mods
@@ -42,9 +56,9 @@ Just put your mods in the `mods` folder, and your API in the `apis` folder on `%
 
 ## CLI Usage
 
-Initially, Balamod searches for all Balatro installations.  
-If a single installation is found, it becomes the default.  
-For multiple installations, a prompt will allow you to select one.  
+Initially, Balamod searches for all Balatro installations.
+If a single installation is found, it becomes the default.
+For multiple installations, a prompt will allow you to select one.
 In case no installation is detected, you will be prompted to specify one using the `-b` flag.
 
 ### Example of usages
@@ -78,7 +92,7 @@ In case no installation is detected, you will be prompted to specify one using t
     ./balamod -d -o MyCustomFolder
     ```
 
-If you want to inject game code, you will need to compress it with -c  
+If you want to inject game code, you will need to compress it with -c
 Example to inject a Lua file:
 ```bash
 ./balamod -x -c -i Balatro.lua -o DAT1.jkr
@@ -131,7 +145,7 @@ The `inject` function will replace the first occurence of the pattern in the des
 If you want to replace code outside a function, you can use classic overring.
 
 ### Events
-Currently *(in 0.1.10)*, the mod loader supports 7 events:
+Currently *(in 0.1.11)*, the mod loader supports 7 events:
 - `on_pre_update` is called before the game update, if true is returned, it will cancel the update (ticking)
 - `on_post_update` is called after the game update
 - `on_pre_render` is called just before rendering frame functions
@@ -163,7 +177,7 @@ table.insert(mods,
                 sendDebugMessage("post update")
             end,
             on_pre_render = function()
-                sendDebugMessage("pre render") 
+                sendDebugMessage("pre render")
                 return false -- use true to cancel the rendering
             end,
             on_post_render = function()
@@ -195,7 +209,7 @@ mod_id|version|name|description|url
 ```
 
 > [!WARNING]
-> Your mod need to have an id that is unique, and the version 
+> Your mod need to have an id that is unique, and the version
 
 All the files in the current folder and subfolders *(based on the url path)* will be added to the Balatro AppData folder.
 
