@@ -267,10 +267,10 @@ impl Balatro {
 
 
 pub fn find_balatros() -> Vec<Balatro> {
-    let mut paths: Vec<PathBuf> = get_balatro_paths();
+    let paths: Vec<PathBuf> = get_balatro_paths();
     let mut balatros = Vec::new();
     for path in paths {
-        let mut balatro = Balatro { path };
+        let balatro = Balatro { path };
         if balatro.is_valid() {
             balatros.push(balatro);
         }
