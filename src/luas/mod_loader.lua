@@ -4,7 +4,7 @@ end
 G.FUNCS.open_balamod_discord = function(e)
     love.system.openURL('https://discord.gg/p7DeW7pSzA')
 end
-G.FUNCS.taggle_mod = function(e)
+G.FUNCS.toggle_mod = function(e)
     local ori_id = string.sub(e.config.id, 7)
     local mod = getModByModId(mods, ori_id)
     if mod == nil then
@@ -124,7 +124,7 @@ G.UIDEF.mod_description = function(e)
                 r = 0.1,
                 hover = true,
                 colour = status_colour,
-                button = 'taggle_mod',
+                button = 'toggle_mod',
                 shadow = true,
                 id = status_btn_id
             },
