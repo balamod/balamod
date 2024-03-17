@@ -1,4 +1,4 @@
-current_version ?= $(shell grep -e "^version =" ./Cargo.toml | cut -d"=" -f2 | sed 's/"//g' )
+current_version ?= $(shell grep -e "^version =" ./Cargo.toml | cut -d"=" -f2 | sed 's/"//g' | tr -d '[:space:]')
 version ?= 0.1.12
 
 build: compile sign installer signinstaller ##@ Make the whole shebang for macos
@@ -25,8 +25,8 @@ signinstaller:
 .PHONY: sign help bumpversion
 
 bumpversion:
-	@echo "Bumping version..."
-	@sed -i '' -e "s/version = \"$(current_version)\"/version = \"$(version)\"/g" ./Cargo.toml
-	@sed -i '' -e "s/$(current_version)/$(version)/g" ./README.md
-	@sed -i '' -e "s/const VERSION: &'static str = \"$(current_version)\";/const VERSION: &'static str = \"$(version)\";/g" ./src/main.rs
+	@echo "Bumping version from $(current_version) to $(version)"
+	sed -i '' -e 's:version = "$(current_version)":version = "$(version)":g' ./Cargo.toml
+	sed -i '' -e "s/$(current_version)/$(version)/g" ./README.md
+	sed -i '' -e 's/"$(current_version)"/"$(version)"/g' ./src/main.rs
 	@echo "Version bumped to $(version)"
