@@ -7,7 +7,7 @@ use winreg::RegKey;
 #[cfg(target_os = "windows")]
 use std::path::Path;
 #[cfg(target_os = "windows")]
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 #[cfg(target_os = "windows")]
 use std::fs::File;
 
@@ -54,6 +54,7 @@ pub fn get_balatro_paths() -> Vec<PathBuf> {
         .read_to_string(&mut libraryfolders_contents)
         .expect("Failed to read libraryfolders.vdf");
 
+    let mut paths: Vec<PathBuf> = vec![];
     let libraryfolders_contents = libraryfolders_contents.split("\n").collect::<Vec<&str>>();
     let mut libraryfolders_contents = libraryfolders_contents.iter();
     while let Some(line) = libraryfolders_contents.next() {
