@@ -1,8 +1,8 @@
 local logging = require('logger')
 local console = require('console')
 local math = require('math')
-local logger = logging.getLogger('balamod')
 
+logger = getLogger('balamod')
 mods = {}
 
 table.insert(mods,
@@ -21,7 +21,7 @@ table.insert(mods,
             console.logger:error("Error: ", message)
             -- on error, write all messages to a file
             love.filesystem.write("dev_console.log", "")
-            for i, message in ipairs(logging.ALL_MESSAGES) do
+            for i, message in ipairs(ALL_MESSAGES) do
                 love.filesystem.append("dev_console.log", message:formatted(true) .. "\n")
             end
         end,
@@ -100,7 +100,7 @@ table.insert(mods,
             registerCommand(
                 "clear",
                 function()
-                    logging.ALL_MESSAGES = {}
+                    ALL_MESSAGES = {}
                     return true
                 end,
                 "Clear the console"
@@ -340,7 +340,7 @@ table.insert(mods,
     }
 )
 
-is_loaded = false
+balamodLoaded = false
 
 RESULT = {
     SUCCESS = 0,

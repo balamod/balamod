@@ -4,7 +4,7 @@ local utf8 = require("utf8")
 local math = require("math")
 
 return {
-    logger = logging.getLogger("dev_console"),
+    logger = getLogger("dev_console"),
     log_level = "INFO",
     is_open = false,
     cmd = "> ",
@@ -115,7 +115,7 @@ return {
     end,
     getFilteredMessages = function(self)
         local filtered = {}
-        for _, message in ipairs(logging.ALL_MESSAGES) do
+        for _, message in ipairs(ALL_MESSAGES) do
             if message.level_numeric >= self.logger.log_levels[self.log_level] then
                 table.insert(filtered, message)
             end

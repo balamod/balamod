@@ -19,8 +19,8 @@ pub fn get_pre_update_event() -> &'static str {
 
 pub fn get_post_update_event() -> &'static str {
     r#"
-    if balamod.is_loaded == false then
-        balamod.is_loaded = true
+    if balamodLoaded == false then
+        balamodLoaded = true
         for _, mod in ipairs(mods) do -- Load all mods after eveything else
 	        if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
 		        pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
@@ -163,6 +163,6 @@ pub fn get_mousewheel_event() -> &'static str {
 pub fn get_imports() -> &'static str {
     r#"
     local mods = {}
-    local balamod = require('balamiod')
+    local balamod = require('balamod')
     "#
 }
