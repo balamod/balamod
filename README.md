@@ -36,8 +36,18 @@ balamod-v0.1.11-windows.exe -a
 ```
 
 ## MacOS
+
+Double click the downloaded installer, which will install `balamod` in `/usr/bin/local` by default,
+after you went through the installation process.
+Then, in a terminal, run :
 ```bash
-./balamod-v0.1.11-mac -a
+balamod -a
+```
+
+If `/usr/local/bin` is not in your `PATH` environment variable, you can run balamod like so:
+
+```bash
+PATH=/usr/local/bin balamod -a
 ```
 
 ## How to Install Mods
