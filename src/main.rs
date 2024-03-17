@@ -15,6 +15,7 @@ use crate::luas::*;
 mod balamod;
 mod dependencies;
 mod luas;
+mod finder;
 
 const VERSION: &'static str = "0.1.11a";
 
@@ -70,7 +71,6 @@ fn main() {
     if let Some(ref path) = args.balatro_path {
         balatro = Balatro {
             path: std::path::PathBuf::from(path),
-            version: "0.0.0".to_string(),
         };
     } else {
         if balatros.len() == 0 {
@@ -80,7 +80,7 @@ fn main() {
         } else if balatros.len() == 1 {
             balatro = balatros[0].clone();
             green!("Balatro ");
-            yellow!("v{}", balatro.version);
+            yellow!("v{}", balatro.get_version().unwrap());
             green_ln!(" found !")
         } else {
             println!("Multiple Balatro found");
@@ -89,7 +89,7 @@ fn main() {
                 yellow!("{}", i + 1);
                 green!("] ");
                 magenta!("Balatro ");
-                cyan!("v{} ", balatro.version);
+                cyan!("v{} ", balatro.get_version().unwrap());
                 magenta!("in ");
                 cyan_ln!("{}", balatro.path.display());
             }
@@ -308,11 +308,11 @@ fn inject_modloader(
 fn uninstall(balatro: Balatro, durations: &mut Vec<StepDuration>) {
     // restore from the backup
     let start = Instant::now();
-    let backup_path = balatro.get_exe_path_buf().clone().with_extension("bak");
+    let backup_path = balatro.get_exe_path().clone().with_extension("bak");
     if fs::metadata(backup_path.as_path()).is_ok() {
         yellow_ln!("Restoring backup...");
-        fs::remove_file(balatro.get_exe_path_buf()).expect("Error while deleting file");
-        fs::copy(backup_path.as_path(), balatro.get_exe_path_buf())
+        fs::remove_file(balatro.get_exe_path()).expect("Error while deleting file");
+        fs::copy(backup_path.as_path(), balatro.get_exe_path())
             .expect("Error while copying file");
         fs::remove_file(backup_path.as_path()).expect("Error while deleting file");
         green_ln!("Done!");
@@ -339,12 +339,12 @@ fn uninstall(balatro: Balatro, durations: &mut Vec<StepDuration>) {
 fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
     let start = Instant::now();
     // Copy the balatro executable to back it up and restore it later if needed
-    let backup_path = balatro.get_exe_path_buf().clone().with_extension("bak");
+    let backup_path = balatro.get_exe_path().clone().with_extension("bak");
     if fs::metadata(backup_path.as_path()).is_ok() {
         yellow_ln!("Deleting existing backup...");
         fs::remove_file(backup_path.as_path()).expect("Error while deleting file");
     }
-    fs::copy(balatro.get_exe_path_buf(), backup_path.as_path()).expect("Error while copying file");
+    fs::copy(balatro.get_exe_path(), backup_path.as_path()).expect("Error while copying file");
     durations.push(StepDuration {
         duration: start.elapsed(),
         name: String::from("Backup of executable"),
@@ -426,7 +426,7 @@ fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
 
         cyan_ln!("Compressing {} ...", args.input.clone().unwrap());
         let compress_start: Instant = Instant::now();
-        balamod::compress_file(
+        balatro.compress_file(
             args.input.clone().unwrap().as_str(),
             compression_output.as_str(),
         )
