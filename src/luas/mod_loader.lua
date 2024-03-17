@@ -6,13 +6,13 @@ G.FUNCS.open_balamod_discord = function(e)
 end
 G.FUNCS.toggle_mod = function(e)
     local ori_id = string.sub(e.config.id, 7)
-    local mod = getModByModId(mods, ori_id)
+    local mod = balamod.getModByModId(mods, ori_id)
     if mod == nil then
-        sendDebugMessage('Mod ' .. ori_id .. ' not found')
+        balamod.logger:debug('Mod ' .. ori_id .. ' not found')
         return
     end
 
-    sendDebugMessage('Taggling mod: ' .. mod.name .. ' id: ' .. ori_id)
+    balamod.logger:debug('Taggling mod: ' .. mod.name .. ' id: ' .. ori_id)
     mod.enabled = not mod.enabled
     if mod.enabled and mod.on_enable and type(mod.on_enable) == 'function' then
         pcall(mod.on_enable)
@@ -32,17 +32,17 @@ G.FUNCS.toggle_mod = function(e)
 end
 G.FUNCS.install_mod = function(e)
     local mod_id = string.sub(e.config.id, 7)
-    local ret = installMod(mod_id)
-    sendDebugMessage('Mod ' .. mod_id .. ' install status ' .. tostring(ret))
+    local ret = balamod.installMod(mod_id)
+    balamod.logger:info('Mod ' .. mod_id .. ' install status ' .. tostring(ret))
     if ret == RESULT.SUCCESS then
-        sendDebugMessage('Reloading mod tab')
+        balamod.logger:debug('Reloading mod tab')
         if G.OVERLAY_MENU then
             G.OVERLAY_MENU:remove()
             G.OVERLAY_MENU = nil
         end
         G.FUNCS.overlay_menu({definition = G.UIDEF.mods()})
     else
-        sendDebugMessage('Mod ' .. mod_id .. ' failed to install')
+        balamod.logger:error('Mod ' .. mod_id .. ' failed to install')
         e.config.colour = G.C.RED
         e.children[1].config.text = 'Failed'
         e.UIBox:recalculate(true)
@@ -50,9 +50,9 @@ G.FUNCS.install_mod = function(e)
 end
 
 check_need_update = function(mod_id)
-    if getModByModId(repoMods, mod_id) and getModByModId(mods, mod_id) then
-        local repo_mod = getModByModId(repoMods, mod_id)
-        local mod = getModByModId(mods, mod_id)
+    if balamod.getModByModId(repoMods, mod_id) and balamod.getModByModId(mods, mod_id) then
+        local repo_mod = balamod.getModByModId(repoMods, mod_id)
+        local mod = balamod.getModByModId(mods, mod_id)
         if repo_mod.version ~= mod.version then
             return true
         end
@@ -66,10 +66,10 @@ G.UIDEF.mod_description = function(e)
     local menu_btn_id = 'm_btn_' .. e.config.id
     local dl_up_btn_id = 'd_btn_' .. e.config.id
 
-    local mod = getModByModId(mods_collection, e.config.id)
-    local mod_present = isModPresent(e.config.id)
+    local mod = balamod.getModByModId(mods_collection, e.config.id)
+    local mod_present = balamod.isModPresent(e.config.id)
     if not mod.description then
-        mod.description = {'This mod dose not offer description'}
+        mod.description = {'This mod does not offer a description'}
     end
     if type(mod.description) == 'string' then
         mod.description = {mod.description}
@@ -80,10 +80,9 @@ G.UIDEF.mod_description = function(e)
     local status_text = mod.enabled and 'Enabled' or 'Disabled'
     local status_colour = mod.enabled and G.C.GREEN or G.C.RED
     local need_update = check_need_update(mod.mod_id)
-    local new_version = need_update and 'New ' .. getModByModId(repoMods, mod.mod_id).version or version
+    local new_version = need_update and 'New ' .. balamod.getModByModId(repoMods, mod.mod_id).version or version
     local show_download_btn = not mod_present or need_update
-    sendDebugMessage('Mod ' .. mod.name .. ' present ' .. tostring(mod_present) .. ' need update ' ..
-                         tostring(need_update) .. ' new version ' .. new_version)
+    balamod.logger:debug('Mod: ', mod.name, ' present: ', mod_present, ' need update: ', need_update, ' new version: ', new_version)
     local mod_description_text = {}
     for _, v in ipairs(mod.description) do
         mod_description_text[#mod_description_text + 1] = {
@@ -189,7 +188,7 @@ G.FUNCS.change_mod_description = function(e)
     if not e or not e.config or not e.config.id or e.config.id == 'nil' then
         return
     end
-    sendDebugMessage('Changing mod description to ' .. e.config.id)
+    balamod.logger:debug('Changing mod description to ', e.config.id)
     if G.OVERLAY_MENU then
         local desc_area = G.OVERLAY_MENU:get_UIE_by_ID('mod_area')
         if desc_area and desc_area.config.oid ~= e.config.id then
@@ -223,12 +222,12 @@ G.UIDEF.mod_list_page = function(_page)
 
     for i, mod in ipairs(mods_collection) do
 
-        sendDebugMessage('Mod index ' .. i .. ' page ' .. _page .. ' name ' .. mod.name .. ' id ' .. mod.mod_id)
+        balamod.logger:debug('Mod index ' .. i .. ' page ' .. _page .. ' name ' .. mod.name .. ' id ' .. mod.mod_id)
         if i > G.MOD_PAGE_SIZE * (_page or 0) and i <= G.MOD_PAGE_SIZE * ((_page or 0) + 1) then
             if G.CONTROLLER.focused.target and G.CONTROLLER.focused.target.config.id == 'mod_page' then
                 snapped = true
             end
-            local mod_present = isModPresent(mod.mod_id)
+            local mod_present = balamod.isModPresent(mod.mod_id)
             mod_list[#mod_list + 1] = UIBox_button({
                 id = mod.mod_id,
                 label = {mod.name},
@@ -266,9 +265,9 @@ G.FUNCS.change_mod_list_page = function(args)
 end
 
 if refreshRepos() == RESULT.SUCCESS then
-    sendDebugMessage('Repo mods refreshed')
+    balamod.logger:info('Repo mods refreshed')
 else
-    sendDebugMessage('Failed to refresh repo mods')
+    balamod.logger:error('Failed to refresh repo mods')
 end
 mods_collection = {}
 
@@ -276,18 +275,18 @@ create_mod_tab_definition = function()
     G.MOD_PAGE_SIZE = 7
     mods_collection = {}
     for _, mod in ipairs(mods) do
-        if not getModByModId(mods_collection, mod.mod_id) then
+        if not balamod.getModByModId(mods_collection, mod.mod_id) then
             table.insert(mods_collection, mod)
         else
-            sendDebugMessage('Mod ' .. mod.name .. ' already in collection')
+            balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
     end
     for index, mod in ipairs(repoMods) do
-        local cur_mod = getModByModId(mods_collection, mod.mod_id)
+        local cur_mod = balamod.getModByModId(mods_collection, mod.mod_id)
         if not cur_mod then
             table.insert(mods_collection, mod)
         else
-            sendDebugMessage('Mod ' .. mod.name .. ' already in collection')
+            balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
     end
     local mod_pages = {}

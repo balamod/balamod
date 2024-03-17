@@ -181,8 +181,7 @@ fn inject_modloader(
     if new_main.starts_with("-- balamod") {
         yellow_ln!("The main already has the modloader, skipping...");
     } else {
-        let mod_core = get_mod_core().to_string();
-        new_main = format!("-- balamod\n{}\n\n{}\n", mod_core, new_main);
+        new_main = format!("-- balamod\n{}\n\n{}\n", get_imports(),new_main);
 
         new_main = new_main.replace(
             "function love.update( dt )",
@@ -323,17 +322,15 @@ fn uninstall(balatro: Balatro, durations: &mut Vec<StepDuration>) {
         duration: start.elapsed(),
         name: String::from("Restoration of executable"),
     });
-    if cfg!(target_os = "macos") && cfg!(any(target_arch = "aarch64", target_arch = "arm")) {
-        cyan_ln!("Uninstalling dependencies (macOS)");
-        let start = Instant::now();
-        balatro
-            .remove_dependencies()
-            .expect("Error while uninstalling dependencies");
-        durations.push(StepDuration {
-            duration: start.elapsed(),
-            name: String::from("Dependency uninstallation"),
-        });
-    }
+    cyan_ln!("Uninstalling dependencies...");
+    let start = Instant::now();
+    balatro
+        .remove_dependencies()
+        .expect("Error while uninstalling dependencies");
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Dependency uninstallation"),
+    });
 }
 
 fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
@@ -379,17 +376,15 @@ fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
         duration: start.elapsed(),
         name: String::from("Modloader injection (uidef)"),
     });
-    if cfg!(target_os = "macos") && cfg!(any(target_arch = "aarch64", target_arch = "arm")) {
-        cyan_ln!("Injecting dependencies (macOS)");
-        let start = Instant::now();
-        balatro
-            .inject_dependencies()
-            .expect("Error while injecting dependencies");
-        durations.push(StepDuration {
-            duration: start.elapsed(),
-            name: String::from("Dependency injection"),
-        });
-    }
+    cyan_ln!("Injecting dependencies");
+    let start = Instant::now();
+    balatro
+        .inject_dependencies()
+        .expect("Error while injecting dependencies");
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Dependency injection"),
+    });
     green_ln!("Done!");
 }
 

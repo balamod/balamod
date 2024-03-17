@@ -9,3 +9,19 @@ pub fn get_ssl_lua() -> &'static str {
 pub fn get_https_lua() -> &'static str {
     include_str!("dependencies/https.lua")
 }
+
+pub fn get_balamod_lua() -> &'static str {
+    include_str!("dependencies/balamod.lua")
+}
+
+pub fn get_console_lua() -> &'static str {
+    include_str!("dependencies/console.lua")
+}
+
+pub fn get_platform_lua() -> &'static str {
+    include_str!("dependencies/platform.lua")
+}
+
+pub fn get_logger_lua() -> &'static str {
+    include_str!("dependencies/logger.lua")
+}

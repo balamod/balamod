@@ -1,4 +1,4 @@
-use crate::dependencies::{get_https_lua, get_ssl_lua, get_ssl_so};
+use crate::dependencies::{get_console_lua, get_https_lua, get_logger_lua, get_platform_lua, get_ssl_lua, get_ssl_so, get_balamod_lua};
 use crate::finder::get_balatro_paths;
 use colour::red_ln;
 use libflate::deflate::Encoder;
@@ -28,6 +28,7 @@ impl Balatro {
         return self.path.clone().join("Balatro.exe");
     }
 
+    #[cfg(target_os = "macos")]
     pub fn inject_dependencies(&self) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path();
         let exe_path = exe_path_buf
@@ -36,13 +37,38 @@ impl Balatro {
         self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_ssl_so(), "ssl.so")?;
         self.add_file_in_exe(exe_path, get_ssl_lua().as_bytes().to_vec(), "ssl.lua")?;
         self.add_file_in_exe(exe_path, get_https_lua().as_bytes().to_vec(), "https.lua")?;
+        self.add_file_in_exe(exe_path, get_balamod_lua().as_bytes().to_vec(), "balamod.lua")?;
+        self.add_file_in_exe(exe_path, get_logger_lua().as_bytes().to_vec(), "logger.lua")?;
+        self.add_file_in_exe(exe_path, get_platform_lua().as_bytes().to_vec(), "platform.lua")?;
+        self.add_file_in_exe(exe_path, get_console_lua().as_bytes().to_vec(), "console.lua")?;
         Ok(())
     }
 
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    pub fn inject_dependencies(&self) -> Result<(), std::io::Error> {
+        use crate::dependencies::get_balamod_lua;
+
+        let exe_path_buf = self.get_exe_path();
+        let exe_path = exe_path_buf
+            .to_str()
+            .expect("Failed to convert exe_path to str");
+        self.add_file_in_exe(exe_path, get_balamod_lua().as_bytes().to_vec(), "balamod.lua")?;
+        self.add_file_in_exe(exe_path, get_logger_lua().as_bytes().to_vec(), "logger.lua")?;
+        self.add_file_in_exe(exe_path, get_platform_lua().as_bytes().to_vec(), "platform.lua")?;
+        self.add_file_in_exe(exe_path, get_console_lua().as_bytes().to_vec(), "console.lua")?;;
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
     pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path();
         let resource_dir = exe_path_buf.parent().unwrap();
         fs::remove_file(resource_dir.join("ssl.so"))?;
+        Ok(())
+    }
+
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
         Ok(())
     }
 
