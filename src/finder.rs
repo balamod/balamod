@@ -4,6 +4,12 @@ use colour::{blue_ln, red_ln};
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
+#[cfg(target_os = "windows")]
+use std::path::Path;
+#[cfg(target_os = "windows")]
+use std::io::BufReader;
+#[cfg(target_os = "windows")]
+use std::fs::File;
 
 #[cfg(target_os = "windows")]
 fn read_path_from_registry() -> Result<String, std::io::Error> {
