@@ -1,9 +1,20 @@
 require('logger')
-local console = require('console')
-local math = require('math')
+console = require('console')
+math = require('math')
 
 logger = getLogger('balamod')
 mods = {}
+
+function splitstring(inputstr, sep)
+    if sep == nil then
+        sep = "%s"
+    end
+    local t={}
+    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+        table.insert(t, str)
+    end
+    return t
+end
 
 table.insert(mods,
     {
@@ -17,7 +28,18 @@ table.insert(mods,
             "available commands and shortcuts",
         },
         enabled = true,
-        on_quit = function()
+        on_game_load = function(args)
+            console.logger:info("Game loaded", args)
+            for _, arg in ipairs(args) do
+                local split = splitstring(arg, "=")
+                if split[0] == "--log-level" then
+                    console.logger.level = split[1]:upper()
+                    console.log_level = split[1]:upper()
+                end
+            end
+            saveLogs()
+        end,
+        on_game_quit = function()
             console.logger:info("Quitting Balatro...")
             saveLogs()
         end,
@@ -114,6 +136,15 @@ table.insert(mods,
                     return true
                 end,
                 "Close the console"
+            )
+
+            registerCommand(
+                "quit",
+                function()
+                    love.quit()
+                    return true
+                end,
+                "Quit the game"
             )
 
             registerCommand(
@@ -277,7 +308,7 @@ table.insert(mods,
             return false
         end,
         on_post_render = function ()
-            console.max_lines = math.floor(love.graphics.getHeight() / 20) - 5  -- 5 lines of bottom padding
+            console.max_lines = math.floor(love.graphics.getHeight() / console.line_height) - 5  -- 5 lines of bottom padding
             if console.is_open then
                 love.graphics.setColor(0, 0, 0, 0.3)
                 love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())

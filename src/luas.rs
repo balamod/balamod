@@ -128,8 +128,8 @@ pub fn get_error_handler() -> &'static str {
 pub fn get_load_handler() -> &'static str {
     r#"
     for _, mod in ipairs(mods) do
-        if mod.on_load then
-            mod.on_load(args)
+        if mod.on_game_load then
+            mod.on_game_load(args)
         end
     end
     "#
@@ -139,8 +139,8 @@ pub fn get_quit_handler() -> &'static str {
     r#"
     saveLogs()
     for _, mod in ipairs(mods) do
-        if mod.on_quit then
-            mod.on_quit()
+        if mod.on_game_quit then
+            mod.on_game_quit()
         end
     end
     "#

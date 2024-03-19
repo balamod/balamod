@@ -1,4 +1,4 @@
-local logging = require("logger")
+require("logger")
 local platform = require("platform")
 local utf8 = require("utf8")
 local math = require("math")
