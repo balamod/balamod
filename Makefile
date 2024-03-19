@@ -30,3 +30,12 @@ bumpversion:
 	sed -i '' -e "s/$(current_version)/$(version)/g" ./README.md
 	sed -i '' -e 's/"$(current_version)"/"$(version)"/g' ./src/main.rs
 	@echo "Version bumped to $(version)"
+
+inject:  ##@ Build in release, uninstall balamod and reinject
+	@echo "Building in release mode..."
+	@cargo build --release
+	@echo "Uninstalling balamod..."
+	@./target/release/balamod -u
+	@echo "Reinjecting balamod..."
+	@./target/release/balamod -a
+	@echo "Done"

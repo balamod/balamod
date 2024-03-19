@@ -116,6 +116,7 @@ pub fn get_mouse_pressed_event() -> &'static str {
 
 pub fn get_error_handler() -> &'static str {
     r#"
+    saveLogs()
     for _, mod in ipairs(mods) do
         if mod.on_error then
             mod.on_error(msg)
@@ -136,6 +137,7 @@ pub fn get_load_handler() -> &'static str {
 
 pub fn get_quit_handler() -> &'static str {
     r#"
+    saveLogs()
     for _, mod in ipairs(mods) do
         if mod.on_quit then
             mod.on_quit()
@@ -162,7 +164,6 @@ pub fn get_mousewheel_event() -> &'static str {
 
 pub fn get_imports() -> &'static str {
     r#"
-    local mods = {}
-    local balamod = require('balamod')
+    require('balamod')
     "#
 }

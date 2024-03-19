@@ -1,4 +1,4 @@
-local logging = require('logger')
+require('logger')
 local console = require('console')
 local math = require('math')
 
@@ -17,13 +17,14 @@ table.insert(mods,
             "available commands and shortcuts",
         },
         enabled = true,
+        on_quit = function()
+            console.logger:info("Quitting Balatro...")
+            saveLogs()
+        end,
         on_error = function(message)
             console.logger:error("Error: ", message)
             -- on error, write all messages to a file
-            love.filesystem.write("dev_console.log", "")
-            for i, message in ipairs(ALL_MESSAGES) do
-                love.filesystem.append("dev_console.log", message:formatted(true) .. "\n")
-            end
+            saveLogs()
         end,
         on_enable = function()
             console.logger:debug("Dev Console enabled")
@@ -276,7 +277,7 @@ table.insert(mods,
             return false
         end,
         on_post_render = function ()
-            console.max_lines = math.floor(love.graphics.getHeight() / LINE_HEIGHT) - 5  -- 5 lines of bottom padding
+            console.max_lines = math.floor(love.graphics.getHeight() / 20) - 5  -- 5 lines of bottom padding
             if console.is_open then
                 love.graphics.setColor(0, 0, 0, 0.3)
                 love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
@@ -356,6 +357,10 @@ if not love.filesystem.getInfo("mods", "directory") then -- Create mods folder i
     love.filesystem.createDirectory("mods")
 end
 
+if not love.filesystem.getInfo("logs", "directory") then -- Create logs folder if it doesn't exist
+    love.filesystem.createDirectory("logs")
+end
+
 if not love.filesystem.getInfo("apis", "directory") then -- Create apis folder if it doesn't exist
     love.filesystem.createDirectory("apis")
 end
@@ -367,22 +372,21 @@ end
 -- @param autocomplete: function(current_arg: string), a function that returns a list of possible completions for the current argument
 -- @param usage: string, a string describing the usage of the command (longer, more detailed description of the command's usage)
 function registerCommand(name, callback, short_description, autocomplete, usage)
-    local logger = getLogger("dev_console")
     if name == nil then
-        logger:error("registerCommand -- name is required")
+        console.logger:error("registerCommand -- name is required")
     end
     if callback == nil then
-        logger:error("registerCommand -- callback is required")
+        console.logger:error("registerCommand -- callback is required")
     end
     if type(callback) ~= "function" then
-        logger:error("registerCommand -- callback must be a function")
+        console.logger:error("registerCommand -- callback must be a function")
     end
     if name == nil or callback == nil or type(callback) ~= "function" then
-        logger:warn("registerCommand -- name and callback are required, ignoring")
+        console.logger:warn("registerCommand -- name and callback are required, ignoring")
         return
     end
     if short_description == nil then
-        logger:warn("registerCommand -- no description provided, please provide a description for the `help` command")
+        console.logger:warn("registerCommand -- no description provided, please provide a description for the `help` command")
         short_description = "No help provided"
     end
     if usage == nil then
@@ -392,11 +396,11 @@ function registerCommand(name, callback, short_description, autocomplete, usage)
         autocomplete = function(current_arg) return nil end
     end
     if type(autocomplete) ~= "function" then
-        logger:warn("registerCommand -- autocomplete must be a function")
+        console.logger:warn("registerCommand -- autocomplete must be a function")
         autocomplete = function(current_arg) return nil end
     end
     if console.commands[name] then
-        logger:error("Command " .. name .. " already exists")
+        console.logger:error("Command " .. name .. " already exists")
         return
     end
     console.commands[name] = {
@@ -884,3 +888,5 @@ function refreshRepo(url)
     end
     return RESULT.SUCCESS
 end
+
+saveLogs()

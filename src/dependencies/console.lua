@@ -4,7 +4,7 @@ local utf8 = require("utf8")
 local math = require("math")
 
 return {
-    logger = getLogger("dev_console"),
+    logger = getLogger("console"),
     log_level = "INFO",
     is_open = false,
     cmd = "> ",

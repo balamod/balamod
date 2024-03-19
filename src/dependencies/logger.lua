@@ -90,3 +90,11 @@ function getLogger(name, level)
         return logger
     end
 end
+
+function saveLogs()
+    local filename = "logs/" .. os.date("!%Y-%m-%dT%TZ") .. ".log"
+    love.filesystem.write(filename, "")
+    for i, message in ipairs(ALL_MESSAGES) do
+        love.filesystem.append(filename, message:formatted(true) .. "\n")
+    end
+end
