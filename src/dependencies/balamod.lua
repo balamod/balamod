@@ -5,12 +5,24 @@ local math = require('math')
 
 local logger = logging.getLogger('balamod')
 local mods = {}
-local _apis = {
+local repoMods = {}
+local apis = {
     logging = logging,
     console = console,
     math = math,
     platform = platform,
 }
+local is_loaded = false
+local RESULT = {
+    SUCCESS = 0,
+    MOD_NOT_FOUND_IN_REPOS = 1,
+    MOD_NOT_FOUND_IN_MODS = 2,
+    MOD_ALREADY_PRESENT = 3,
+    NETWORK_ERROR = 4,
+    MOD_FS_LOAD_ERROR = 5,
+    MOD_PCALL_ERROR = 6,
+}
+local paths = {} -- Paths to the files that will be loaded
 
 local function splitstring(inputstr, sep)
     if sep == nil then
@@ -381,18 +393,6 @@ table.insert(mods,
     }
 )
 
-is_loaded = false
-
-RESULT = {
-    SUCCESS = 0,
-    MOD_NOT_FOUND_IN_REPOS = 1,
-    MOD_NOT_FOUND_IN_MODS = 2,
-    MOD_ALREADY_PRESENT = 3,
-    NETWORK_ERROR = 4,
-    MOD_FS_LOAD_ERROR = 5,
-    MOD_PCALL_ERROR = 6,
-}
-
 if not love.filesystem.getInfo("mods", "directory") then -- Create mods folder if it doesn't exist
     love.filesystem.createDirectory("mods")
 end
@@ -431,17 +431,16 @@ function buildPaths(root,ignore)
     end
 end
 
-paths = {} -- Paths to the files that will be loaded
 buildPaths("",{"mods","apis","resources","localization"})
 -- current_game_code = love.filesystem.read(path)
-buildPaths = nil -- prevent rerunning (i think)
+local buildPaths = nil -- prevent rerunning (i think)
 
-current_game_code = {}
+local current_game_code = {}
 for _, path in ipairs(paths) do
     current_game_code[path] = love.filesystem.read(path)
 end
 
-function request(url)
+local function request(url)
     logger:debug('Request made with url: ' .. url)
     local https = require 'https'
     local code
@@ -454,7 +453,7 @@ function request(url)
     return code, response
 end
 
-function extractFunctionBody(path, function_name)
+local function extractFunctionBody(path, function_name)
     local pattern = "\n?%s*function%s+" .. function_name
     local func_begin, fin = current_game_code[path]:find(pattern)
 
@@ -479,7 +478,7 @@ function extractFunctionBody(path, function_name)
     return func_body
 end
 
-function inject(path, function_name, to_replace, replacement)
+local function inject(path, function_name, to_replace, replacement)
     -- Injects code into a function (replaces a string with another string inside a function)
     local function_body = extractFunctionBody(path, function_name)
     local modified_function_code = function_body:gsub(to_replace, replacement)
@@ -506,7 +505,7 @@ function inject(path, function_name, to_replace, replacement)
     end
 end
 
-function injectHead(path, function_name, code)
+local function injectHead(path, function_name, code)
     local function_body = extractFunctionBody(path, function_name)
 
     local pattern = "(function%s+" .. function_name .. ".-)\n"
@@ -542,7 +541,7 @@ function injectHead(path, function_name, code)
     end
 end
 
-function injectTail(path, function_name, code)
+local function injectTail(path, function_name, code)
     local function_body = extractFunctionBody(path, function_name)
 
     local pattern = "(.-)(end[ \t]*\n?)$"
@@ -628,9 +627,7 @@ for _, mod in ipairs(mods) do
 	end
 end
 
-repoMods = {}
-
-function getModByModId(tables, mod_id)
+local function getModByModId(tables, mod_id)
     if not mod_id then
         logger:error('Mod id is nil')
         return nil
@@ -640,11 +637,11 @@ function getModByModId(tables, mod_id)
             return mod
         end
     end
-    logger:error('Mod ' .. mod_id .. ' not found')
+    logger:warn('Mod ' .. mod_id .. ' not found')
     return nil
 end
 
-function isModPresent(modId)
+local function isModPresent(modId)
     if not modId then
         logger:error('Mod id is nil')
         return false
@@ -656,7 +653,7 @@ function isModPresent(modId)
     end
 end
 
-function installMod(modId)
+local function installMod(modId)
     if not modId then
         logger:error('Mod id is nil')
         return RESULT.MOD_NOT_FOUND_IN_REPOS
@@ -830,28 +827,7 @@ function installMod(modId)
     return RESULT.SUCCESS
 end
 
-function refreshRepos()
-    local reposIndex = 'https://raw.githubusercontent.com/UwUDev/balamod/master/repos.index'
-    local code, body = request(reposIndex)
-
-    if code ~= 200 then
-        logger:error('Request failed')
-        logger:error('Code: ' .. code)
-        logger:error('Response: ' .. body)
-        return RESULT.NETWORK_ERROR
-    end
-
-    for repoUrl in string.gmatch(body, '([^\n]+)') do
-        logger:debug('Refreshing ' .. repoUrl)
-        if refreshRepo(repoUrl) ~= RESULT.SUCCESS then
-            return RESULT.NETWORK_ERROR
-        end
-        logger:debug('Refreshed ' .. repoUrl)
-    end
-    return RESULT.SUCCESS
-end
-
-function refreshRepo(url)
+local function refreshRepo(url)
     local code, body = request(url)
 
     if code ~= 200 then
@@ -884,24 +860,41 @@ function refreshRepo(url)
     return RESULT.SUCCESS
 end
 
+local function refreshRepos()
+    local reposIndex = 'https://raw.githubusercontent.com/UwUDev/balamod/master/repos.index'
+    local code, body = request(reposIndex)
+
+    if code ~= 200 then
+        logger:error('Request failed')
+        logger:error('Code: ' .. code)
+        logger:error('Response: ' .. body)
+        return RESULT.NETWORK_ERROR
+    end
+
+    for repoUrl in string.gmatch(body, '([^\n]+)') do
+        logger:debug('Refreshing ' .. repoUrl)
+        if refreshRepo(repoUrl) ~= RESULT.SUCCESS then
+            return RESULT.NETWORK_ERROR
+        end
+        logger:debug('Refreshed ' .. repoUrl)
+    end
+    return RESULT.SUCCESS
+end
+
+
 return {
-    apis = _apis,
+    logger = logger,
     mods = mods,
+    apis = apis,
     repoMods = repoMods,
-    installMod = installMod,
-    refreshRepos = refreshRepos,
-    refreshRepo = refreshRepo,
-    RESULT = RESULT,
     getModByModId = getModByModId,
+    installMod = installMod,
     isModPresent = isModPresent,
+    refreshRepos = refreshRepos,
+    RESULT = RESULT,
     inject = inject,
     injectHead = injectHead,
     injectTail = injectTail,
-    request = request,
-    extractFunctionBody = extractFunctionBody,
-    logger = logger,
-    buildPaths = buildPaths,
-    splitstring = splitstring,
     is_loaded = is_loaded,
     _VERSION = require('balamod_version')
 }

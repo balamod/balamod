@@ -36,7 +36,7 @@ G.FUNCS.install_mod = function(e)
     local mod_id = string.sub(e.config.id, 7)
     local ret = balamod.installMod(mod_id)
     balamod.logger:info('Mod ' .. mod_id .. ' install status ' .. tostring(ret))
-    if ret == RESULT.SUCCESS then
+    if ret == balamod.RESULT.SUCCESS then
         balamod.logger:debug('Reloading mod tab')
         if G.OVERLAY_MENU then
             G.OVERLAY_MENU:remove()
@@ -82,7 +82,7 @@ G.UIDEF.mod_description = function(e)
     local status_text = mod.enabled and 'Enabled' or 'Disabled'
     local status_colour = mod.enabled and G.C.GREEN or G.C.RED
     local need_update = check_need_update(mod.mod_id)
-    local new_version = need_update and 'New ' .. getModByModId(balamod.repoMods, mod.mod_id).version or version
+    local new_version = need_update and 'New ' .. balamod.getModByModId(balamod.repoMods, mod.mod_id).version or version
     local show_download_btn = not mod_present or need_update
     balamod.logger:debug('Mod: ', mod.name, ' present: ', mod_present, ' need update: ', need_update, ' new version: ', new_version)
     local mod_description_text = {}
@@ -229,7 +229,7 @@ G.UIDEF.mod_list_page = function(_page)
             if G.CONTROLLER.focused.target and G.CONTROLLER.focused.target.config.id == 'mod_page' then
                 snapped = true
             end
-            local mod_present = isModPresent(mod.mod_id)
+            local mod_present = balamod.isModPresent(mod.mod_id)
             mod_list[#mod_list + 1] = UIBox_button({
                 id = mod.mod_id,
                 label = {mod.name},
@@ -266,11 +266,6 @@ G.FUNCS.change_mod_list_page = function(args)
     end
 end
 
-if balamod.refreshRepos() == RESULT.SUCCESS then
-    balamod.logger:info('Repo mods refreshed')
-else
-    balamod.logger:error('Failed to refresh repo mods')
-end
 mods_collection = {}
 
 create_mod_tab_definition = function()
@@ -420,12 +415,14 @@ end
 
 G.FUNCS.show_mods = function(e)
     G.SETTINGS.paused = true
-
+    if balamod.refreshRepos() == balamod.RESULT.SUCCESS then
+        balamod.logger:info('Repo mods refreshed')
+    else
+        balamod.logger:error('Failed to refresh repo mods')
+    end
+    balamod.logger:debug('Repo mods loaded: ', balamod.repoMods)
     G.FUNCS.overlay_menu({definition = G.UIDEF.mods()})
 end
 
 balamod.logger:info('Mod menu loaded for balamod version', balamod._VERSION)
 G.VERSION = G.VERSION .. '\nBalamod ' .. balamod._VERSION
-
-balamod.logger:info('Mods loaded: ', balamod.mods)
-balamod.logger:info('Repo mods loaded: ', balamod.repoMods)
