@@ -5,7 +5,6 @@ local math = require('math')
 
 local logger = logging.getLogger('balamod')
 local mods = {}
-local repoMods = {}
 local apis = {
     logging = logging,
     console = console,
@@ -441,7 +440,7 @@ for _, path in ipairs(paths) do
 end
 
 local function request(url)
-    logger:debug('Request made with url: ' .. url)
+    logger:debug('Request made with url: ', url)
     local https = require 'https'
     local code
     local response
@@ -653,44 +652,19 @@ local function isModPresent(modId)
     end
 end
 
-local function installMod(modId)
-    if not modId then
-        logger:error('Mod id is nil')
-        return RESULT.MOD_NOT_FOUND_IN_REPOS
-    end
-
-    local modInfo = getModByModId(repoMods, modId)
+local function installMod(modInfo)
     if modInfo == nil then
-        logger:error('Mod ' .. modId .. ' not found in repos')
+        logger:error('modInfo is nil')
         return RESULT.MOD_NOT_FOUND_IN_REPOS
     end
-
-    local isModPresent = isModPresent(modId)
-    if isModPresent then
-        logger:debug('Mod ' .. modId .. ' is already present')
-        local modVersion = modInfo.version
-        local skipUpdate = false
-        for _, mod in ipairs(mods) do
-            if mod.mod_id == modId then
-                if mod.version then
-                    if mod.version == modVersion then
-                        logger:debug('Mod ' .. modId .. ' is up to date')
-                        skipUpdate = true
-                        break
-                    else
-                        logger:info('Mod ' .. modId .. ' is outdated')
-                        logger:info('Updating mod ' .. modId)
-                    end
-                else
-                    logger:debug('Mod ' .. modId .. ' is up to date')
-                    skipUpdate = true
-                    break
-                end
-            end
-        end
-        if skipUpdate then
+    local modId = modInfo.mod_id
+    if modInfo.present then
+        logger:debug('Mod ' .. modInfo.mod_id .. ' is already present')
+        local modVersion = modInfo.newVersion
+        if not modInfo.needUpdate then
             return RESULT.SUCCESS
         end
+        local skipUpdate = false
 
         -- remove old mod
         for i, mod in ipairs(mods) do
@@ -705,7 +679,7 @@ local function installMod(modId)
         end
     end
 
-    logger:debug('Downloading mod ' .. modId)
+    logger:debug('Downloading mod ' .. modInfo.mod_id)
     local modUrl = modInfo.url
 
     local owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/tree/([^/]+)/?(.*)")
@@ -827,70 +801,93 @@ local function installMod(modId)
     return RESULT.SUCCESS
 end
 
-local function refreshRepo(url)
-    local code, body = request(url)
-
-    if code ~= 200 then
-        logger:error('Request failed')
-        logger:error('Code: ' .. code)
-        logger:error('Response: ' .. body)
-        return RESULT.NETWORK_ERROR
-    end
-
-    -- clear repoMods
-    repoMods = {}
-    for modInfo in string.gmatch(body, '([^\n]+)') do
-        local modId, modVersion, modName, modDesc, modUrl = string.match(modInfo,
-                                                                         '([^|]+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)')
-        table.insert(repoMods, {
-            mod_id = modId,
-            name = modName,
-            description = modDesc,
-            url = modUrl,
-            version = modVersion
-        })
-    end
-
-    logger:debug('Mods available:')
-    for i, modInfo in pairs(repoMods) do
-        local modId = modInfo.mod_id
-        local isModPresent = isModPresent(modId)
-        logger:debug(modId .. ' - ' .. modInfo.name .. ' - ' .. modInfo.version .. ' - ' .. modInfo.description .. ' - ' .. tostring(isModPresent))
-    end
-    return RESULT.SUCCESS
+local function parseVersion(version)
+    local major, minor, patch = string.match(version, '(%d+)%.(%d+)%.(%d+)')
+    return {
+        major = tonumber(major),
+        minor = tonumber(minor),
+        patch = tonumber(patch)
+    }
 end
 
-local function refreshRepos()
-    local reposIndex = 'https://raw.githubusercontent.com/UwUDev/balamod/master/repos.index'
-    local code, body = request(reposIndex)
-
-    if code ~= 200 then
-        logger:error('Request failed')
-        logger:error('Code: ' .. code)
-        logger:error('Response: ' .. body)
-        return RESULT.NETWORK_ERROR
+local function v2GreaterThanV1(v1, v2)
+    if v2.major > v1.major then
+        return true
     end
-
-    for repoUrl in string.gmatch(body, '([^\n]+)') do
-        logger:debug('Refreshing ' .. repoUrl)
-        if refreshRepo(repoUrl) ~= RESULT.SUCCESS then
-            return RESULT.NETWORK_ERROR
+    if v2.major == v1.major then
+        if v2.minor > v1.minor then
+            return true
         end
-        logger:debug('Refreshed ' .. repoUrl)
+        if v2.minor == v1.minor then
+            if v2.patch > v1.patch then
+                return true
+            end
+        end
     end
-    return RESULT.SUCCESS
+    return false
 end
 
+local function getRepoMods()
+    local repoMods = {}
+    local reposIndex = 'https://raw.githubusercontent.com/UwUDev/balamod/master/repos.index'
+    logger:info('Requesting ', reposIndex)
+    local indexCode, indexBody = request(reposIndex)
+    if indexCode ~= 200 then
+        logger:error('Request failed')
+        logger:error('Code: ', indexCode)
+        logger:error('Response: ', indexBody)
+        return repoMods
+    end
+
+    for repoUrl in string.gmatch(indexBody, '([^\n]+)') do
+        local repoCode, repoBody = request(repoUrl)
+
+        if repoCode ~= 200 then
+            logger:error('Request failed')
+            logger:error('Code: ' .. repoCode)
+            logger:error('Response: ' .. repoBody)
+        else
+            for modInfo in string.gmatch(repoBody, '([^\n]+)') do
+                local modId, modVersion, modName, modDesc, modUrl = string.match(
+                    modInfo,
+                    '([^|]+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)'
+                )
+                local modPresent = isModPresent(modId)
+                local needUpdate = true
+                local version = modVersion
+                if modPresent then
+                    local repoVersion = parseVersion(modVersion)
+                    local mod = getModByModId(mods, modId)
+                    if mod.version then
+                        version = mod.version
+                        local modVersion = parseVersion(mod.version)
+                        needUpdate = v2GreaterThanV1(modVersion, repoVersion)
+                    end
+                end
+                table.insert(repoMods, {
+                    mod_id = modId,
+                    name = modName,
+                    description = modDesc,
+                    url = modUrl,
+                    version = version,
+                    newVersion = modVersion,
+                    present = modPresent,
+                    needUpdate = needUpdate,
+                })
+            end
+        end
+    end
+    return repoMods
+end
 
 return {
     logger = logger,
     mods = mods,
     apis = apis,
-    repoMods = repoMods,
     getModByModId = getModByModId,
     installMod = installMod,
     isModPresent = isModPresent,
-    refreshRepos = refreshRepos,
+    getRepoMods = getRepoMods,
     RESULT = RESULT,
     inject = inject,
     injectHead = injectHead,
