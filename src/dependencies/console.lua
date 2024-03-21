@@ -1,10 +1,10 @@
-require("logger")
+local logging = require("logging")
 local platform = require("platform")
 local utf8 = require("utf8")
 local math = require("math")
 
 return {
-    logger = getLogger("console"),
+    logger = logging.getLogger("console"),
     log_level = "INFO",
     is_open = false,
     cmd = "> ",
@@ -115,7 +115,7 @@ return {
     end,
     getFilteredMessages = function(self)
         local filtered = {}
-        for _, message in ipairs(ALL_MESSAGES) do
+        for _, message in ipairs(logging.getAllMessages()) do
             if message.level_numeric >= self.logger.log_levels[self.log_level] then
                 table.insert(filtered, message)
             end
@@ -332,5 +332,60 @@ return {
                 self.logger:error("Error writing to history file: ", errormsg)
             end
         end
+    end,
+    -- registers a command to be used in the dev console
+    -- @param name: string, the name of the command
+    -- @param callback: function, the function to be called when the command is run
+    -- @param short_description: string, a short description of the command
+    -- @param autocomplete: function(current_arg: string), a function that returns a list of possible completions for the current argument
+    -- @param usage: string, a string describing the usage of the command (longer, more detailed description of the command's usage)
+    registerCommand = function(self, name, callback, short_description, autocomplete, usage)
+        if name == nil then
+            self.logger:error("registerCommand -- name is required")
+        end
+        if callback == nil then
+            self.logger:error("registerCommand -- callback is required")
+        end
+        if type(callback) ~= "function" then
+            self.logger:error("registerCommand -- callback must be a function")
+        end
+        if name == nil or callback == nil or type(callback) ~= "function" then
+            self.logger:warn("registerCommand -- name and callback are required, ignoring")
+            return
+        end
+        if short_description == nil then
+            self.logger:warn("registerCommand -- no description provided, please provide a description for the `help` command")
+            short_description = "No help provided"
+        end
+        if usage == nil then
+            usage = short_description
+        end
+        if autocomplete == nil then
+            autocomplete = function(current_arg) return nil end
+        end
+        if type(autocomplete) ~= "function" then
+            self.logger:warn("registerCommand -- autocomplete must be a function")
+            autocomplete = function(current_arg) return nil end
+        end
+        if self.commands[name] then
+            self.logger:error("Command " .. name .. " already exists")
+            return
+        end
+        self.commands[name] = {
+            call = callback,
+            desc = short_description,
+            autocomplete = autocomplete,
+            usage = usage,
+        }
+    end,
+    removeCommand = function(self, cmd_name)
+        if cmd_name == nil then
+            self.logger:error("removeCommand -- cmd_name is required")
+        end
+        if self.commands[cmd_name] == nil then
+            self.logger:error("removeCommand -- command not found: ", cmd_name)
+            return
+        end
+        self.commands[cmd_name] = nil
     end,
 }

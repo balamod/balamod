@@ -1,7 +1,12 @@
 LOGGERS = {}
-ALL_MESSAGES = {}
+START_TIME = os.time()
 
-function stringify(value)
+local _MODULE = {
+    _VERSION = "0.1.0",
+    LOGGERS = LOGGERS,
+}
+
+local function stringify(value)
     if type(value) == "table" then
         local str = "{"
         for k, v in pairs(value) do
@@ -36,9 +41,13 @@ local function createLogger(name, lvl)
         log_levels=log_levels,
         level=lvl or "INFO",
         numeric_level=log_levels[lvl] or 30,
+        messages={},
         log=function(self, level, ...)
             local args = {...}
             local text = ""
+            if not love.filesystem.getInfo("logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log") then
+                love.filesystem.write("logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log", "")
+            end
             for i, v in ipairs(args) do
                 text = text .. stringify(v) .. " "
             end
@@ -58,7 +67,9 @@ local function createLogger(name, lvl)
                     return string.format("[%s] - %s :: %s", self.name, self.level, self.text)
                 end,
             }
-            table.insert(ALL_MESSAGES, message)
+            table.insert(self.messages, message)
+            love.filesystem.append("logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log", message:formatted(true) .. "\n")
+            love.filesystem.append("console.txt", message:formatted(true) .. "\n")
         end,
         info=function(self, ...)
             self:log("INFO", ...)
@@ -81,7 +92,7 @@ local function createLogger(name, lvl)
     }
 end
 
-function getLogger(name, level)
+local function getLogger(name, level)
     if LOGGERS[name] then
         return LOGGERS[name]
     else
@@ -91,10 +102,34 @@ function getLogger(name, level)
     end
 end
 
-function saveLogs()
-    local filename = "logs/" .. os.date("!%Y-%m-%dT%TZ") .. ".log"
+local function saveLogs()
+    local filename = "logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log"
     love.filesystem.write(filename, "")
-    for i, message in ipairs(ALL_MESSAGES) do
+    for i, message in ipairs(getAllMessages()) do
         love.filesystem.append(filename, message:formatted(true) .. "\n")
     end
 end
+
+local function getAllMessages()
+    local messages = {}
+    for name, logger in pairs(LOGGERS) do
+        for i, message in ipairs(logger.messages) do
+            table.insert(messages, message)
+        end
+    end
+    table.sort(messages, function(a, b) return a.time < b.time end)
+    return messages
+end
+
+local function clearLogs()
+    for name, logger in pairs(LOGGERS) do
+        logger.messages = {}
+    end
+end
+
+_MODULE.getLogger = getLogger
+_MODULE.saveLogs = saveLogs
+_MODULE.getAllMessages = getAllMessages
+_MODULE.clearLogs = clearLogs
+
+return _MODULE

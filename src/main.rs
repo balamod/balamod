@@ -263,11 +263,9 @@ fn inject_modloader(
             get_mousewheel_event()
         );
 
-        let modloader = get_mod_loader()
-            .to_string()
-            .replace("{balamod_version}", VERSION);
-
-        new_main.push_str(modloader.as_str());
+        new_main.push_str(
+            "\nrequire('mod_menu')\n"
+        );
     }
 
     durations.push(StepDuration {
@@ -379,7 +377,7 @@ fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
     cyan_ln!("Injecting dependencies");
     let start = Instant::now();
     balatro
-        .inject_dependencies()
+        .inject_dependencies(VERSION)
         .expect("Error while injecting dependencies");
     durations.push(StepDuration {
         duration: start.elapsed(),

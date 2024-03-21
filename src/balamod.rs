@@ -1,4 +1,4 @@
-use crate::dependencies::{get_console_lua, get_https_lua, get_logger_lua, get_platform_lua, get_ssl_lua, get_ssl_so, get_balamod_lua};
+use crate::dependencies::{get_console_lua, get_https_lua, get_logger_lua, get_platform_lua, get_ssl_lua, get_ssl_so, get_balamod_lua, get_mod_menu_lua, get_balamod_version_lua};
 use crate::finder::get_balatro_paths;
 use colour::red_ln;
 use libflate::deflate::Encoder;
@@ -29,7 +29,7 @@ impl Balatro {
     }
 
     #[cfg(target_os = "macos")]
-    pub fn inject_dependencies(&self) -> Result<(), std::io::Error> {
+    pub fn inject_dependencies(&self, balamod_version: &'static str) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path();
         let exe_path = exe_path_buf
             .to_str()
@@ -38,24 +38,26 @@ impl Balatro {
         self.add_file_in_exe(exe_path, get_ssl_lua().as_bytes().to_vec(), "ssl.lua")?;
         self.add_file_in_exe(exe_path, get_https_lua().as_bytes().to_vec(), "https.lua")?;
         self.add_file_in_exe(exe_path, get_balamod_lua().as_bytes().to_vec(), "balamod.lua")?;
-        self.add_file_in_exe(exe_path, get_logger_lua().as_bytes().to_vec(), "logger.lua")?;
+        self.add_file_in_exe(exe_path, get_mod_menu_lua().as_bytes().to_vec(), "mod_menu.lua")?;
+        self.add_file_in_exe(exe_path, get_logger_lua().as_bytes().to_vec(), "logging.lua")?;
         self.add_file_in_exe(exe_path, get_platform_lua().as_bytes().to_vec(), "platform.lua")?;
         self.add_file_in_exe(exe_path, get_console_lua().as_bytes().to_vec(), "console.lua")?;
+        self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
         Ok(())
     }
 
     #[cfg(any(target_os = "windows", target_os = "linux"))]
-    pub fn inject_dependencies(&self) -> Result<(), std::io::Error> {
-        use crate::dependencies::get_balamod_lua;
-
+    pub fn inject_dependencies(&self, balamod_version: &'static str) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path();
         let exe_path = exe_path_buf
             .to_str()
             .expect("Failed to convert exe_path to str");
         self.add_file_in_exe(exe_path, get_balamod_lua().as_bytes().to_vec(), "balamod.lua")?;
-        self.add_file_in_exe(exe_path, get_logger_lua().as_bytes().to_vec(), "logger.lua")?;
+        self.add_file_in_exe(exe_path, get_mod_menu_lua().as_bytes().to_vec(), "mod_menu.lua")?;
+        self.add_file_in_exe(exe_path, get_logger_lua().as_bytes().to_vec(), "logging.lua")?;
         self.add_file_in_exe(exe_path, get_platform_lua().as_bytes().to_vec(), "platform.lua")?;
         self.add_file_in_exe(exe_path, get_console_lua().as_bytes().to_vec(), "console.lua")?;;
+        self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
         Ok(())
     }
 

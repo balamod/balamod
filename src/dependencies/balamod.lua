@@ -1,11 +1,18 @@
-require('logger')
-console = require('console')
-math = require('math')
+local logging = require('logging')
+local console = require('console')
+local platform = require('platform')
+local math = require('math')
 
-logger = getLogger('balamod')
-mods = {}
+local logger = logging.getLogger('balamod')
+local mods = {}
+local _apis = {
+    logging = logging,
+    console = console,
+    math = math,
+    platform = platform,
+}
 
-function splitstring(inputstr, sep)
+local function splitstring(inputstr, sep)
     if sep == nil then
         sep = "%s"
     end
@@ -37,16 +44,16 @@ table.insert(mods,
                     console.log_level = split[1]:upper()
                 end
             end
-            saveLogs()
+            logging.saveLogs()
         end,
         on_game_quit = function()
             console.logger:info("Quitting Balatro...")
-            saveLogs()
+            logging.saveLogs()
         end,
         on_error = function(message)
             console.logger:error("Error: ", message)
             -- on error, write all messages to a file
-            saveLogs()
+            logging.saveLogs()
         end,
         on_enable = function()
             console.logger:debug("Dev Console enabled")
@@ -60,7 +67,7 @@ table.insert(mods,
                 end
             end
 
-            registerCommand(
+            console.registerCommand(
                 "help",
                 function()
                     console.logger:print("Available commands:")
@@ -84,7 +91,7 @@ table.insert(mods,
                 "Usage: help <command>"
             )
 
-            registerCommand(
+            console.registerCommand(
                 "shortcuts",
                 function()
                     console.logger:print("Available shortcuts:")
@@ -108,7 +115,7 @@ table.insert(mods,
                 "Usage: shortcuts"
             )
 
-            registerCommand(
+            console.registerCommand(
                 "history",
                 function()
                     console.logger:print("Command history:")
@@ -120,16 +127,16 @@ table.insert(mods,
                 "Prints the command history"
             )
 
-            registerCommand(
+            console.registerCommand(
                 "clear",
                 function()
-                    ALL_MESSAGES = {}
+                    logging.clearLogs()
                     return true
                 end,
                 "Clear the console"
             )
 
-            registerCommand(
+            console.registerCommand(
                 "exit",
                 function()
                     console:toggle()
@@ -138,16 +145,7 @@ table.insert(mods,
                 "Close the console"
             )
 
-            registerCommand(
-                "quit",
-                function()
-                    love.quit()
-                    return true
-                end,
-                "Quit the game"
-            )
-
-            registerCommand(
+            console.registerCommand(
                 "give",
                 function()
                     console.logger:error("Give command not implemented yet")
@@ -156,7 +154,7 @@ table.insert(mods,
                 "Give an item to the player"
             )
 
-            registerCommand(
+            console.registerCommand(
                 "money",
                 function(args)
                     if args[1] and args[2] then
@@ -198,7 +196,7 @@ table.insert(mods,
                 end
             )
 
-            registerCommand(
+            console.registerCommand(
                 "discards",
                 function(args)
                     if args[1] and args[2] then
@@ -241,7 +239,7 @@ table.insert(mods,
                 end
             )
 
-            registerCommand(
+            console.registerCommand(
                 "hands",
                 function(args)
                     if args[1] and args[2] then
@@ -286,6 +284,17 @@ table.insert(mods,
 
         end,
         on_disable = function()
+            console.removeCommand("help")
+            console.removeCommand("shortcuts")
+            console.removeCommand("history")
+            console.removeCommand("clear")
+            console.removeCommand("exit")
+            console.removeCommand("quit")
+            console.removeCommand("give")
+            console.removeCommand("money")
+            console.removeCommand("discards")
+            console.removeCommand("hands")
+            console.logger:debug("Dev Console disabled")
         end,
         on_key_pressed = function (key_name)
             if key_name == "f2" then
@@ -372,7 +381,7 @@ table.insert(mods,
     }
 )
 
-balamodLoaded = false
+is_loaded = false
 
 RESULT = {
     SUCCESS = 0,
@@ -396,51 +405,6 @@ if not love.filesystem.getInfo("apis", "directory") then -- Create apis folder i
     love.filesystem.createDirectory("apis")
 end
 
--- registers a command to be used in the dev console
--- @param name: string, the name of the command
--- @param callback: function, the function to be called when the command is run
--- @param short_description: string, a short description of the command
--- @param autocomplete: function(current_arg: string), a function that returns a list of possible completions for the current argument
--- @param usage: string, a string describing the usage of the command (longer, more detailed description of the command's usage)
-function registerCommand(name, callback, short_description, autocomplete, usage)
-    if name == nil then
-        console.logger:error("registerCommand -- name is required")
-    end
-    if callback == nil then
-        console.logger:error("registerCommand -- callback is required")
-    end
-    if type(callback) ~= "function" then
-        console.logger:error("registerCommand -- callback must be a function")
-    end
-    if name == nil or callback == nil or type(callback) ~= "function" then
-        console.logger:warn("registerCommand -- name and callback are required, ignoring")
-        return
-    end
-    if short_description == nil then
-        console.logger:warn("registerCommand -- no description provided, please provide a description for the `help` command")
-        short_description = "No help provided"
-    end
-    if usage == nil then
-        usage = short_description
-    end
-    if autocomplete == nil then
-        autocomplete = function(current_arg) return nil end
-    end
-    if type(autocomplete) ~= "function" then
-        console.logger:warn("registerCommand -- autocomplete must be a function")
-        autocomplete = function(current_arg) return nil end
-    end
-    if console.commands[name] then
-        console.logger:error("Command " .. name .. " already exists")
-        return
-    end
-    console.commands[name] = {
-        call = callback,
-        desc = short_description,
-        autocomplete = autocomplete,
-        usage = usage,
-    }
-end
 
 function buildPaths(root,ignore)
     local items = love.filesystem.getDirectoryItems(root)
@@ -920,4 +884,24 @@ function refreshRepo(url)
     return RESULT.SUCCESS
 end
 
-saveLogs()
+return {
+    apis = _apis,
+    mods = mods,
+    repoMods = repoMods,
+    installMod = installMod,
+    refreshRepos = refreshRepos,
+    refreshRepo = refreshRepo,
+    RESULT = RESULT,
+    getModByModId = getModByModId,
+    isModPresent = isModPresent,
+    inject = inject,
+    injectHead = injectHead,
+    injectTail = injectTail,
+    request = request,
+    extractFunctionBody = extractFunctionBody,
+    logger = logger,
+    buildPaths = buildPaths,
+    splitstring = splitstring,
+    is_loaded = is_loaded,
+    _VERSION = require('balamod_version')
+}
