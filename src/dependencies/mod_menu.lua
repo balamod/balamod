@@ -426,3 +426,6 @@ end
 
 balamod.logger:info('Mod menu loaded for balamod version', balamod._VERSION)
 G.VERSION = G.VERSION .. '\nBalamod ' .. balamod._VERSION
+
+balamod.logger:info('Mods loaded: ', balamod.mods)
+balamod.logger:info('Repo mods loaded: ', balamod.repoMods)

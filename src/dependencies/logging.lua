@@ -102,14 +102,6 @@ local function getLogger(name, level)
     end
 end
 
-local function saveLogs()
-    local filename = "logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log"
-    love.filesystem.write(filename, "")
-    for i, message in ipairs(getAllMessages()) do
-        love.filesystem.append(filename, message:formatted(true) .. "\n")
-    end
-end
-
 local function getAllMessages()
     local messages = {}
     for name, logger in pairs(LOGGERS) do
@@ -120,6 +112,15 @@ local function getAllMessages()
     table.sort(messages, function(a, b) return a.time < b.time end)
     return messages
 end
+
+local function saveLogs()
+    local filename = "logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log"
+    love.filesystem.write(filename, "")
+    for i, message in ipairs(getAllMessages()) do
+        love.filesystem.append(filename, message:formatted(true) .. "\n")
+    end
+end
+
 
 local function clearLogs()
     for name, logger in pairs(LOGGERS) do
