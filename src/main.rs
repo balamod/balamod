@@ -181,94 +181,11 @@ fn inject_modloader(
     if new_main.starts_with("-- balamod") {
         yellow_ln!("The main already has the modloader, skipping...");
     } else {
-        let mod_core = get_mod_core().to_string();
-        new_main = format!("-- balamod\n{}\n\n{}\n", mod_core, new_main);
-
-        new_main = new_main.replace(
-            "function love.update( dt )",
-            format!("function love.update( dt )\n{}", get_pre_update_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "G:update(dt)",
-            format!("G:update(dt)\n{}", get_post_update_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.draw()",
-            format!("function love.draw()\n{}", get_pre_render_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "G:draw()",
-            format!("G:draw()\n{}", get_post_render_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.keypressed(key)",
-            format!("function love.keypressed(key)\n{}", get_key_pressed_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.keyreleased(key)",
-            format!(
-                "function love.keyreleased(key)\n{}",
-                get_key_released_event()
-            )
-            .as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.mousereleased(x, y, button)",
-            format!(
-                "function love.mousereleased(x, y, button)\n{}",
-                get_mouse_released_event()
-            )
-            .as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.mousepressed(x, y, button, touch)",
-            format!(
-                "function love.mousepressed(x, y, button, touch)\n{}",
-                get_mouse_pressed_event()
-            )
-            .as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.errhand(msg)",
-            format!(
-                "function love.errhand(msg)\n{}",
-                get_error_handler()
-            ).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.load()",
-            format!(
-                "function love.load(args)\n{}",
-                get_load_handler()
-            ).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.quit()",
-            format!(
-                "function love.quit()\n{}",
-                get_quit_handler()
-            ).as_str(),
-        );
+        new_main = format!("-- balamod\n{}\n\n{}\n", get_imports(),new_main);
 
         new_main.push_str(
-            get_mousewheel_event()
+            "\nrequire('patches')\nrequire('mod_menu')\n"
         );
-
-        let modloader = get_mod_loader()
-            .to_string()
-            .replace("{balamod_version}", VERSION);
-
-        new_main.push_str(modloader.as_str());
     }
 
     durations.push(StepDuration {
@@ -323,17 +240,15 @@ fn uninstall(balatro: Balatro, durations: &mut Vec<StepDuration>) {
         duration: start.elapsed(),
         name: String::from("Restoration of executable"),
     });
-    if cfg!(target_os = "macos") && cfg!(any(target_arch = "aarch64", target_arch = "arm")) {
-        cyan_ln!("Uninstalling dependencies (macOS)");
-        let start = Instant::now();
-        balatro
-            .remove_dependencies()
-            .expect("Error while uninstalling dependencies");
-        durations.push(StepDuration {
-            duration: start.elapsed(),
-            name: String::from("Dependency uninstallation"),
-        });
-    }
+    cyan_ln!("Uninstalling dependencies...");
+    let start = Instant::now();
+    balatro
+        .remove_dependencies()
+        .expect("Error while uninstalling dependencies");
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Dependency uninstallation"),
+    });
 }
 
 fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
@@ -379,17 +294,15 @@ fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
         duration: start.elapsed(),
         name: String::from("Modloader injection (uidef)"),
     });
-    if cfg!(target_os = "macos") && cfg!(any(target_arch = "aarch64", target_arch = "arm")) {
-        cyan_ln!("Injecting dependencies (macOS)");
-        let start = Instant::now();
-        balatro
-            .inject_dependencies()
-            .expect("Error while injecting dependencies");
-        durations.push(StepDuration {
-            duration: start.elapsed(),
-            name: String::from("Dependency injection"),
-        });
-    }
+    cyan_ln!("Injecting dependencies");
+    let start = Instant::now();
+    balatro
+        .inject_dependencies(VERSION)
+        .expect("Error while injecting dependencies");
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Dependency injection"),
+    });
     green_ln!("Done!");
 }
 
