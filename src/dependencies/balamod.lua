@@ -636,7 +636,7 @@ local function getModByModId(tables, mod_id)
             return mod
         end
     end
-    logger:warn('Mod ' .. mod_id .. ' not found')
+    logger:debug('Mod ' .. mod_id .. ' not found')
     return nil
 end
 
