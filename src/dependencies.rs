@@ -22,8 +22,12 @@ pub fn get_platform_lua() -> &'static str {
     include_str!("dependencies/platform.lua")
 }
 
-pub fn get_logger_lua() -> &'static str {
+pub fn get_logging_lua() -> &'static str {
     include_str!("dependencies/logging.lua")
+}
+
+pub fn get_patches_lua() -> &'static str {
+    include_str!("dependencies/patches.lua")
 }
 
 pub fn get_mod_menu_lua() -> &'static str {

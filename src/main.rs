@@ -183,88 +183,8 @@ fn inject_modloader(
     } else {
         new_main = format!("-- balamod\n{}\n\n{}\n", get_imports(),new_main);
 
-        new_main = new_main.replace(
-            "function love.update( dt )",
-            format!("function love.update( dt )\n{}", get_pre_update_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "G:update(dt)",
-            format!("G:update(dt)\n{}", get_post_update_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.draw()",
-            format!("function love.draw()\n{}", get_pre_render_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "G:draw()",
-            format!("G:draw()\n{}", get_post_render_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.keypressed(key)",
-            format!("function love.keypressed(key)\n{}", get_key_pressed_event()).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.keyreleased(key)",
-            format!(
-                "function love.keyreleased(key)\n{}",
-                get_key_released_event()
-            )
-            .as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.mousereleased(x, y, button)",
-            format!(
-                "function love.mousereleased(x, y, button)\n{}",
-                get_mouse_released_event()
-            )
-            .as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.mousepressed(x, y, button, touch)",
-            format!(
-                "function love.mousepressed(x, y, button, touch)\n{}",
-                get_mouse_pressed_event()
-            )
-            .as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.errhand(msg)",
-            format!(
-                "function love.errhand(msg)\n{}",
-                get_error_handler()
-            ).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.load()",
-            format!(
-                "function love.load(args)\n{}",
-                get_load_handler()
-            ).as_str(),
-        );
-
-        new_main = new_main.replace(
-            "function love.quit()",
-            format!(
-                "function love.quit()\n{}",
-                get_quit_handler()
-            ).as_str(),
-        );
-
         new_main.push_str(
-            get_mousewheel_event()
-        );
-
-        new_main.push_str(
-            "\nrequire('mod_menu')\n"
+            "\nrequire('patches')\nrequire('mod_menu')\n"
         );
     }
 
