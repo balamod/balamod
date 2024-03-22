@@ -1,17 +1,17 @@
 local logging = require('logging')
-local console = require('console')
 local platform = require('platform')
 local math = require('math')
+local console = require('console')
 
-local logger = logging.getLogger('balamod')
-local mods = {}
+logger = logging.getLogger('balamod')
+mods = {}
 local apis = {
     logging = logging,
     console = console,
     math = math,
     platform = platform,
 }
-local is_loaded = false
+is_loaded = false
 local RESULT = {
     SUCCESS = 0,
     MOD_NOT_FOUND_IN_REPOS = 1,
@@ -33,377 +33,6 @@ local function splitstring(inputstr, sep)
     end
     return t
 end
-
-table.insert(mods,
-    {
-        mod_id = "dev_console",
-        name = "Dev Console",
-        version = "0.6.0",
-        author = "sbordeyne & UwUDev",
-        description = {
-            "Press F2 to open/close the console",
-            "Use command `help` for a list of ",
-            "available commands and shortcuts",
-        },
-        enabled = true,
-        on_game_load = function(args)
-            console.logger:info("Game loaded", args)
-            for _, arg in ipairs(args) do
-                local split = splitstring(arg, "=")
-                if split[0] == "--log-level" then
-                    console.logger.level = split[1]:upper()
-                    console.log_level = split[1]:upper()
-                end
-            end
-            logging.saveLogs()
-        end,
-        on_game_quit = function()
-            console.logger:info("Quitting Balatro...")
-            logging.saveLogs()
-        end,
-        on_error = function(message)
-            console.logger:error("Error: ", message)
-            -- on error, write all messages to a file
-            logging.saveLogs()
-        end,
-        on_enable = function()
-            console.logger:debug("Dev Console enabled")
-            contents, size = love.filesystem.read(console.history_path)
-            if contents then
-                console.logger:trace("History file size", size)
-                for line in contents:gmatch("[^\r\n]+") do
-                    if line and line ~= "" then
-                        table.insert(console.command_history, line)
-                    end
-                end
-            end
-
-            console.registerCommand(
-                "help",
-                function()
-                    console.logger:print("Available commands:")
-                    for name, cmd in pairs(console.commands) do
-                        if cmd.desc then
-                            console.logger:print(name .. ": " .. cmd.desc)
-                        end
-                    end
-                    return true
-                end,
-                "Prints a list of available commands",
-                function(current_arg)
-                    local completions = {}
-                    for name, _ in pairs(console.commands) do
-                        if name:find(current_arg, 1, true) == 1 then
-                            table.insert(completions, name)
-                        end
-                    end
-                    return completions
-                end,
-                "Usage: help <command>"
-            )
-
-            console.registerCommand(
-                "shortcuts",
-                function()
-                    console.logger:print("Available shortcuts:")
-                    console.logger:print("F2: Open/Close the console")
-                    console.logger:print("F4: Toggle debug mode")
-                    if platform.is_mac then
-                        console.logger:print("Cmd+C: Copy the current command to the clipboard.")
-                        console.logger:print("Cmd+Shift+C: Copies all messages to the clipboard")
-                        console.logger:print("Cmd+V: Paste the clipboard into the current command")
-                    else
-                        console.logger:print("Ctrl+C: Copy the current command to the clipboard.")
-                        console.logger:print("Ctrl+Shift+C: Copies all messages to the clipboard")
-                        console.logger:print("Ctrl+V: Paste the clipboard into the current command")
-                    end
-                    return true
-                end,
-                "Prints a list of available shortcuts",
-                function(current_arg)
-                    return nil
-                end,
-                "Usage: shortcuts"
-            )
-
-            console.registerCommand(
-                "history",
-                function()
-                    console.logger:print("Command history:")
-                    for i, cmd in ipairs(console.command_history) do
-                        console.logger:print(i .. ": " .. cmd)
-                    end
-                    return true
-                end,
-                "Prints the command history"
-            )
-
-            console.registerCommand(
-                "clear",
-                function()
-                    logging.clearLogs()
-                    return true
-                end,
-                "Clear the console"
-            )
-
-            console.registerCommand(
-                "exit",
-                function()
-                    console:toggle()
-                    return true
-                end,
-                "Close the console"
-            )
-
-            console.registerCommand(
-                "give",
-                function()
-                    console.logger:error("Give command not implemented yet")
-                    return false
-                end,
-                "Give an item to the player"
-            )
-
-            console.registerCommand(
-                "money",
-                function(args)
-                    if args[1] and args[2] then
-                        local amount = tonumber(args[2])
-                        if amount then
-                            if args[1] == "add" then
-                                ease_dollars(amount, true)
-                                console.logger:info("Added " .. amount .. " money to the player")
-                            elseif args[1] == "remove" then
-                                ease_dollars(-amount, true)
-                                console.logger:info("Removed " .. amount .. " money from the player")
-                            elseif args[1] == "set" then
-                                local currentMoney = G.GAME.dollars
-                                local diff = amount - currentMoney
-                                ease_dollars(diff, true)
-                                console.logger:info("Set player money to " .. amount)
-                            else
-                                console.logger:error("Invalid operation, use add, remove or set")
-                            end
-                        else
-                            console.logger:error("Invalid amount")
-                            return false
-                        end
-                    else
-                        console.logger:warn("Usage: money <add/remove/set> <amount>")
-                        return false
-                    end
-                    return true
-                end,
-                "Change the player's money",
-                function (current_arg)
-                    local subcommands = {"add", "remove", "set"}
-                    for i, v in ipairs(subcommands) do
-                        if v:find(current_arg, 1, true) == 1 then
-                            return {v}
-                        end
-                    end
-                    return nil
-                end
-            )
-
-            console.registerCommand(
-                "discards",
-                function(args)
-                    if args[1] and args[2] then
-                        local amount = tonumber(args[2])
-                        if amount then
-                            if args[1] == "add" then
-                                ease_discard(amount, true)
-                                console.logger:info("Added " .. amount .. " discards to the player")
-                            elseif args[1] == "remove" then
-                                ease_discard(-amount, true)
-                                console.logger:info("Removed " .. amount .. " discards from the player")
-                            elseif args[1] == "set" then
-                                local currentDiscards = G.GAME.current_round.discards_left
-                                local diff = amount - currentDiscards
-                                ease_discard(diff, true)
-                                console.logger:info("Set player discards to " .. amount)
-                            else
-                                console.logger:error("Invalid operation, use add, remove or set")
-                                return false
-                            end
-                        else
-                            console.logger:error("Invalid amount")
-                            return false
-                        end
-                    else
-                        console.logger:warn("Usage: discards <add/remove/set> <amount>")
-                        return false
-                    end
-                    return true
-                end,
-                "Change the player's discards",
-                function (current_arg)
-                    local subcommands = {"add", "remove", "set"}
-                    for i, v in ipairs(subcommands) do
-                        if v:find(current_arg, 1, true) == 1 then
-                            return {v}
-                        end
-                    end
-                    return nil
-                end
-            )
-
-            console.registerCommand(
-                "hands",
-                function(args)
-                    if args[1] and args[2] then
-                        local amount = tonumber(args[2])
-                        if amount then
-                            if args[1] == "add" then
-                                ease_hands_played(amount, true)
-                                console.logger:info("Added " .. amount .. " hands to the player")
-                            elseif args[1] == "remove" then
-                                ease_hands_played(-amount, true)
-                                console.logger:info("Removed " .. amount .. " hands from the player")
-                            elseif args[1] == "set" then
-                                local currentHands = G.GAME.current_round.hands_left
-                                local diff = amount - currentHands
-                                ease_hands_played(diff, true)
-                                console.logger:info("Set player hands to " .. amount)
-                            else
-                                console.logger:error("Invalid operation, use add, remove or set")
-                                return false
-                            end
-                        else
-                            console.logger:error("Invalid amount")
-                            return false
-                        end
-                    else
-                        console.logger:warn("Usage: hands <add/remove/set> <amount>")
-                        return false
-                    end
-                    return true
-                end,
-                "Change the player's remaining hands",
-                function (current_arg)
-                    local subcommands = {"add", "remove", "set"}
-                    for i, v in ipairs(subcommands) do
-                        if v:find(current_arg, 1, true) == 1 then
-                            return {v}
-                        end
-                    end
-                    return nil
-                end
-            )
-
-        end,
-        on_disable = function()
-            console.removeCommand("help")
-            console.removeCommand("shortcuts")
-            console.removeCommand("history")
-            console.removeCommand("clear")
-            console.removeCommand("exit")
-            console.removeCommand("quit")
-            console.removeCommand("give")
-            console.removeCommand("money")
-            console.removeCommand("discards")
-            console.removeCommand("hands")
-            console.logger:debug("Dev Console disabled")
-        end,
-        on_key_pressed = function (key_name)
-            if key_name == "f2" then
-                console:toggle()
-                return true
-            end
-            if console.is_open then
-                console:typeKey(key_name)
-                return true
-            end
-
-            if key_name == "f4" then
-                G.DEBUG = not G.DEBUG
-                if G.DEBUG then
-                    console.logger:info("Debug mode enabled")
-                else
-                    console.logger:info("Debug mode disabled")
-                end
-            end
-            return false
-        end,
-        on_post_render = function ()
-            console.max_lines = math.floor(love.graphics.getHeight() / console.line_height) - 5  -- 5 lines of bottom padding
-            if console.is_open then
-                love.graphics.setColor(0, 0, 0, 0.3)
-                love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-                for i, message in ipairs(console:getMessagesToDisplay()) do
-                    r, g, b = console:getMessageColor(message)
-                    love.graphics.setColor(r, g, b, 1)
-                    love.graphics.print(message:formatted(), 10, 10 + i * 20)
-                end
-                love.graphics.setColor(1, 1, 1, 1) -- white
-                love.graphics.print(console.cmd, 10, love.graphics.getHeight() - 30)
-            end
-        end,
-        on_key_released = function (key_name)
-            if key_name == "capslock" then
-                console.modifiers.capslock = not console.modifiers.capslock
-                console:modifiersListener()
-                return
-            end
-            if key_name == "scrolllock" then
-                console.modifiers.scrolllock = not console.modifiers.scrolllock
-                console:modifiersListener()
-                return
-            end
-            if key_name == "numlock" then
-                console.modifiers.numlock = not console.modifiers.numlock
-                console:modifiersListener()
-                return
-            end
-            if key_name == "lalt" or key_name == "ralt" then
-                console.modifiers.alt = false
-                console:modifiersListener()
-                return false
-            end
-            if key_name == "lctrl" or key_name == "rctrl" then
-                console.modifiers.ctrl = false
-                console:modifiersListener()
-                return false
-            end
-            if key_name == "lshift" or key_name == "rshift" then
-                console.modifiers.shift = false
-                console:modifiersListener()
-                return false
-            end
-            if key_name == "lgui" or key_name == "rgui" then
-                console.modifiers.meta = false
-                console:modifiersListener()
-                return false
-            end
-            return false
-        end,
-        on_mouse_pressed = function(x, y, button, touches)
-            if console.is_open then
-                return true  -- Do not press buttons through the console, this cancels the event
-            end
-        end,
-        on_mouse_released = function(x, y, button)
-            if console.is_open then
-                return true -- Do not release buttons through the console, this cancels the event
-            end
-        end,
-    }
-)
-
-if not love.filesystem.getInfo("mods", "directory") then -- Create mods folder if it doesn't exist
-    love.filesystem.createDirectory("mods")
-end
-
-if not love.filesystem.getInfo("logs", "directory") then -- Create logs folder if it doesn't exist
-    love.filesystem.createDirectory("logs")
-end
-
-if not love.filesystem.getInfo("apis", "directory") then -- Create apis folder if it doesn't exist
-    love.filesystem.createDirectory("apis")
-end
-
 
 function buildPaths(root,ignore)
     local items = love.filesystem.getDirectoryItems(root)
@@ -428,15 +57,6 @@ function buildPaths(root,ignore)
             end
         end
     end
-end
-
-buildPaths("",{"mods","apis","resources","localization"})
--- current_game_code = love.filesystem.read(path)
-local buildPaths = nil -- prevent rerunning (i think)
-
-local current_game_code = {}
-for _, path in ipairs(paths) do
-    current_game_code[path] = love.filesystem.read(path)
 end
 
 local function request(url)
@@ -574,56 +194,6 @@ local function injectTail(path, function_name, code)
         logger:error("Error executing modified function ", function_name, " with tail injection: ", result)
         logger:error(modified_function_code)
     end
-end
-
--- apis will be loaded first, then mods
-
-local apis_files = love.filesystem.getDirectoryItems("apis") -- Load all apis
-for _, file in ipairs(apis_files) do
-	if file:sub(-4) == ".lua" then -- Only load lua files
-		local apiPath = "apis/" .. file
-		local apiContent, loadErr = love.filesystem.load(apiPath) -- Load the file
-
-		if apiContent then -- Check if the file was loaded successfully
-			local success, api = pcall(apiContent)
-			if success then -- Check if the file was executed successfully
-				table.insert(mods, api) -- Add the api to the list of mods if there is a mod in the file
-			else
-				logger:error("Error loading api: " .. apiPath) -- Log the error to the console Todo: Log to file
-                logger:error(api)
-			end
-		else
-			logger:error("Error reading api: " .. apiPath) -- Log the error to the console Todo: Log to file
-            logger:error(loadErr)
-		end
-	end
-end
-
-local files = love.filesystem.getDirectoryItems("mods") -- Load all mods
-for _, file in ipairs(files) do
-	if file:sub(-4) == ".lua" then -- Only load lua files
-		local modPath = "mods/" .. file
-		local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
-
-		if modContent then  -- Check if the file was loaded successfully
-			local success, mod = pcall(modContent) -- Execute the file
-			if success then
-				table.insert(mods, mod) -- Add the mod to the list of mods
-			else
-				logger:error("Error loading mod: " .. modPath) -- Log the error to the console Todo: Log to file
-                logger:error(mod)
-			end
-		else
-			logger:error("Error reading mod: " .. modPath) -- Log the error to the console Todo: Log to file
-            logger:error(loadErr)
-		end
-	end
-end
-
-for _, mod in ipairs(mods) do
-	if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
-		pcall(mod.on_pre_load) -- Call the on_pre_load function of the mod if it exists
-	end
 end
 
 local function getModByModId(tables, mod_id)
@@ -880,6 +450,441 @@ local function getRepoMods()
     return repoMods
 end
 
+local function registerMod(mod)
+    table.insert(mods, mod)
+end
+
+buildPaths("",{"mods","apis","resources","localization"})
+-- current_game_code = love.filesystem.read(path)
+buildPaths = nil -- prevent rerunning (i think)
+
+current_game_code = {}
+for _, path in ipairs(paths) do
+    current_game_code[path] = love.filesystem.read(path)
+end
+
+if not love.filesystem.getInfo("mods", "directory") then -- Create mods folder if it doesn't exist
+    love.filesystem.createDirectory("mods")
+end
+
+if not love.filesystem.getInfo("logs", "directory") then -- Create logs folder if it doesn't exist
+    love.filesystem.createDirectory("logs")
+end
+
+if not love.filesystem.getInfo("apis", "directory") then -- Create apis folder if it doesn't exist
+    love.filesystem.createDirectory("apis")
+end
+
+-- apis will be loaded first, then mods
+
+local apis_files = love.filesystem.getDirectoryItems("apis") -- Load all apis
+for _, file in ipairs(apis_files) do
+    if file:sub(-4) == ".lua" then -- Only load lua files
+        local apiPath = "apis/" .. file
+        local apiContent, loadErr = love.filesystem.load(apiPath) -- Load the file
+
+        if apiContent then -- Check if the file was loaded successfully
+            local success, api = pcall(apiContent)
+            if success then -- Check if the file was executed successfully
+                table.insert(mods, api) -- Add the api to the list of mods if there is a mod in the file
+            else
+                logger:error("Error loading api: " .. apiPath) -- Log the error to the console Todo: Log to file
+                logger:error(api)
+            end
+        else
+            logger:error("Error reading api: " .. apiPath) -- Log the error to the console Todo: Log to file
+            logger:error(loadErr)
+        end
+    end
+end
+
+table.insert(mods,
+    {
+        mod_id = "dev_console",
+        name = "Dev Console",
+        version = "0.6.0",
+        author = "sbordeyne & UwUDev",
+        description = {
+            "Press F2 to open/close the console",
+            "Use command `help` for a list of ",
+            "available commands and shortcuts",
+        },
+        enabled = true,
+        on_game_load = function(args)
+            console.logger:info("Game loaded", args)
+            for _, arg in ipairs(args) do
+                local split = splitstring(arg, "=")
+                if split[0] == "--log-level" then
+                    console.logger.level = split[1]:upper()
+                    console.log_level = split[1]:upper()
+                end
+            end
+            logging.saveLogs()
+        end,
+        on_game_quit = function()
+            console.logger:info("Quitting Balatro...")
+            logging.saveLogs()
+        end,
+        on_error = function(message)
+            console.logger:error("Error: ", message)
+            -- on error, write all messages to a file
+            logging.saveLogs()
+        end,
+        on_enable = function()
+            console.logger:debug("Dev Console enabled")
+            contents, size = love.filesystem.read(console.history_path)
+            if contents then
+                console.logger:trace("History file size", size)
+                for line in contents:gmatch("[^\r\n]+") do
+                    if line and line ~= "" then
+                        table.insert(console.command_history, line)
+                    end
+                end
+            end
+
+            console.logger:debug("Registering commands")
+            console:registerCommand(
+                "help",
+                function()
+                    console.logger:print("Available commands:")
+                    for name, cmd in pairs(console.commands) do
+                        if cmd.desc then
+                            console.logger:print(name .. ": " .. cmd.desc)
+                        end
+                    end
+                    return true
+                end,
+                "Prints a list of available commands",
+                function(current_arg)
+                    local completions = {}
+                    for name, _ in pairs(console.commands) do
+                        if name:find(current_arg, 1, true) == 1 then
+                            table.insert(completions, name)
+                        end
+                    end
+                    return completions
+                end,
+                "Usage: help <command>"
+            )
+
+            console:registerCommand(
+                "shortcuts",
+                function()
+                    console.logger:print("Available shortcuts:")
+                    console.logger:print("F2: Open/Close the console")
+                    console.logger:print("F4: Toggle debug mode")
+                    if platform.is_mac then
+                        console.logger:print("Cmd+C: Copy the current command to the clipboard.")
+                        console.logger:print("Cmd+Shift+C: Copies all messages to the clipboard")
+                        console.logger:print("Cmd+V: Paste the clipboard into the current command")
+                    else
+                        console.logger:print("Ctrl+C: Copy the current command to the clipboard.")
+                        console.logger:print("Ctrl+Shift+C: Copies all messages to the clipboard")
+                        console.logger:print("Ctrl+V: Paste the clipboard into the current command")
+                    end
+                    return true
+                end,
+                "Prints a list of available shortcuts",
+                function(current_arg)
+                    return nil
+                end,
+                "Usage: shortcuts"
+            )
+
+            console:registerCommand(
+                "history",
+                function()
+                    console.logger:print("Command history:")
+                    for i, cmd in ipairs(console.command_history) do
+                        console.logger:print(i .. ": " .. cmd)
+                    end
+                    return true
+                end,
+                "Prints the command history"
+            )
+
+            console.logger:debug("Registering command: clear")
+            console:registerCommand(
+                "clear",
+                function()
+                    logging.clearLogs()
+                    return true
+                end,
+                "Clear the console"
+            )
+
+            console:registerCommand(
+                "exit",
+                function()
+                    console:toggle()
+                    return true
+                end,
+                "Close the console"
+            )
+
+            console:registerCommand(
+                "give",
+                function()
+                    console.logger:error("Give command not implemented yet")
+                    return false
+                end,
+                "Give an item to the player"
+            )
+
+            console:registerCommand(
+                "money",
+                function(args)
+                    if args[1] and args[2] then
+                        local amount = tonumber(args[2])
+                        if amount then
+                            if args[1] == "add" then
+                                ease_dollars(amount, true)
+                                console.logger:info("Added " .. amount .. " money to the player")
+                            elseif args[1] == "remove" then
+                                ease_dollars(-amount, true)
+                                console.logger:info("Removed " .. amount .. " money from the player")
+                            elseif args[1] == "set" then
+                                local currentMoney = G.GAME.dollars
+                                local diff = amount - currentMoney
+                                ease_dollars(diff, true)
+                                console.logger:info("Set player money to " .. amount)
+                            else
+                                console.logger:error("Invalid operation, use add, remove or set")
+                            end
+                        else
+                            console.logger:error("Invalid amount")
+                            return false
+                        end
+                    else
+                        console.logger:warn("Usage: money <add/remove/set> <amount>")
+                        return false
+                    end
+                    return true
+                end,
+                "Change the player's money",
+                function (current_arg)
+                    local subcommands = {"add", "remove", "set"}
+                    for i, v in ipairs(subcommands) do
+                        if v:find(current_arg, 1, true) == 1 then
+                            return {v}
+                        end
+                    end
+                    return nil
+                end
+            )
+
+            console:registerCommand(
+                "discards",
+                function(args)
+                    if args[1] and args[2] then
+                        local amount = tonumber(args[2])
+                        if amount then
+                            if args[1] == "add" then
+                                ease_discard(amount, true)
+                                console.logger:info("Added " .. amount .. " discards to the player")
+                            elseif args[1] == "remove" then
+                                ease_discard(-amount, true)
+                                console.logger:info("Removed " .. amount .. " discards from the player")
+                            elseif args[1] == "set" then
+                                local currentDiscards = G.GAME.current_round.discards_left
+                                local diff = amount - currentDiscards
+                                ease_discard(diff, true)
+                                console.logger:info("Set player discards to " .. amount)
+                            else
+                                console.logger:error("Invalid operation, use add, remove or set")
+                                return false
+                            end
+                        else
+                            console.logger:error("Invalid amount")
+                            return false
+                        end
+                    else
+                        console.logger:warn("Usage: discards <add/remove/set> <amount>")
+                        return false
+                    end
+                    return true
+                end,
+                "Change the player's discards",
+                function (current_arg)
+                    local subcommands = {"add", "remove", "set"}
+                    for i, v in ipairs(subcommands) do
+                        if v:find(current_arg, 1, true) == 1 then
+                            return {v}
+                        end
+                    end
+                    return nil
+                end
+            )
+
+            console:registerCommand(
+                "hands",
+                function(args)
+                    if args[1] and args[2] then
+                        local amount = tonumber(args[2])
+                        if amount then
+                            if args[1] == "add" then
+                                ease_hands_played(amount, true)
+                                console.logger:info("Added " .. amount .. " hands to the player")
+                            elseif args[1] == "remove" then
+                                ease_hands_played(-amount, true)
+                                console.logger:info("Removed " .. amount .. " hands from the player")
+                            elseif args[1] == "set" then
+                                local currentHands = G.GAME.current_round.hands_left
+                                local diff = amount - currentHands
+                                ease_hands_played(diff, true)
+                                console.logger:info("Set player hands to " .. amount)
+                            else
+                                console.logger:error("Invalid operation, use add, remove or set")
+                                return false
+                            end
+                        else
+                            console.logger:error("Invalid amount")
+                            return false
+                        end
+                    else
+                        console.logger:warn("Usage: hands <add/remove/set> <amount>")
+                        return false
+                    end
+                    return true
+                end,
+                "Change the player's remaining hands",
+                function (current_arg)
+                    local subcommands = {"add", "remove", "set"}
+                    for i, v in ipairs(subcommands) do
+                        if v:find(current_arg, 1, true) == 1 then
+                            return {v}
+                        end
+                    end
+                    return nil
+                end
+            )
+        console.logger:debug("Dev Console on_enable completed")
+        end,
+        on_disable = function()
+            console.removeCommand("help")
+            console.removeCommand("shortcuts")
+            console.removeCommand("history")
+            console.removeCommand("clear")
+            console.removeCommand("exit")
+            console.removeCommand("quit")
+            console.removeCommand("give")
+            console.removeCommand("money")
+            console.removeCommand("discards")
+            console.removeCommand("hands")
+            console.logger:debug("Dev Console disabled")
+        end,
+        on_key_pressed = function (key_name)
+            if key_name == "f2" then
+                console:toggle()
+                return true
+            end
+            if console.is_open then
+                console:typeKey(key_name)
+                return true
+            end
+
+            if key_name == "f4" then
+                G.DEBUG = not G.DEBUG
+                if G.DEBUG then
+                    console.logger:info("Debug mode enabled")
+                else
+                    console.logger:info("Debug mode disabled")
+                end
+            end
+            return false
+        end,
+        on_post_render = function ()
+            console.max_lines = math.floor(love.graphics.getHeight() / console.line_height) - 5  -- 5 lines of bottom padding
+            if console.is_open then
+                love.graphics.setColor(0, 0, 0, 0.3)
+                love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+                for i, message in ipairs(console:getMessagesToDisplay()) do
+                    r, g, b = console:getMessageColor(message)
+                    love.graphics.setColor(r, g, b, 1)
+                    love.graphics.print(message:formatted(), 10, 10 + i * 20)
+                end
+                love.graphics.setColor(1, 1, 1, 1) -- white
+                love.graphics.print(console.cmd, 10, love.graphics.getHeight() - 30)
+            end
+        end,
+        on_key_released = function (key_name)
+            if key_name == "capslock" then
+                console.modifiers.capslock = not console.modifiers.capslock
+                console:modifiersListener()
+                return
+            end
+            if key_name == "scrolllock" then
+                console.modifiers.scrolllock = not console.modifiers.scrolllock
+                console:modifiersListener()
+                return
+            end
+            if key_name == "numlock" then
+                console.modifiers.numlock = not console.modifiers.numlock
+                console:modifiersListener()
+                return
+            end
+            if key_name == "lalt" or key_name == "ralt" then
+                console.modifiers.alt = false
+                console:modifiersListener()
+                return false
+            end
+            if key_name == "lctrl" or key_name == "rctrl" then
+                console.modifiers.ctrl = false
+                console:modifiersListener()
+                return false
+            end
+            if key_name == "lshift" or key_name == "rshift" then
+                console.modifiers.shift = false
+                console:modifiersListener()
+                return false
+            end
+            if key_name == "lgui" or key_name == "rgui" then
+                console.modifiers.meta = false
+                console:modifiersListener()
+                return false
+            end
+            return false
+        end,
+        on_mouse_pressed = function(x, y, button, touches)
+            if console.is_open then
+                return true  -- Do not press buttons through the console, this cancels the event
+            end
+        end,
+        on_mouse_released = function(x, y, button)
+            if console.is_open then
+                return true -- Do not release buttons through the console, this cancels the event
+            end
+        end,
+    }
+)
+
+local files = love.filesystem.getDirectoryItems("mods") -- Load all mods
+for _, file in ipairs(files) do
+    if file:sub(-4) == ".lua" then -- Only load lua files
+        local modPath = "mods/" .. file
+        local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
+
+        if modContent then  -- Check if the file was loaded successfully
+            local success, mod = pcall(modContent) -- Execute the file
+            if success then
+                table.insert(mods, mod) -- Add the mod to the list of mods
+            else
+                logger:error("Error loading mod: " .. modPath) -- Log the error to the console Todo: Log to file
+                logger:error(mod)
+            end
+        else
+            logger:error("Error reading mod: " .. modPath) -- Log the error to the console Todo: Log to file
+            logger:error(loadErr)
+        end
+    end
+end
+
+for _, mod in ipairs(mods) do
+    if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
+        pcall(mod.on_pre_load) -- Call the on_pre_load function of the mod if it exists
+    end
+end
+
 return {
     logger = logger,
     mods = mods,
@@ -893,5 +898,7 @@ return {
     injectHead = injectHead,
     injectTail = injectTail,
     is_loaded = is_loaded,
-    _VERSION = require('balamod_version')
+    _VERSION = require('balamod_version'),
+    registerMod = registerMod,
+    console = console,
 }

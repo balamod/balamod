@@ -16,6 +16,8 @@ local game_love_joystick_axis = love.joystickaxis
 local game_love_errhand = love.errhand
 
 local balamod = require("balamod")
+local logging = require('logging')
+local logger = logging.getLogger('patches')
 
 function love.load(args)
     for _, mod in ipairs(balamod.mods) do
@@ -59,7 +61,10 @@ function love.update(dt)
         balamod.is_loaded = true
         for _, mod in ipairs(balamod.mods) do -- Load all mods after eveything else
             if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
-                pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
+                local ok, message = pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
+                if not ok then
+                    logger:warn("Enabling mod ", mod.mod_id, "failed: ", message)
+                end
             end
         end
     end

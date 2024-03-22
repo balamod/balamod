@@ -3,8 +3,10 @@ local platform = require("platform")
 local utf8 = require("utf8")
 local math = require("math")
 
+local logger = logging.getLogger("console")
+
 return {
-    logger = logging.getLogger("console"),
+    logger = logger,
     log_level = "INFO",
     is_open = false,
     cmd = "> ",
@@ -344,13 +346,12 @@ return {
             self.logger:error("registerCommand -- name is required")
         end
         if callback == nil then
-            self.logger:error("registerCommand -- callback is required")
+            self.logger:error("registerCommand -- callback is required on command", name)
         end
         if type(callback) ~= "function" then
-            self.logger:error("registerCommand -- callback must be a function")
+            self.logger:error("registerCommand -- callback must be a function on command", name)
         end
         if name == nil or callback == nil or type(callback) ~= "function" then
-            self.logger:warn("registerCommand -- name and callback are required, ignoring")
             return
         end
         if short_description == nil then
@@ -364,13 +365,14 @@ return {
             autocomplete = function(current_arg) return nil end
         end
         if type(autocomplete) ~= "function" then
-            self.logger:warn("registerCommand -- autocomplete must be a function")
+            self.logger:warn("registerCommand -- autocomplete must be a function for command: ", name)
             autocomplete = function(current_arg) return nil end
         end
         if self.commands[name] then
-            self.logger:error("Command " .. name .. " already exists")
+            self.logger:warn("Command " .. name .. " already exists")
             return
         end
+        self.logger:info("Registering command: ", name)
         self.commands[name] = {
             call = callback,
             desc = short_description,
