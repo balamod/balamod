@@ -8,22 +8,16 @@ G.FUNCS.open_balamod_discord = function(e)
 end
 G.FUNCS.toggle_mod = function(e)
     local ori_id = string.sub(e.config.id, 7)
-    local mod = balamod.getModByModId(balamod.mods, ori_id)
+    local mod = balamod.mods[ori_id]
     if mod == nil then
         balamod.logger:debug('Mod ' .. ori_id .. ' not found')
         return
     end
 
-    balamod.logger:debug('Taggling mod: ' .. mod.name .. ' id: ' .. ori_id)
-    mod.enabled = not mod.enabled
-    if mod.enabled and mod.on_enable and type(mod.on_enable) == 'function' then
-        pcall(mod.on_enable)
-    elseif not mod.enabled and mod.on_disable and type(mod.on_disable) == 'function' then
-        pcall(mod.on_disable)
-    end
+    balamod.toggleMod(mod)
     -- replace mod in mods
     for i, m in ipairs(balamod.mods) do
-        if m.mod_id == ori_id then
+        if m.id == ori_id then
             mods[i] = mod
             break
         end
@@ -35,7 +29,7 @@ end
 G.FUNCS.install_mod = function(e)
     local mod_id = string.sub(e.config.id, 7)
     balamod.logger:debug('Installing mod ' .. mod_id)
-    local modInfo = balamod.getModByModId(mods_collection, mod_id)
+    local modInfo = mods_collection[mod_id]
     local ret = balamod.installMod(modInfo)
     balamod.logger:info('Mod ' .. mod_id .. ' install status ' .. tostring(ret))
     if ret == balamod.RESULT.SUCCESS then
@@ -59,7 +53,7 @@ G.UIDEF.mod_description = function(e)
     local menu_btn_id = 'm_btn_' .. e.config.id
     local dl_up_btn_id = 'd_btn_' .. e.config.id
 
-    local mod = balamod.getModByModId(mods_collection, e.config.id)
+    local mod = mods_collection[e.config.id]
     local mod_present = balamod.isModPresent(e.config.id)
     if not mod.description then
         mod.description = {'This mod does not offer a description'}
@@ -205,16 +199,8 @@ end
 G.UIDEF.mod_list_page = function(_page)
     local snapped = false
     local mod_list = {}
-    -- cleanup mods collection by removing mods with no mod_id
-
-    for i = #mods_collection, 1, -1 do
-        if not mods_collection[i].mod_id then
-            table.remove(mods_collection, i)
-        end
-    end
-
-    for i, mod in ipairs(mods_collection) do
-
+    local i = 1
+    for mod_id, mod in ipairs(mods_collection) do
         balamod.logger:debug('Mod index ' .. i .. ' page ' .. _page .. ' name ' .. mod.name .. ' id ' .. mod.mod_id)
         if i > G.MOD_PAGE_SIZE * (_page or 0) and i <= G.MOD_PAGE_SIZE * ((_page or 0) + 1) then
             if G.CONTROLLER.focused.target and G.CONTROLLER.focused.target.config.id == 'mod_page' then
@@ -233,6 +219,7 @@ G.UIDEF.mod_list_page = function(_page)
             })
             snapped = true
         end
+        i = i + 1
     end
 
     return {n = G.UIT.ROOT, config = {align = 'cm', padding = 0.1, colour = G.C.CLEAR}, nodes = mod_list}
@@ -263,16 +250,16 @@ create_mod_tab_definition = function()
     G.MOD_PAGE_SIZE = 7
     mods_collection = {}
     for _, mod in ipairs(balamod.mods) do
-        if not balamod.getModByModId(mods_collection, mod.mod_id) then
-            table.insert(mods_collection, mod)
+        if not mods_collection[mod.mod_id] then
+            mods_collection[mod.mod_id] = mod
         else
             balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
     end
     for index, mod in ipairs(balamod.getRepoMods()) do
-        local cur_mod = balamod.getModByModId(mods_collection, mod.mod_id)
+        local cur_mod = mods_collection[mod.mod_id]
         if not cur_mod then
-            table.insert(mods_collection, mod)
+            mods_collection[mod.mod_id] = mod
         else
             balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
