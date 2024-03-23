@@ -217,7 +217,6 @@ local function installMod(modInfo)
         if not modInfo.needUpdate then
             return RESULT.SUCCESS
         end
-        local skipUpdate = false
 
         -- remove old mod
         for i, mod in ipairs(mods) do
@@ -277,8 +276,7 @@ local function installMod(modInfo)
     end
 
     for _, p in ipairs(paths) do
-        code, body = request(
-                         'https://raw.githubusercontent.com/' .. owner .. '/' .. repo .. '/' .. branch .. '/' .. p)
+        code, body = request('https://raw.githubusercontent.com/'..owner..'/'..repo..'/'..branch..'/'..p)
         if code ~= 200 then
             logger:error('Request failed')
             logger:error('Code: ' .. code)
@@ -302,31 +300,6 @@ local function installMod(modInfo)
         end
     end
 
-    -- apis first
-    for _, p in ipairs(paths) do
-        if p:match('apis/.*%.lua') then
-            logger:info('Loading ' .. p:sub(#path + 2))
-
-            local modContent, loadErr = love.filesystem.load(p:sub(#path + 2))
-
-            if modContent then
-                local success, mod = pcall(modContent)
-                if success then
-                    logger:info('API ' .. p:sub(#path + 2) .. ' loaded')
-                else
-                    logger:error('Error loading api: ' .. p:sub(#path + 2))
-                    logger:error(mod)
-                    return RESULT.MOD_PCALL_ERROR
-                end
-            else
-                logger:error('Error reading api: ' .. p:sub(#path + 2))
-                logger:error(loadErr)
-                return RESULT.MOD_FS_LOAD_ERROR
-            end
-        end
-    end
-
-    -- mods second
     for _, p in ipairs(paths) do
         if p:match('mods/.*%.lua') then
             logger:info('Loading ' .. p:sub(#path + 2))
@@ -995,28 +968,13 @@ for i, modFolder in ipairs(modFolders) do
     local mod = loadMod(modFolder)
     if mod ~= nil then
         mods[mod.id] = mod
+        if mod.enabled then
+            if mod.on_enable and type(mod.on_enable) == 'function' then
+                pcall(mod.on_enable)
+            end
+        end
     end
 end
-
--- for _, file in ipairs(files) do
---     if file:sub(-4) == ".lua" then -- Only load lua files
---         local modPath = "mods/" .. file
---         local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
-
---         if modContent then  -- Check if the file was loaded successfully
---             local success, mod = pcall(modContent) -- Execute the file
---             if success then
---                 table.insert(mods, mod) -- Add the mod to the list of mods
---             else
---                 logger:error("Error loading mod: " .. modPath) -- Log the error to the console Todo: Log to file
---                 logger:error(mod)
---             end
---         else
---             logger:error("Error reading mod: " .. modPath) -- Log the error to the console Todo: Log to file
---             logger:error(loadErr)
---         end
---     end
--- end
 
 for _, mod in ipairs(mods) do
     if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then

@@ -1,5 +1,8 @@
 local balamod = require('balamod')
 
+G.FUNCS.open_balamod_website = function(e)
+    love.system.openURL('https://balamod.github.io/')
+end
 G.FUNCS.open_balamod_github = function(e)
     love.system.openURL('https://github.com/UwUDev/balamod')
 end
@@ -339,6 +342,36 @@ local function create_mod_credits_definition()
             }}
         }
     end
+    local linkButtons = {}
+    if G.F_EXTERNAL_LINKS then
+        linkButtons = {
+            {
+                n = G.UIT.C,
+                config = {align = 'cm', padding = 0},
+                nodes = {UIBox_button({
+                    scale = text_scale * 0.5,
+                    label = {'Website'},
+                    button = 'open_balamod_website'
+                })}
+            }, {
+                n = G.UIT.C,
+                config = {align = 'cm', padding = 0},
+                nodes = {UIBox_button({
+                    scale = text_scale * 0.5,
+                    label = {'Github'},
+                    button = 'open_balamod_github'
+                })}
+            }, {
+                n = G.UIT.C,
+                config = {align = 'cm', padding = 0},
+                nodes = {UIBox_button({
+                    scale = text_scale * 0.5,
+                    label = {'Discord'},
+                    button = 'open_balamod_discord'
+                })}
+            }
+        }
+    end
     return {
         n = G.UIT.ROOT,
         config = {align = 'cm', padding = 0.2, colour = G.C.BLACK, r = 0.1, emboss = 0.05, minh = 4},
@@ -352,31 +385,21 @@ local function create_mod_credits_definition()
                 outline = 1,
                 minw = 4
             },
-            nodes = {{
-                n = G.UIT.R,
-                config = {align = 'cm', padding = 0.1},
-                nodes = {create_badge('Balamod', G.C.DARK_EDITION, G.C.UI.TEXT_LIGHT, 1.5)}
-            }, {n = G.UIT.R, config = {align = 'cl', padding = 0}, nodes = credits_text}, {
-                n = G.UIT.R,
-                config = {align = 'cm', padding = 0.1, colour = G.C.CLEAR},
-                nodes = {G.F_EXTERNAL_LINKS and {
-                    n = G.UIT.C,
-                    config = {align = 'cm', padding = 0},
-                    nodes = {UIBox_button({
-                        scale = text_scale * 0.5,
-                        label = {'Github'},
-                        button = 'open_balamod_github'
-                    })}
-                } or nil, G.F_EXTERNAL_LINKS and {
-                    n = G.UIT.C,
-                    config = {align = 'cm', padding = 0},
-                    nodes = {UIBox_button({
-                        scale = text_scale * 0.5,
-                        label = {'Discord'},
-                        button = 'open_balamod_discord'
-                    })}
-                } or nil}
-            }}
+            nodes = {
+                {
+                    n = G.UIT.R,
+                    config = {align = 'cm', padding = 0.1},
+                    nodes = {create_badge('Balamod', G.C.DARK_EDITION, G.C.UI.TEXT_LIGHT, 1.5)}
+                },
+                {
+                    n = G.UIT.R, config = {align = 'cl', padding = 0}, nodes = credits_text
+                },
+                {
+                    n = G.UIT.R,
+                    config = {align = 'cm', padding = 0.1, colour = G.C.CLEAR},
+                    nodes = linkButtons,
+                },
+            }
         }}
     }
 end
