@@ -199,16 +199,16 @@ end
 G.UIDEF.mod_list_page = function(_page)
     local snapped = false
     local mod_list = {}
-    local i = 1
-    for mod_id, mod in ipairs(mods_collection) do
-        balamod.logger:debug('Mod index ' .. i .. ' page ' .. _page .. ' name ' .. mod.name .. ' id ' .. mod.mod_id)
+    local i = 0
+    for mod_id, mod in pairs(mods_collection) do
+        balamod.logger:debug('Mod index ' .. i .. ' page ' .. _page .. ' name ' .. mod.name .. ' id ' .. mod.id)
         if i > G.MOD_PAGE_SIZE * (_page or 0) and i <= G.MOD_PAGE_SIZE * ((_page or 0) + 1) then
             if G.CONTROLLER.focused.target and G.CONTROLLER.focused.target.config.id == 'mod_page' then
                 snapped = true
             end
-            local mod_present = balamod.isModPresent(mod.mod_id)
+            local mod_present = balamod.isModPresent(mod.id)
             mod_list[#mod_list + 1] = UIBox_button({
-                id = mod.mod_id,
+                id = mod.id,
                 label = {mod.name},
                 button = 'change_mod_description',
                 colour = mod_present and G.C.RED or G.C.ORANGE,
@@ -245,29 +245,34 @@ G.FUNCS.change_mod_list_page = function(args)
 end
 
 mods_collection = {}
+mods_collection_size = 0
 
-create_mod_tab_definition = function()
+local function create_mod_tab_definition()
     G.MOD_PAGE_SIZE = 7
     mods_collection = {}
+    mods_collection_size = 0
     for _, mod in ipairs(balamod.mods) do
-        if not mods_collection[mod.mod_id] then
-            mods_collection[mod.mod_id] = mod
+        if not mods_collection[mod.id] then
+            mods_collection[mod.id] = mod
+            mods_collection_size = mods_collection_size + 1
         else
             balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
     end
     for index, mod in ipairs(balamod.getRepoMods()) do
-        local cur_mod = mods_collection[mod.mod_id]
+        local cur_mod = mods_collection[mod.id]
         if not cur_mod then
-            mods_collection[mod.mod_id] = mod
+            mods_collection[mod.id] = mod
+            mods_collection_size = mods_collection_size + 1
         else
             balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
     end
+    balamod.logger:info('Mods collection ', mods_collection)
     local mod_pages = {}
-    for i = 1, math.ceil(#mods_collection / G.MOD_PAGE_SIZE) do
+    for i = 1, math.ceil(mods_collection_size / G.MOD_PAGE_SIZE) do
         table.insert(mod_pages, localize('k_page') .. ' ' .. tostring(i) .. '/' ..
-                         tostring(math.ceil(#mods_collection / G.MOD_PAGE_SIZE)))
+                         tostring(math.ceil(mods_collection_size / G.MOD_PAGE_SIZE)))
     end
     G.E_MANAGER:add_event(Event({
         func = (function()
@@ -311,7 +316,7 @@ create_mod_tab_definition = function()
     }
 end
 
-G.UIDEF.mods = function()
+local function create_mod_credits_definition()
     local text_scale = 0.75
     -- LuaFormatter off
     local credits_text = {
@@ -334,61 +339,64 @@ G.UIDEF.mods = function()
             }}
         }
     end
-    local t = create_UIBox_generic_options({
+    return {
+        n = G.UIT.ROOT,
+        config = {align = 'cm', padding = 0.2, colour = G.C.BLACK, r = 0.1, emboss = 0.05, minh = 4},
+        nodes = {{
+            n = G.UIT.R,
+            config = {
+                align = 'cm',
+                padding = 0.1,
+                outline_colour = G.C.JOKER_GREY,
+                r = 0.1,
+                outline = 1,
+                minw = 4
+            },
+            nodes = {{
+                n = G.UIT.R,
+                config = {align = 'cm', padding = 0.1},
+                nodes = {create_badge('Balamod', G.C.DARK_EDITION, G.C.UI.TEXT_LIGHT, 1.5)}
+            }, {n = G.UIT.R, config = {align = 'cl', padding = 0}, nodes = credits_text}, {
+                n = G.UIT.R,
+                config = {align = 'cm', padding = 0.1, colour = G.C.CLEAR},
+                nodes = {G.F_EXTERNAL_LINKS and {
+                    n = G.UIT.C,
+                    config = {align = 'cm', padding = 0},
+                    nodes = {UIBox_button({
+                        scale = text_scale * 0.5,
+                        label = {'Github'},
+                        button = 'open_balamod_github'
+                    })}
+                } or nil, G.F_EXTERNAL_LINKS and {
+                    n = G.UIT.C,
+                    config = {align = 'cm', padding = 0},
+                    nodes = {UIBox_button({
+                        scale = text_scale * 0.5,
+                        label = {'Discord'},
+                        button = 'open_balamod_discord'
+                    })}
+                } or nil}
+            }}
+        }}
+    }
+end
+
+G.UIDEF.mods = function()
+    return create_UIBox_generic_options({
         contents = {{
             n = G.UIT.R,
             config = {align = 'cm', padding = 0},
-            nodes = {create_tabs({
-                tabs = {{label = 'Mods', chosen = true, tab_definition_function = create_mod_tab_definition}, {
-                    label = 'Credits',
-                    tab_definition_function = function()
-                        return {
-                            n = G.UIT.ROOT,
-                            config = {align = 'cm', padding = 0.2, colour = G.C.BLACK, r = 0.1, emboss = 0.05, minh = 4},
-                            nodes = {{
-                                n = G.UIT.R,
-                                config = {
-                                    align = 'cm',
-                                    padding = 0.1,
-                                    outline_colour = G.C.JOKER_GREY,
-                                    r = 0.1,
-                                    outline = 1,
-                                    minw = 4
-                                },
-                                nodes = {{
-                                    n = G.UIT.R,
-                                    config = {align = 'cm', padding = 0.1},
-                                    nodes = {create_badge('Balamod', G.C.DARK_EDITION, G.C.UI.TEXT_LIGHT, 1.5)}
-                                }, {n = G.UIT.R, config = {align = 'cl', padding = 0}, nodes = credits_text}, {
-                                    n = G.UIT.R,
-                                    config = {align = 'cm', padding = 0.1, colour = G.C.CLEAR},
-                                    nodes = {G.F_EXTERNAL_LINKS and {
-                                        n = G.UIT.C,
-                                        config = {align = 'cm', padding = 0},
-                                        nodes = {UIBox_button({
-                                            scale = text_scale * 0.5,
-                                            label = {'Github'},
-                                            button = 'open_balamod_github'
-                                        })}
-                                    } or nil, G.F_EXTERNAL_LINKS and {
-                                        n = G.UIT.C,
-                                        config = {align = 'cm', padding = 0},
-                                        nodes = {UIBox_button({
-                                            scale = text_scale * 0.5,
-                                            label = {'Discord'},
-                                            button = 'open_balamod_discord'
-                                        })}
-                                    } or nil}
-                                }}
-                            }}
-                        }
-                    end
-                }},
-                snap_to_nav = true
-            })}
+            nodes = {
+                create_tabs({
+                    tabs = {
+                        {label = 'Mods', chosen = true, tab_definition_function = create_mod_tab_definition},
+                        {label = 'Credits', tab_definition_function = create_mod_credits_definition, },
+                    },
+                    snap_to_nav = true
+                })
+            }
         }}
     })
-    return t
 end
 
 G.FUNCS.show_mods = function(e)

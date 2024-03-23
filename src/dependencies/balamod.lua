@@ -210,9 +210,9 @@ local function installMod(modInfo)
         logger:error('modInfo is nil')
         return RESULT.MOD_NOT_FOUND_IN_REPOS
     end
-    local modId = modInfo.mod_id
+    local modId = modInfo.id
     if modInfo.present then
-        logger:debug('Mod ' .. modInfo.mod_id .. ' is already present')
+        logger:debug('Mod ' .. modInfo.id .. ' is already present')
         local modVersion = modInfo.newVersion
         if not modInfo.needUpdate then
             return RESULT.SUCCESS
@@ -221,7 +221,7 @@ local function installMod(modInfo)
 
         -- remove old mod
         for i, mod in ipairs(mods) do
-            if mod.mod_id == modId then
+            if mod.id == modId then
                 if mod.on_disable then
                     mod.on_disable()
                 end
@@ -232,7 +232,7 @@ local function installMod(modInfo)
         end
     end
 
-    logger:debug('Downloading mod ' .. modInfo.mod_id)
+    logger:debug('Downloading mod ' .. modInfo.id)
     local modUrl = modInfo.url
 
     local owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/tree/([^/]+)/?(.*)")
@@ -418,7 +418,7 @@ local function getRepoMods()
                     end
                 end
                 table.insert(repoMods, {
-                    mod_id = modId,
+                    id = modId,
                     name = modName,
                     description = modDesc,
                     url = modUrl,
@@ -545,7 +545,6 @@ local function loadMod(modFolder)
     for key, value in pairs(manifest) do
         mod[key] = value
     end
-    mod.mod_id = manifest.id  -- for compatibilty
     mod.enabled = true
     logger:debug('Mod loaded: ', mod.id)
     logger:debug("Checking if mod is disabled")
@@ -601,7 +600,6 @@ end
 table.insert(mods,
     {
         id = "dev_console",
-        mod_id = "dev_console",
         name = "Dev Console",
         version = "0.6.0",
         author = "sbordeyne & UwUDev",

@@ -63,7 +63,7 @@ function love.update(dt)
             if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
                 local ok, message = pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
                 if not ok then
-                    logger:warn("Enabling mod ", mod.mod_id, "failed: ", message)
+                    logger:warn("Enabling mod ", mod.id, "failed: ", message)
                 end
             end
         end
