@@ -3,6 +3,7 @@ local platform = require('platform')
 local math = require('math')
 local console = require('console')
 local json = require('json')
+local utils = require('utils')
 
 logger = logging.getLogger('balamod')
 mods = {}
@@ -545,6 +546,7 @@ local function toggleMod(mod)
         love.filesystem.write('mods/' .. mod.id .. '/disable.it', '')
         pcall(mod.on_disable)
     end
+    mods[mod.id] = mod
 end
 
 buildPaths("",{"mods","apis","resources","localization"})
@@ -863,6 +865,19 @@ table.insert(mods,
                 end,
                 "Usage: luamod <mod_id>"
             )
+
+            console:registerCommand(
+                "sandbox",
+                function (args)
+                    G:sandbox()
+                end,
+                "Goes to the sandbox stage",
+                function (current_arg)
+                    return nil
+                end,
+                "Usage: sandbox"
+            )
+
             console.logger:debug("Dev Console on_enable completed")
         end,
         on_disable = function()
@@ -962,25 +977,6 @@ table.insert(mods,
         end,
     }
 )
-
-local modFolders = love.filesystem.getDirectoryItems("mods") -- Load all mods
-for i, modFolder in ipairs(modFolders) do
-    local mod = loadMod(modFolder)
-    if mod ~= nil then
-        mods[mod.id] = mod
-        if mod.enabled then
-            if mod.on_enable and type(mod.on_enable) == 'function' then
-                pcall(mod.on_enable)
-            end
-        end
-    end
-end
-
-for _, mod in ipairs(mods) do
-    if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
-        pcall(mod.on_pre_load) -- Call the on_pre_load function of the mod if it exists
-    end
-end
 
 return {
     logger = logger,

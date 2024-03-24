@@ -37,6 +37,7 @@ impl Balatro {
         self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
         self.add_file_in_exe(exe_path, get_patches_lua().as_bytes().to_vec(), "patches.lua")?;
         self.add_file_in_exe(exe_path, get_json_lua().as_bytes().to_vec(), "json.lua")?;
+        self.add_file_in_exe(exe_path, get_utils_lua().as_bytes().to_vec(), "utils.lua")?;
         Ok(())
     }
 

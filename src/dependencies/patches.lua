@@ -17,12 +17,16 @@ local game_love_errhand = love.errhand
 
 local balamod = require("balamod")
 local logging = require('logging')
+local utils = require('utils')
 local logger = logging.getLogger('patches')
 
 function love.load(args)
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_game_load then
-            mod.on_game_load(args)
+            local status, message = pcall(mod.on_game_load, args)
+            if not status then
+                logger:warn("Loading mod ", mod.id, "failed: ", message)
+            end
         end
     end
     if game_love_load then
@@ -31,9 +35,12 @@ function love.load(args)
 end
 
 function love.quit()
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_game_quit then
-            mod.on_game_quit()
+            local status, message = pcall(mod.on_game_quit)
+            if not status then
+                logger:warn("Quitting mod ", mod.id, "failed: ", message)
+            end
         end
     end
     if game_love_quit then
@@ -43,10 +50,15 @@ end
 
 function love.update(dt)
     local cancel_update = false
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_pre_update then
-            if mod.on_pre_update(dt) then
-                cancel_update = true
+            local status, message = pcall(mod.on_pre_update, dt)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Pre-updating mod ", mod.id, "failed: ", message)
             end
         end
     end
@@ -59,7 +71,7 @@ function love.update(dt)
 
     if balamod.is_loaded == false then
         balamod.is_loaded = true
-        for _, mod in ipairs(balamod.mods) do -- Load all mods after eveything else
+        for modId, mod in pairs(balamod.mods) do -- Load all mods after eveything else
             if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
                 local ok, message = pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
                 if not ok then
@@ -69,17 +81,23 @@ function love.update(dt)
         end
     end
 
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_post_update then
-            mod.on_post_update(dt)
+            local status, message = pcall(mod.on_post_update, dt)
+            if not status then
+                logger:warn("Post-updating mod ", mod.id, "failed: ", message)
+            end
         end
     end
 end
 
 function love.draw()
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_pre_render then
-            mod.on_pre_render()
+            local status, message = pcall(mod.on_pre_render)
+            if not status then
+                logger:warn("Pre-rendering mod ", mod.id, "failed: ", message)
+            end
         end
     end
 
@@ -87,9 +105,12 @@ function love.draw()
         game_love_draw()
     end
 
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_post_render then
-            mod.on_post_render()
+            local status, message = pcall(mod.on_post_render)
+            if not status then
+                logger:warn("Post-rendering mod ", mod.id, "failed: ", message)
+            end
         end
     end
 
@@ -97,10 +118,15 @@ end
 
 function love.keypressed(key)
     local cancel_event = false
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_key_pressed then
-            if mod.on_key_pressed(key) then
-                cancel_event = true
+            local status, message = pcall(mod.on_key_pressed, key)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Key pressed event for mod ", mod.id, "failed: ", message)
             end
         end
     end
@@ -114,10 +140,15 @@ end
 
 function love.keyreleased(key)
     local cancel_event = false
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_key_released then
-            if mod.on_key_released(key) then
-                cancel_event = true
+            local status, message = pcall(mod.on_key_released, key)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Key released event for mod ", mod.id, "failed: ", message)
             end
         end
     end
@@ -130,12 +161,42 @@ function love.keyreleased(key)
 end
 
 function love.gamepadpressed(joystick, button)
+    local cancel_event = false
+    for modId, mod in pairs(balamod.mods) do
+        if mod.on_gamepad_pressed then
+            local status, message = pcall(mod.on_gamepad_pressed, joystick, button)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Gamepad pressed event for mod ", modId, "failed: ", message)
+            end
+        end
+    end
+    if cancel_event then return end
+
     if game_love_gamepad_pressed then
         game_love_gamepad_pressed(joystick, button)
     end
 end
 
 function love.gamepadreleased(joystick, button)
+    local cancel_event = false
+    for modId, mod in pairs(balamod.mods) do
+        if mod.on_gamepad_pressed then
+            local status, message = pcall(mod.on_gamepad_released, joystick, button)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Gamepad released event for mod ", modId, "failed: ", message)
+            end
+        end
+    end
+    if cancel_event then return end
+
     if game_love_gamepad_released then
         game_love_gamepad_released(joystick, button)
     end
@@ -143,10 +204,15 @@ end
 
 function love.mousepressed(x, y, button, touch)
     local cancel_event = false
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_mouse_pressed then
-            if mod.on_mouse_pressed(x, y, button, touches) then
-                cancel_event = true
+            local status, message = pcall(mod.on_mouse_pressed, x, y, button, touch)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Mouse pressed event for mod ", mod.id, "failed: ", message)
             end
         end
     end
@@ -159,10 +225,15 @@ end
 
 function love.mousereleased(x, y, button)
     local cancel_event = false
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_mouse_released then
-            if mod.on_mouse_released(x, y, button) then
-                cancel_event = true
+            local status, message = pcall(mod.on_mouse_released, x, y, button)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Mouse released event for mod ", mod.id, "failed: ", message)
             end
         end
     end
@@ -174,21 +245,54 @@ function love.mousereleased(x, y, button)
 end
 
 function love.mousemoved(x, y, dx, dy, istouch)
+    local cancel_event = false
+    for modId, mod in pairs(balamod.mods) do
+        if mod.on_mouse_moved then
+            local status, message = pcall(mod.on_mouse_moved, x, y, dx, dy, istouch)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Mouse moved event for mod ", mod.id, "failed: ", message)
+            end
+        end
+    end
+    if cancel_event then return end
+
     if game_love_mousemoved then
         game_love_mousemoved(x, y, dx, dy, istouch)
     end
 end
 
 function love.joystickaxis(joystick, axis, value)
+    local cancel_event = false
+    for modId, mod in pairs(balamod.mods) do
+        if mod.on_mouse_released then
+            local status, message = pcall(mod.on_joystick_axis, joystick, axis, value)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Joystick axis event for mod ", mod.id, "failed: ", message)
+            end
+        end
+    end
+    if cancel_event then return end
+
     if game_love_joystick_axis then
         game_love_joystick_axis(joystick, axis, value)
     end
 end
 
 function love.errhand(msg)
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_error then
-            mod.on_error(msg)
+            local status, message = pcall(mod.on_error, msg)
+            if not status then
+                logger:warn("Error event for mod ", mod.id, "failed: ", message)
+            end
         end
     end
 
@@ -199,10 +303,15 @@ end
 
 function love.wheelmoved(x, y)
     local cancel_event = false
-    for _, mod in ipairs(balamod.mods) do
+    for modId, mod in pairs(balamod.mods) do
         if mod.on_mousewheel then
-            if mod.on_mousewheel(x, y) then
-                cancel_event = true
+            local status, message = pcall(mod.on_mousewheel, x, y)
+            if status then
+                if message then
+                    cancel_update = true
+                end
+            else
+                logger:warn("Mouse wheel event for mod ", mod.id, "failed: ", message)
             end
         end
         if cancel_event then return end
@@ -261,4 +370,26 @@ function create_UIBox_main_menu_buttons()
   end
   table.insert(t.nodes[2].nodes, insertIndex, modBtn)
   return t
+end
+
+
+local modFolders = love.filesystem.getDirectoryItems("mods") -- Load all mods
+logger:info("Loading mods from folders ", modFolders)
+for i, modFolder in ipairs(modFolders) do
+    local mod = balamod.loadMod(modFolder)
+    logger:info("Loaded mod: ", mod.id)
+    if mod ~= nil then
+        balamod.mods[mod.id] = mod
+    end
+end
+
+logger:info("Mods: ", utils.map(mods, function(mod) return mod.id end))
+
+for _, mod in ipairs(balamod.mods) do
+    if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
+        local status, message = pcall(mod.on_pre_load) -- Call the on_pre_load function of the mod if it exists
+        if not status then
+            logger:warn("Pre-loading mod ", mod.id, "failed: ", message)
+        end
+    end
 end

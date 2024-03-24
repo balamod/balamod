@@ -1,4 +1,5 @@
 local balamod = require('balamod')
+local utils = require('utils')
 
 G.FUNCS.open_balamod_website = function(e)
     love.system.openURL('https://balamod.github.io/')
@@ -18,13 +19,6 @@ G.FUNCS.toggle_mod = function(e)
     end
 
     balamod.toggleMod(mod)
-    -- replace mod in mods
-    for i, m in ipairs(balamod.mods) do
-        if m.id == ori_id then
-            mods[i] = mod
-            break
-        end
-    end
     e.config.colour = mod.enabled and G.C.GREEN or G.C.RED
     e.children[1].config.text = mod.enabled and 'Enabled' or 'Disabled'
     e.UIBox:recalculate(true)
@@ -254,17 +248,20 @@ local function create_mod_tab_definition()
     G.MOD_PAGE_SIZE = 7
     mods_collection = {}
     mods_collection_size = 0
-    for _, mod in ipairs(balamod.mods) do
-        if not mods_collection[mod.id] then
-            mods_collection[mod.id] = mod
+    logger:info('Mods collection generation with mods', utils.map(balamod.mods, function(mod) return mod.id end))
+    for mod_id, mod in pairs(balamod.mods) do
+        logger:trace('Trying to add mod ', mod_id, ' to collection')
+        if not mods_collection[mod_id] then
+            mods_collection[mod_id] = mod
             mods_collection_size = mods_collection_size + 1
         else
             balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
     end
+    logger:info('Mods collection before repoMods additions', mods_collection)
     for index, mod in ipairs(balamod.getRepoMods()) do
         local cur_mod = mods_collection[mod.id]
-        if not cur_mod then
+        if cur_mod == nil then
             mods_collection[mod.id] = mod
             mods_collection_size = mods_collection_size + 1
         else
