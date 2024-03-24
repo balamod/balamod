@@ -1,4 +1,4 @@
-name: Generate Documentation
+name: Schedule Deploy Documentation
 
 on:
   schedule:
@@ -7,12 +7,14 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/doc.yaml'
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Release Workflow"]
+    types:
+      - completed
 
 jobs:
   deploy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
@@ -33,10 +35,12 @@ jobs:
         with:
           tool: mdbook-toc
 
-      - name: Setup mdbook-tera
-        uses: taiki-e/cache-cargo-install-action@v1
+      - name: Install mdbook-tera
+        uses: jaxxstorm/action-install-gh-release@v1.10.0
         with:
-          tool: mdbook-tera
+          repo: avitex/mdbook-tera
+          tag: v0.5.1
+          cache: enable
 
       - name: mdBook build
         run: |
