@@ -888,12 +888,34 @@ table.insert(mods,
                 "sandbox",
                 function (args)
                     G:sandbox()
+                    return true
                 end,
                 "Goes to the sandbox stage",
                 function (current_arg)
                     return nil
                 end,
                 "Usage: sandbox"
+            )
+
+            console:registerCommand(
+                "luarun",
+                function (args)
+                    local code = table.concat(args, " ")
+                    local func, err = load("return " .. code)
+                    if func then
+                        console.logger:info("Lua code executed successfully")
+                        console.logger:print(func)
+                        return true
+                    else
+                        console.logger:error("Error loading lua code: ", err)
+                        return false
+                    end
+                end,
+                "Run lua code in the context of the game",
+                function (current_arg)
+                    return nil
+                end,
+                "Usage: luarun <lua_code>"
             )
 
             console.logger:debug("Dev Console on_enable completed")
