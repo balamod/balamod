@@ -1,4 +1,4 @@
-# Balamod
+# Introduction
 
 Balamod is a modloader, decompiler, and code injector for a popular poker game, Balatro. Crafted with Rust, it embodies speed, safety, and simplicity.
 
@@ -11,13 +11,11 @@ Here's what Balamod brings to the table:
 - **Customizable**: Tailor Balamod to your needs with its flexible design.
 - **In-Game Mod Shop**: Balamod supports downloading and displaying mods within the game, providing a seamless modding experience.
 
-Please refer to the [Balamod Documentation](https://UwUDev.github.io/balamod) for more information.
+This guide is a testament to what Balamod can do. It's not just a tool, it's a game-changer for Balatro enthusiasts.
 
 ## Related Links
 
-[![Balamod Discord](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)](https://discord.gg/p7DeW7pSzA)
-
-- [Balamod Repository](https://github.com/UwUDev/balamod): The official repository for Balamod.
-- [Balamod Organization](https://github.com/balamod): The organization hosting Balamod and related projects.
-
-> *I love Arch, by the way.*
+- [Balamod Repository](https://github.com/UwUDev/balamod)
+- [Balamod Organization](https://github.com/balamod)
+- [Balamod Documentation](https://UwUDev.github.io/balamod)
+- [Discord Community](https://discord.gg/p7DeW7pSzA)

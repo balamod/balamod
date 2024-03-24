@@ -1,0 +1,24 @@
+[book]
+authors = ["magicWenli"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Balamod Documentation"
+
+[preprocessor]
+
+[preprocessor.admonish]
+command = "mdbook-admonish"
+assets_version = "3.0.2" # do not edit: managed by `mdbook-admonish install`
+
+[preprocessor.toc]
+command = "mdbook-toc"
+renderer = ["html"]
+
+[output]
+
+[output.html]
+additional-css = ["./assets/css/mdbook-admonish.css"]
+git-repository-url = "https://github.com/UwUDev/balamod"
+git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/UwUDev/balamod/edit/master/docs/{path}"
