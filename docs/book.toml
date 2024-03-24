@@ -15,6 +15,9 @@ assets_version = "3.0.2" # do not edit: managed by `mdbook-admonish install`
 command = "mdbook-toc"
 renderer = ["html"]
 
+[preprocessor.tera]
+command = "mdbook-tera --json ./src/context.json"
+
 [output]
 
 [output.html]

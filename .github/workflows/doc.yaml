@@ -7,6 +7,8 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/doc.yaml'
+    tags:
+      - 'v*'
 
 jobs:
   deploy:
@@ -30,6 +32,11 @@ jobs:
         uses: taiki-e/cache-cargo-install-action@v1
         with:
           tool: mdbook-toc
+
+      - name: Setup mdbook-tera
+        uses: taiki-e/cache-cargo-install-action@v1
+        with:
+          tool: mdbook-tera
 
       - name: mdBook build
         run: |

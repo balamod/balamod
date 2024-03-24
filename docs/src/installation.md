@@ -6,7 +6,13 @@ After the injection, You are able to browse the mods contributed by the communit
 
 ![Balamod Mod Shop](images/Balamod_mods_shop.png)
 
-## Supported Platforms
+## Download Balamod Binary
+
+You can download the latest Balamod binary from the [GitHub releases page](https://github.com/UwUDev/balamod/releases/latest).
+
+Currently, the latest version is `{{ balamod.latest_tag }}` published on `{{ balamod.published_at | date(format="%Y-%m-%d %H:%M") }}`.
+
+Download the binary that corresponds to your platform.
 
 ```admonish warning
 
@@ -14,15 +20,11 @@ Balamod currently doesn't work on macOS i386/amd64, but it will work on Apple Si
 
 ```
 
-- Windows
-- macOS (Apple Silicon)
-- Linux (most distributions)
-
-## Download Balamod Binary
-
-You can download the latest Balamod binary from the [GitHub releases page](https://github.com/UwUDev/balamod/releases/latest).
-
-Download the binary that corresponds to your platform.
+| Platform | Download link |
+|----------|---------------|
+| Windows  | [{{ balamod.release_name_windows }}]({{ balamod.release_url_windows }}) |
+| macOS    | [{{ balamod.release_name_macos }}]({{ balamod.release_url_macos }}) |
+| Linux    | [{{ balamod.release_name_linux }}]({{ balamod.release_url_linux }}) |
 
 ## Install Balamod
 
@@ -31,7 +33,7 @@ Download the binary that corresponds to your platform.
 Execute the downloaded binary in a terminal with the following command:
 
 ```bash
-balamod-v0.1.11-windows.exe -a
+{{ balamod.release_name_windows }} -a
 ```
 
 ~~~admonish info
@@ -39,14 +41,14 @@ For people who are not familiar with the command line, you can simply install Ba
 
 1. Open the folder where the downloaded binary is located.
 2. Click the address bar and type `cmd` and press Enter.
-3. Type `balamod-v0.1.11-windows.exe` and press space.
+3. Type `{{ balamod.release_name_windows }}` and press space.
 4. Then add `-a` to the end of the command.
 5. Press Enter.
 
 The output of Command Prompt will look like this:
 
 ```cmd
-C:\Users\user\Downloads\Programs>balamod-v0.1.11-windows.exe -a
+C:\Users\user\Downloads\Programs>{{ balamod.release_name_windows }} -a
 Found 1 Balatro installations.
 Balatro v1.0.0n found !
 Implementing modloader on main...
@@ -69,15 +71,15 @@ C:\Users\yxnia\Downloads\Programs>
 
 ### macOS
 
-Double-click the downloaded PKG file and follow the installation instructions.
+Double-click the downloaded file (`{{ balamod.release_name_macos }}`) and follow the installation instructions.
 
 ### Linux
 
 Execute the downloaded binary in a terminal with the following command:
 
 ```bash
-chmod +x balamod-v0.1.11-linux
-balamod-v0.1.11-linux -a
+chmod +x {{ balamod.release_name_linux }}
+{{ balamod.release_name_linux }} -a
 ```
 
 ## Verify Installation
