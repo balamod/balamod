@@ -24,6 +24,7 @@ local RESULT = {
     MOD_PCALL_ERROR = 6,
 }
 local paths = {} -- Paths to the files that will be loaded
+local _VERSION = require('balamod_version')
 
 local function splitstring(inputstr, sep)
     if sep == nil then
@@ -416,11 +417,13 @@ local function validateManifest(modFolder, manifest)
         author = true,
         load_before = true,
         load_after = true,
+        min_balamod_version = false,
+        max_balamod_version = false,
     }
 
     -- check that all manifest expected fields are present
-    for field, _ in ipairs(expectedFields) do
-        if manifest[field] == nil then
+    for field, required in pairs(expectedFields) do
+        if manifest[field] == nil and required then
             logger:error('Manifest in folder ', modFolder, ' is missing field: ', field)
             return false
         end
@@ -510,6 +513,21 @@ local function loadMod(modFolder)
         return nil
     end
     logger:debug('Manifest loaded: ', manifest)
+    -- check that the mod is compatible with the current version of balamod
+    if manifest.min_balamod_version then
+        local minVersion = parseVersion(manifest.min_balamod_version)
+        if not v2GreaterThanV1(minVersion, _VERSION) then
+            logger:error('Mod ', modFolder, ' requires a newer version of balamod')
+            return nil
+        end
+    end
+    if manifest.max_balamod_version then
+        local maxVersion = parseVersion(manifest.max_balamod_version)
+        if v2GreaterThanV1(maxVersion, _VERSION) then
+            logger:error('Mod ', modFolder, ' requires an older version of balamod')
+            return nil
+        end
+    end
     -- load the hooks (on_enable, on_game_load, etc...)
     logger:debug("Loading hooks from: ", 'mods/'..modFolder..'/main.lua')
     local modHooks = require('mods/'..modFolder..'/main')
@@ -990,7 +1008,7 @@ return {
     injectHead = injectHead,
     injectTail = injectTail,
     is_loaded = is_loaded,
-    _VERSION = require('balamod_version'),
+    _VERSION = _VERSION,
     console = console,
     loadMod = loadMod,
     toggleMod = toggleMod,
