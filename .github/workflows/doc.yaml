@@ -6,6 +6,7 @@ on:
   push:
     paths:
       - 'docs/**'
+      - '.github/workflows/doc.yaml'
 
 jobs:
   deploy:
@@ -20,10 +21,15 @@ jobs:
         with:
           mdbook-version: 'latest'
 
-      - name: Setup admonish
+      - name: Setup mdbook-admonish
         uses: taiki-e/cache-cargo-install-action@v1
         with:
-          tool: mdbook-admonish,mdbook-toc
+          tool: mdbook-admonish
+      
+      - name: Setup mdbook-toc
+        uses: taiki-e/cache-cargo-install-action@v1
+        with:
+          tool: mdbook-toc
 
       - name: mdBook build
         run: |
