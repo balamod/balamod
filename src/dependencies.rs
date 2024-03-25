@@ -45,6 +45,10 @@ pub fn get_utils_lua() -> &'static str {
     include_str!("dependencies/utils.lua")
 }
 
+pub fn get_tar_lua() -> &'static str {
+    include_str!("dependencies/tar.lua")
+}
+
 pub fn get_balamod_version_lua(version: &'static str) -> String {
     format!(r#"
     return "{}"

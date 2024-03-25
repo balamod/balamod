@@ -4,6 +4,7 @@ local math = require('math')
 local console = require('console')
 local json = require('json')
 local utils = require('utils')
+local tar = require('tar')
 
 logger = logging.getLogger('balamod')
 mods = {}
@@ -22,6 +23,8 @@ local RESULT = {
     NETWORK_ERROR = 4,
     MOD_FS_LOAD_ERROR = 5,
     MOD_PCALL_ERROR = 6,
+    TAR_DECOMPRESS_ERROR = 7,
+    MOD_NOT_CONFORM = 8,
 }
 local paths = {} -- Paths to the files that will be loaded
 local _VERSION = require('balamod_version')
@@ -205,128 +208,6 @@ local function isModPresent(modId)
         return false
     end
     return mods[modId] ~= nil
-end
-
-local function installMod(modInfo)
-    if modInfo == nil then
-        logger:error('modInfo is nil')
-        return RESULT.MOD_NOT_FOUND_IN_REPOS
-    end
-    local modId = modInfo.id
-    if modInfo.present then
-        logger:debug('Mod ' .. modInfo.id .. ' is already present')
-        local modVersion = modInfo.newVersion
-        if not modInfo.needUpdate then
-            return RESULT.SUCCESS
-        end
-
-        -- remove old mod
-        for i, mod in ipairs(mods) do
-            if mod.id == modId then
-                if mod.on_disable then
-                    mod.on_disable()
-                end
-
-                table.remove(mods, i)
-                break
-            end
-        end
-    end
-
-    logger:debug('Downloading mod ' .. modInfo.id)
-    local modUrl = modInfo.url
-
-    local owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/tree/([^/]+)/?(.*)")
-
-    if not owner or not repo or not branch then
-        owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/?(.*)")
-    end
-
-    logger:debug('Url: ' .. modUrl)
-    logger:debug('Owner: ' .. (owner or 'nil'))
-    logger:debug('Repo: ' .. (repo or 'nil'))
-    logger:debug('Branch: ' .. (branch or 'nil'))
-    logger:debug('Path: ' .. (path or 'nil'))
-
-    while path:sub(-1) == '/' do
-        path = path:sub(1, -2)
-    end
-
-    local url = 'https://api.github.com/repos/' .. owner .. '/' .. repo .. '/git/trees/' .. branch .. '?recursive=1'
-    local code, body = request(url)
-    if code ~= 200 then
-        logger:error('Request failed')
-        logger:error('Code: ' .. code)
-        logger:error('Response: ' .. body)
-        return RESULT.NETWORK_ERROR
-    end
-
-    logger:debug('Files to download:')
-
-    local paths = {}
-
-    for p, type in body:gmatch('"path":"(.-)".-"type":"(.-)"') do
-        if type == 'blob' then
-            if p:sub(1, #path) == path then
-                table.insert(paths, p)
-            end
-        end
-    end
-
-    for _, p in ipairs(paths) do
-        logger:trace(p)
-    end
-
-    for _, p in ipairs(paths) do
-        code, body = request('https://raw.githubusercontent.com/'..owner..'/'..repo..'/'..branch..'/'..p)
-        if code ~= 200 then
-            logger:error('Request failed')
-            logger:error('Code: ' .. code)
-            logger:error('Response: ' .. body)
-            return RESULT.NETWORK_ERROR
-        end
-        logger:debug('Downloaded ' .. p)
-        local filePath = p:sub(#path + 2)
-        logger:debug('Writing to ' .. filePath)
-        local dir = filePath:match('(.+)/[^/]+')
-		if dir ~= nil then
-			love.filesystem.createDirectory(dir)
-			--[[if not love.filesystem.getInfo(filePath) then
-				love.filesystem.write(filePath, body)
-			else
-				logger:warn("File " .. filePath .. " already exists")
-			end]] --
-			love.filesystem.write(filePath, body)
-		else
-            logger:warn("File " .. filePath .. " is in the root directory and will not be installed")
-        end
-    end
-
-    for _, p in ipairs(paths) do
-        if p:match('mods/.*%.lua') then
-            logger:info('Loading ' .. p:sub(#path + 2))
-
-            local modContent, loadErr = love.filesystem.load(p:sub(#path + 2))
-
-            if modContent then
-                local success, mod = pcall(modContent)
-                if success then
-                    table.insert(mods, mod)
-                    logger:info('Mod ' .. p:sub(#path + 2) .. ' loaded')
-                else
-                    logger:error('Error loading mod: ' .. p:sub(#path + 2))
-                    logger:error(mod)
-                    return RESULT.MOD_PCALL_ERROR
-                end
-            else
-                logger:error('Error reading mod: ' .. p:sub(#path + 2))
-                logger:error(loadErr)
-                return RESULT.MOD_FS_LOAD_ERROR
-            end
-        end
-    end
-
-    return RESULT.SUCCESS
 end
 
 local function parseVersion(version)
@@ -565,6 +446,97 @@ local function toggleMod(mod)
         pcall(mod.on_disable)
     end
     mods[mod.id] = mod
+end
+
+local function installMod(modInfo)
+    if modInfo == nil then
+        logger:error('modInfo is nil')
+        return RESULT.MOD_NOT_FOUND_IN_REPOS
+    end
+    local modId = modInfo.id
+    if modInfo.present then
+        logger:debug('Mod ' .. modInfo.id .. ' is already present')
+        local modVersion = modInfo.newVersion
+        if not modInfo.needUpdate then
+            return RESULT.SUCCESS
+        end
+
+        -- remove old mod
+        for i, mod in ipairs(mods) do
+            if mod.id == modId then
+                if mod.on_disable then
+                    mod.on_disable()
+                end
+
+                table.remove(mods, i)
+                break
+            end
+        end
+    end
+
+    logger:debug('Downloading mod ' .. modInfo.id)
+    local modUrl = modInfo.url
+
+    local code, body = request(modUrl)
+    if code ~= 200 and code ~= 302 then
+        logger:error('Request failed')
+        logger:error('Code: ' .. code)
+        logger:error('Response: ' .. body)
+        return RESULT.NETWORK_ERROR
+    end
+    logger:debug('Downloaded tarball with body ', body)
+
+    -- decompress the archive in memory
+    local decompressedData = love.data.decompress("data", "gzip", body)
+    local success, result = pcall(tar.unpack, decompressedData)
+    if not success then
+        logger:error('Error decompressing tarball')
+        logger:error(result)
+        return RESULT.TAR_DECOMPRESS_ERROR
+    end
+
+    -- result should be a table of tables with the following structure:
+    -- {
+    --   name = path to the file/directory
+    --   data = fileData
+    --   type = "file" | "directory"
+    -- }
+    -- sort the result table so that directories are processed first
+    table.sort(result, function(a, b) return a.type < b.type end)
+    -- check that the downloaded mod contains a main.lua file as well as a manifest.json file
+    local mainLua = false
+    local manifestJson = false
+    for _, file in ipairs(result) do
+        if file.type == "file" then
+            -- file.name is a path, we only want the filename
+            local _, _, filename = file.name:find(".+/(.+)")
+            if filename == "main.lua" then
+                mainLua = true
+            end
+            if filename == "manifest.json" then
+                manifestJson = true
+            end
+        end
+    end
+    if not mainLua then
+        logger:error('Downloaded mod does not contain a main.lua file')
+        return RESULT.MOD_NOT_CONFORM
+    end
+    if not manifestJson then
+        logger:error('Downloaded mod does not contain a manifest.json file')
+        return RESULT.MOD_NOT_CONFORM
+    end
+    for _, file in ipairs(result) do
+        -- replace the first part of file.name with the modId
+        file.name = modId .. file.name:sub(file.name:find("/"))
+        if file.type == "directory" then
+            love.filesystem.createDirectory("mods/"..file.name)
+        elseif file.type == "file" then
+            love.filesystem.write("mods/"..file.name, file.data)
+        end
+    end
+
+    return RESULT.SUCCESS
 end
 
 buildPaths("",{"mods","apis","resources","localization"})
@@ -916,6 +888,32 @@ table.insert(mods,
                     return nil
                 end,
                 "Usage: luarun <lua_code>"
+            )
+
+            console:registerCommand(
+                "installmod",
+                function (args)
+                    local url = args[1]
+                    local modInfo = {
+                        id = "testmod",
+                        url = url,
+                        present = false,
+                        needUpdate = true,
+                    }
+                    local result = installModFromTar(modInfo)
+                    if result == RESULT.SUCCESS then
+                        console.logger:info("Mod installed successfully")
+                        return true
+                    else
+                        console.logger:error("Error installing mod: ", result)
+                        return false
+                    end
+                end,
+                "Install a mod from a tarball",
+                function (current_arg)
+                    return nil
+                end,
+                "Usage: installmod <mod_url>"
             )
 
             console.logger:debug("Dev Console on_enable completed")
