@@ -1,6 +1,6 @@
 # Balamod Documentation
 
-Welcome to the official documentation for Balamod, a modloader, decompiler, and code injector for the popular poker game, Balatro.
+Welcome to the official documentation for Balamod, a mod-loader, decompiler, and code injector for the popular poker game, Balatro.
 
 ## Building the Documentation
 

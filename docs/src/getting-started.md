@@ -63,10 +63,25 @@ For example, if you want to inject the `UI_definitions.lua` file, you can use th
 
 ## Uninstall
 
-If the modloader crashes the game, or any other reason, you want to uninstall the modloader. 
+If the mod-loader crashes the game, or any other reason, you want to uninstall the mod-loader.
 
-You can restore Balatro game with Steam by verifying the integrity of the game files.
+### Uninstall by Balamod CLI
 
-Do it by following these steps:
+You can use balamod CLI to uninstall and restore the backup of the game.
 
-Steam > Library > Right-click Balatro > Properties > Local Files > Verify Integrity of Game Files
+```bash
+./balamod -u
+```
+
+### Uninstall by Steam
+
+You can also restore the game with Steam by verifying the integrity of the game files.
+
+The steps are:
+
+1. Open Steam.
+2. Go to the Library.
+3. Right-click on Balatro.
+4. Select Properties.
+5. Go to the Local Files tab.
+6. Click on Verify Integrity of Game Files.

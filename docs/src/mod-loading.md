@@ -1,6 +1,6 @@
 # Mod Loading
 
-Balamod can load mods and apis automatically or manually. When balamod modloader is installed(by running `balamod -a`), it will create a `mods` folder and `apis` folder on the AppData directory. 
+Balamod can load mods and apis automatically or manually. When balamod mod-loader is installed(by running `balamod -a`), it will create a `mods` folder and `apis` folder on the AppData directory. 
 
 The folder is vary depending on the platform.
 
@@ -10,7 +10,7 @@ The folder is vary depending on the platform.
 
 ## Automatic Mod Loading
 
-If user downloads a mod from the in-game mod shop, the mod will be automatically loaded by balamod. The mod will be placed in the `mods` folder.
+If user downloads a mod from the in-game mod gallary, the mod will be automatically loaded by balamod. The mod will be placed in the `mods` folder.
 
 ## Manual Mod Loading
 

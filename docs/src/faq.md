@@ -10,7 +10,7 @@ If you have any questions that are not answered here, feel free to ask in the [D
 
 ## What is balamod?
 
-Balamod is a mod loader and framework for the game Balatro. It allows users and modders to modify the game's code, mechanics and assets.
+Balamod is a mod-loader and framework for the game Balatro. It allows users and modders to modify the game's code, mechanics and assets.
 
 More information can be found on the [Balamod GitHub repository](https://github.com/UwUDev/balamod) and [Documentation](https://balamod.github.io/).
 
@@ -40,6 +40,6 @@ No worries, this is a known issue. You can fix it by installing OpenSSL using Ho
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && brew install openssl@3
 ```
 
-## Is this compatible with Steammodded or other mod loaders?
+## Is this compatible with Steammodded or other mod-loaders?
 
-Yes and no. Balamod is a mod loader, and as such, injects a lot of code into the game to make things just work. Installing other mod loaders may work, or may not, but in any case, no support will be provided for such configurations. In theory, you should not need any other mod loader, as balamod is designed to be as flexible and lightweight as possible, while providing all of the necessary tools for both modders and users. Other mod loaders include the also popular Steammodded loader, which is not compatible with balamod at this time.
+Yes and no. Balamod is a mod-loader, and as such, injects a lot of code into the game to make things just work. Installing other mod-loaders may work, or may not, but in any case, no support will be provided for such configurations. In theory, you should not need any other mod-loader, as balamod is designed to be as flexible and lightweight as possible, while providing all of the necessary tools for both modders and users. Other mod-loaders include the also popular Steammodded loader, which is not compatible with balamod at this time.

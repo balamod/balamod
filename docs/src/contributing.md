@@ -1,6 +1,6 @@
 # Contributing Guide
 
-This guide is intended to help you get started with contributing to the game. If you have any questions, feel free to ask in the [Discord server](https://discord.gg/p7DeW7pSzA).
+This guide is intended to help you get started with contributing to the game mod-loader. If you have any questions, feel free to ask in the [Discord server](https://discord.gg/p7DeW7pSzA).
 
 ## Creating a Pull Request
 
@@ -12,7 +12,7 @@ This guide is intended to help you get started with contributing to the game. If
 6. Push the changes to your fork.
 7. Create a pull request.
 
-## Add mods to the in-game mod shop
+## Add mods to the in-game mod gallary
 
 There's now a rest or "marketplace" system integrated directly into balamod via the mod menu. You can add your mods via the [indexes](https://github.com/UwUDev/balamod/blob/master/repos.index)
 For the moment there's only one because I'm going to try and regulate malicious mods and the like, but there's bound to be many more in the future.

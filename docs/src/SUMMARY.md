@@ -12,10 +12,10 @@
 # Developer Guide
 
 - [Modding Basics](./modding-basics.md)
-- [UI Modding Basics](./ui-modding-basics.md)
-    - [UI Modding Example](./ui-modding-example.md)
+- [UI Modding Basics]()
+    - [UI Modding Example]()
 - [Contributing Guide](./contributing.md)
-- [API Reference](./api-reference.md)
+- [API Reference]()
 
 # Other Resources
 

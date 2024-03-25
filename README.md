@@ -15,9 +15,9 @@ Please refer to the [Balamod Documentation](https://UwUDev.github.io/balamod) fo
 
 ## Related Links
 
-[![Balamod Discord](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)](https://discord.gg/p7DeW7pSzA)
-
 - [Balamod Repository](https://github.com/UwUDev/balamod): The official repository for Balamod.
 - [Balamod Organization](https://github.com/balamod): The organization hosting Balamod and related projects.
+
+[![Balamod Discord](https://discordapp.com/api/guilds/1185706070656688128/widget.png?style=banner2)](https://discord.gg/p7DeW7pSzA)
 
 > *I love Arch, by the way.*
