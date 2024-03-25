@@ -536,6 +536,11 @@ local function installMod(modInfo)
         end
     end
 
+    local mod = loadMod(modId)
+    if mod == nil then
+        return RESULT.MOD_FS_LOAD_ERROR
+    end
+    table.insert(mods, mod)
     return RESULT.SUCCESS
 end
 
