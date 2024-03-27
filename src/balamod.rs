@@ -48,9 +48,7 @@ impl Balatro {
         let exe_path = exe_path_buf
             .to_str()
             .expect("Failed to convert exe_path to str");
-        self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_ssl_so(), "ssl.so")?;
-        self.add_file_in_exe(exe_path, get_ssl_lua().as_bytes().to_vec(), "ssl.lua")?;
-        self.add_file_in_exe(exe_path, get_https_lua().as_bytes().to_vec(), "https.lua")?;
+        self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_https_so(), "https.so")?;
         self.inject_common_dependencies(exe_path, balamod_version)?;
         Ok(())
     }
@@ -61,6 +59,7 @@ impl Balatro {
         let exe_path = exe_path_buf
             .to_str()
             .expect("Failed to convert exe_path to str");
+        self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_https_so(), "https.dll")?;
         self.inject_common_dependencies(exe_path, balamod_version)?;
         Ok(())
     }
@@ -69,12 +68,15 @@ impl Balatro {
     pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path();
         let resource_dir = exe_path_buf.parent().unwrap();
-        fs::remove_file(resource_dir.join("ssl.so"))?;
+        fs::remove_file(resource_dir.join("https.so"))?;
         Ok(())
     }
 
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
+        let exe_path_buf = self.get_exe_path();
+        let resource_dir = exe_path_buf.parent().unwrap();
+        fs::remove_file(resource_dir.join("https.dll"))?;
         Ok(())
     }
 

@@ -6,6 +6,12 @@ local json = require('json')
 local utils = require('utils')
 local tar = require('tar')
 
+local dir = love.filesystem.getSourceBaseDirectory()
+local old_cpath = package.cpath
+package.cpath = package.cpath .. ';' .. dir .. '/?.so'
+local https = require('https')
+package.cpath = old_cpath
+
 logger = logging.getLogger('balamod')
 mods = {}
 local apis = {
@@ -67,13 +73,12 @@ end
 
 local function request(url)
     logger:debug('Request made with url: ', url)
-    local https = require 'https'
     local code
     local response
-    if love.system.getOS() == 'OS X' then
-        response, code = https.request(url)
-    else
-        code, response = https.request(url, {headers = {['User-Agent'] = 'Balamod-Client'}})
+    code, response, headers = https.request(url, {headers = {['User-Agent'] = 'Balamod-Client'}})
+    if (code == 301 or code == 302) and headers.location then
+        -- follow redirects if necessary
+        code, response = request(headers.location)
     end
     return code, response
 end

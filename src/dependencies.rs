@@ -1,16 +1,16 @@
 #[cfg(target_os = "macos")]
-pub fn get_ssl_so() -> &'static [u8]{
-    include_bytes!("dependencies/ssl.so")
+pub fn get_https_so() -> &'static [u8]{
+    include_bytes!("dependencies/macos/https.so")
 }
 
-#[cfg(target_os = "macos")]
-pub fn get_ssl_lua() -> &'static str {
-    include_str!("dependencies/ssl.lua")
+#[cfg(target_os = "windows")]
+pub fn get_https_so() -> &'static [u8]{
+    include_bytes!("dependencies/windows/https.dll")
 }
 
-#[cfg(target_os = "macos")]
-pub fn get_https_lua() -> &'static str {
-    include_str!("dependencies/https.lua")
+#[cfg(target_os = "linux")]
+pub fn get_https_so() -> &'static [u8]{
+    include_bytes!("dependencies/windows/https.dll")
 }
 
 pub fn get_balamod_lua() -> &'static str {

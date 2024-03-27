@@ -79,8 +79,10 @@ return {
             -- more than one part, try to autocomplete the arguments
             local commandName = cmd[1]
             local command = self.commands[commandName]
+            local previousArgs = cmd
+            table.remove(previousArgs)
             if command then
-                completions = command.autocomplete(cmd[#cmd]) or {}
+                completions = command.autocomplete(cmd[#cmd], previousArgs) or {}
             end
         end
         logger:trace("Autocomplete matches: " .. #completions .. " " .. table.concat(completions, ", "))
@@ -362,11 +364,11 @@ return {
             usage = short_description
         end
         if autocomplete == nil then
-            autocomplete = function(current_arg) return nil end
+            autocomplete = function(current_arg, previous_args) return nil end
         end
         if type(autocomplete) ~= "function" then
             self.logger:warn("registerCommand -- autocomplete must be a function for command: ", name)
-            autocomplete = function(current_arg) return nil end
+            autocomplete = function(current_arg, previous_args) return nil end
         end
         if self.commands[name] then
             self.logger:warn("Command " .. name .. " already exists")
