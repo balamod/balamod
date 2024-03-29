@@ -52,8 +52,6 @@ function utils.reduce(t, reducer, initial)
     return result
 end
 
-return utils
-
 -- Parses a semantic version string into a table
 -- @param version string
 -- @return table {major = number, minor = number, patch = number}

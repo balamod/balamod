@@ -135,7 +135,7 @@ end
 function saveLogs()
     local filename = "logs/" .. generateDateTime() .. ".log"
     love.filesystem.write(filename, "")
-    for _, message in ipairs(ALL_MESSAGES) do
+    for _, message in ipairs(getAllMessages()) do
         love.filesystem.append(filename, message:formatted(true) .. "\n")
     end
 end
