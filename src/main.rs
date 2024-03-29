@@ -154,12 +154,11 @@ fn main() {
 ))]
 fn inject_modloader(
     main_lua: String,
-    uidef_lua: String,
     // balatro: Balatro,
     durations: &mut Vec<StepDuration>,
-) -> (String, String) {
+) -> String {
     red_ln!("Architecture is not supported, skipping modloader injection...");
-    return (main_lua, uidef_lua);
+    return main_lua;
 }
 
 #[cfg(not(all(
@@ -168,12 +167,10 @@ fn inject_modloader(
 )))]
 fn inject_modloader(
     main_lua: String,
-    uidef_lua: String,
     // balatro: Balatro,
     durations: &mut Vec<StepDuration>,
-) -> (String, String) {
+) -> String {
     let mut new_main = main_lua.clone();
-    let mut new_uidef = uidef_lua.clone();
 
     cyan_ln!("Implementing modloader on main...");
     let start = Instant::now();
@@ -193,33 +190,9 @@ fn inject_modloader(
         name: String::from("Modloader implementation (main)"),
     });
 
-    cyan_ln!("Implementing modloader on uidef...");
-    let start = Instant::now();
-
-    if new_uidef.starts_with("-- balamod") {
-        yellow_ln!("The uidef already has the modloader, skipping...");
-    } else {
-        new_uidef = format!("-- balamod\n\n{}", new_uidef);
-
-        new_uidef = new_uidef.replace(
-            "{n=G.UIT.O, config={object = twitter}},",
-            r#"{n=G.UIT.O, config={object = twitter}},
-        }}
-    }} or nil,
-    {n=G.UIT.R, config = {align = "cm", padding = 0.2, r = 0.1, emboss = 0.1, colour = G.C.L_BLACK}, nodes={
-      {n=G.UIT.R, config={align = "cm", padding = 0.15, minw = 1, r = 0.1, hover = true, colour = G.C.PURPLE, button = 'show_mods', shadow = true}, nodes={
-        {n=G.UIT.T, config={text = "MODS", scale = 0.6, colour = G.C.UI.TEXT_LIGHT, shadow = true}}"#,
-        );
-
-        durations.push(StepDuration {
-            duration: start.elapsed(),
-            name: String::from("Modloader implementation (uidef)"),
-        });
-    }
-
     green_ln!("Done!");
 
-    (new_main, new_uidef)
+    new_main
 }
 
 fn uninstall(balatro: Balatro, durations: &mut Vec<StepDuration>) {
@@ -268,11 +241,8 @@ fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
     let main_lua = balatro
         .get_file_as_string("main.lua", false)
         .expect("Error while reading file");
-    let uidef_lua = balatro
-        .get_file_as_string("functions/UI_definitions.lua", false)
-        .expect("Error while reading file");
 
-    let (new_main, new_uidef) = inject_modloader(main_lua, uidef_lua, durations);
+    let new_main = inject_modloader(main_lua, durations);
 
     cyan_ln!("Injecting main");
     let start: Instant = Instant::now();
@@ -284,16 +254,6 @@ fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
         name: String::from("Modloader injection (main)"),
     });
     green_ln!("Done!");
-
-    cyan_ln!("Injecting uidef");
-    let start = Instant::now();
-    balatro
-        .replace_file("functions/UI_definitions.lua", new_uidef.as_bytes())
-        .expect("Error while replacing file");
-    durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Modloader injection (uidef)"),
-    });
     cyan_ln!("Injecting dependencies");
     let start = Instant::now();
     balatro
