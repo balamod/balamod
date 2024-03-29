@@ -45,8 +45,8 @@ local function createLogger(name, lvl)
         log=function(self, level, ...)
             local args = {...}
             local text = ""
-            if not love.filesystem.getInfo("logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log") then
-                love.filesystem.write("logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log", "")
+            if not love.filesystem.getInfo("logs/" .. generateDateTime(START_TIME) .. ".log") then
+                love.filesystem.write("logs/" .. generateDateTime(START_TIME) .. ".log", "")
             end
             for i, v in ipairs(args) do
                 text = text .. stringify(v) .. " "
@@ -62,13 +62,13 @@ local function createLogger(name, lvl)
                         return self.text
                     end
                     if dump then
-                        return string.format("%s [%s] - %s :: %s", os.date("!%Y-%m-%dT%TZ", self.time), self.name, self.level, self.text)
+                        return string.format("%s [%s] - %s :: %s", generateDateTime(self.time), self.name, self.level, self.text)
                     end
                     return string.format("[%s] - %s :: %s", self.name, self.level, self.text)
                 end,
             }
             table.insert(self.messages, message)
-            love.filesystem.append("logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log", message:formatted(true) .. "\n")
+            love.filesystem.append("logs/" .. generateDateTime(START_TIME) .. ".log", message:formatted(true) .. "\n")
             love.filesystem.append("console.txt", message:formatted(true) .. "\n")
         end,
         info=function(self, ...)
@@ -113,10 +113,29 @@ local function getAllMessages()
     return messages
 end
 
-local function saveLogs()
-    local filename = "logs/" .. os.date("!%Y-%m-%dT%TZ", START_TIME) .. ".log"
+function generateDateTime(start)
+    local dateTimeTable = os.date('*t', start)
+    local dateTime = dateTimeTable.year .. "-"
+            .. addZeroForLessThan10(dateTimeTable.month) .. "-"
+            .. addZeroForLessThan10(dateTimeTable.day) .. "-"
+            .. addZeroForLessThan10(dateTimeTable.hour) .. "-"
+            .. addZeroForLessThan10(dateTimeTable.min) .. "-"
+            .. addZeroForLessThan10(dateTimeTable.sec)
+    return dateTime
+end
+
+function addZeroForLessThan10(number)
+    if(number < 10) then
+        return 0 .. number
+    else
+        return number
+    end
+end
+
+function saveLogs()
+    local filename = "logs/" .. generateDateTime() .. ".log"
     love.filesystem.write(filename, "")
-    for i, message in ipairs(getAllMessages()) do
+    for _, message in ipairs(ALL_MESSAGES) do
         love.filesystem.append(filename, message:formatted(true) .. "\n")
     end
 end
