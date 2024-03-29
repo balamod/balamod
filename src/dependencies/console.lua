@@ -392,4 +392,19 @@ return {
         end
         self.commands[cmd_name] = nil
     end,
+    wrapText = function(self, message, screenWidth)
+        local lines = {}
+        local line = ""
+        for word in message:gmatch("%S+") do
+            local testLine = line .. " " .. word
+            if love.graphics.getFont():getWidth(testLine) > screenWidth then
+                table.insert(lines, line)
+                line = word
+            else
+                line = testLine
+            end
+        end
+        table.insert(lines, line)
+        return lines
+    end,
 }

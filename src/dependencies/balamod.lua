@@ -937,13 +937,26 @@ table.insert(mods,
         end,
         on_post_render = function ()
             console.max_lines = math.floor(love.graphics.getHeight() / console.line_height) - 5  -- 5 lines of bottom padding
+            local font = love.graphics.getFont()
             if console.is_open then
                 love.graphics.setColor(0, 0, 0, 0.3)
                 love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-                for i, message in ipairs(console:getMessagesToDisplay()) do
+                local messagesToDisplay = console:getMessagesToDisplay()
+                local i = 1
+                for _, message in ipairs(messagesToDisplay) do
                     r, g, b = console:getMessageColor(message)
                     love.graphics.setColor(r, g, b, 1)
-                    love.graphics.print(message:formatted(), 10, 10 + i * 20)
+                    local formattedMessage = message:formatted()
+                    if font:getWidth(formattedMessage) > love.graphics.getWidth() then
+                        local lines = console:wrapText(formattedMessage, love.graphics.getWidth())
+                        for _, line in ipairs(lines) do
+                            love.graphics.print(line, 10, 10 + i * 20)
+                            i = i + 1
+                        end
+                    else
+                        love.graphics.print(formattedMessage, 10, 10 + i * 20)
+                        i = i + 1
+                    end
                 end
                 love.graphics.setColor(1, 1, 1, 1) -- white
                 love.graphics.print(console.cmd, 10, love.graphics.getHeight() - 30)
