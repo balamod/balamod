@@ -42,6 +42,7 @@ impl Balatro {
         self.add_file_in_exe(exe_path, get_logging_lua().as_bytes().to_vec(), "logging.lua")?;
         self.add_file_in_exe(exe_path, get_platform_lua().as_bytes().to_vec(), "platform.lua")?;
         self.add_file_in_exe(exe_path, get_console_lua().as_bytes().to_vec(), "console.lua")?;
+        self.add_file_in_exe(exe_path, get_joker_api_lia().as_byes().to_vec(), "jokerapi.lua")?;
         self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
         self.add_file_in_exe(exe_path, get_patches_lua().as_bytes().to_vec(), "patches.lua")?;
         Ok(())
@@ -58,6 +59,7 @@ impl Balatro {
         self.add_file_in_exe(exe_path, get_logging_lua().as_bytes().to_vec(), "logging.lua")?;
         self.add_file_in_exe(exe_path, get_platform_lua().as_bytes().to_vec(), "platform.lua")?;
         self.add_file_in_exe(exe_path, get_console_lua().as_bytes().to_vec(), "console.lua")?;;
+        self.add_file_in_exe(exe_path, get_joker_api_lia().as_byes().to_vec(), "jokerapi.lua")?;
         self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
         self.add_file_in_exe(exe_path, get_patches_lua().as_bytes().to_vec(), "patches.lua")?;
         Ok(())

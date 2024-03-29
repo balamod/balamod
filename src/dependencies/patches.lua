@@ -14,6 +14,7 @@ local game_love_gamepad_pressed = love.gamepadpressed
 local game_love_gamepad_released = love.gamepadreleased
 local game_love_joystick_axis = love.joystickaxis
 local game_love_errhand = love.errhand
+local card_calculate_joker = Card:calculate_joker
 
 local balamod = require("balamod")
 local logging = require('logging')
@@ -211,4 +212,17 @@ function love.wheelmoved(x, y)
     if game_love_wheelmoved then
         game_love_wheelmoved(x, y)
     end
+end
+
+function Card:calculate_joker(context)
+    local old_return = card_calculate_joker(self, context)
+    if self.ability.set == "Joker" and not self.debuff then
+        for k, effect in pairs(jokerapi.jokerEffects) do
+            local new_return = effect(self, context)
+            if new_return then 
+                return new_return
+            end 
+        end
+    end
+    return old_return
 end

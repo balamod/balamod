@@ -34,6 +34,10 @@ pub fn get_mod_menu_lua() -> &'static str {
     include_str!("dependencies/mod_menu.lua")
 }
 
+pub fn get_joker_api_lua() -> &'static str{
+    include_str!("dependencies/jokerapi.lua")
+}
+
 pub fn get_balamod_version_lua(version: &'static str) -> String {
     format!(r#"
     return "{}"
