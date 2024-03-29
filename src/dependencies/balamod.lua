@@ -8,7 +8,7 @@ local tar = require('tar')
 
 local dir = love.filesystem.getSourceBaseDirectory()
 local old_cpath = package.cpath
-package.cpath = package.cpath .. ';' .. dir .. '/?.so'
+package.cpath = package.cpath .. ';' .. dir .. '/?.so' .. ';' .. dir .. '/?.dll'
 local https = require('https')
 package.cpath = old_cpath
 
@@ -215,32 +215,6 @@ local function isModPresent(modId)
     return mods[modId] ~= nil
 end
 
-local function parseVersion(version)
-    local major, minor, patch = string.match(version, '(%d+)%.(%d+)%.(%d+)')
-    return {
-        major = tonumber(major),
-        minor = tonumber(minor),
-        patch = tonumber(patch)
-    }
-end
-
-local function v2GreaterThanV1(v1, v2)
-    if v2.major > v1.major then
-        return true
-    end
-    if v2.major == v1.major then
-        if v2.minor > v1.minor then
-            return true
-        end
-        if v2.minor == v1.minor then
-            if v2.patch > v1.patch then
-                return true
-            end
-        end
-    end
-    return false
-end
-
 local function getRepoMods()
     local repoMods = {}
     local reposIndex = 'https://raw.githubusercontent.com/UwUDev/balamod/master/repos.index'
@@ -270,12 +244,12 @@ local function getRepoMods()
                 local needUpdate = true
                 local version = modVersion
                 if modPresent then
-                    local repoVersion = parseVersion(modVersion)
+                    local repoVersion = utils.parseVersion(modVersion)
                     local mod = mods[modId]
                     if mod.version then
                         version = mod.version
-                        local modVersion = parseVersion(mod.version)
-                        needUpdate = v2GreaterThanV1(modVersion, repoVersion)
+                        local modVersion = utils.parseVersion(mod.version)
+                        needUpdate = utils.v2GreaterThanV1(modVersion, repoVersion)
                     end
                 end
                 table.insert(repoMods, {
@@ -401,15 +375,15 @@ local function loadMod(modFolder)
     logger:debug('Manifest loaded: ', manifest)
     -- check that the mod is compatible with the current version of balamod
     if manifest.min_balamod_version then
-        local minVersion = parseVersion(manifest.min_balamod_version)
-        if not v2GreaterThanV1(minVersion, _VERSION) then
+        local minVersion = utils.parseVersion(manifest.min_balamod_version)
+        if not utils.v2GreaterThanV1(minVersion, _VERSION) then
             logger:error('Mod ', modFolder, ' requires a newer version of balamod')
             return nil
         end
     end
     if manifest.max_balamod_version then
-        local maxVersion = parseVersion(manifest.max_balamod_version)
-        if v2GreaterThanV1(maxVersion, _VERSION) then
+        local maxVersion = utils.parseVersion(manifest.max_balamod_version)
+        if utils.v2GreaterThanV1(maxVersion, _VERSION) then
             logger:error('Mod ', modFolder, ' requires an older version of balamod')
             return nil
         end
