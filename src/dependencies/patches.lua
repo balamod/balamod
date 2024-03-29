@@ -66,7 +66,9 @@ function love.update(dt)
         end
     end
 
-    if cancel_update then return end
+    if cancel_update then
+        return
+    end
 
     if game_love_update then
         game_love_update(dt)
@@ -74,7 +76,8 @@ function love.update(dt)
 
     if balamod.is_loaded == false then
         balamod.is_loaded = true
-        for modId, mod in pairs(balamod.mods) do -- Load all mods after eveything else
+        for modId, mod in pairs(balamod.mods) do
+            -- Load all mods after eveything else
             if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
                 local ok, message = pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
                 if not ok then
@@ -134,7 +137,9 @@ function love.keypressed(key)
         end
     end
 
-    if cancel_event then return end
+    if cancel_event then
+        return
+    end
 
     if game_love_keypressed then
         game_love_keypressed(key)
@@ -156,7 +161,9 @@ function love.keyreleased(key)
         end
     end
 
-    if cancel_event then return end
+    if cancel_event then
+        return
+    end
 
     if game_love_keyreleased then
         game_love_keyreleased(key)
@@ -177,7 +184,9 @@ function love.gamepadpressed(joystick, button)
             end
         end
     end
-    if cancel_event then return end
+    if cancel_event then
+        return
+    end
 
     if game_love_gamepad_pressed then
         game_love_gamepad_pressed(joystick, button)
@@ -198,7 +207,9 @@ function love.gamepadreleased(joystick, button)
             end
         end
     end
-    if cancel_event then return end
+    if cancel_event then
+        return
+    end
 
     if game_love_gamepad_released then
         game_love_gamepad_released(joystick, button)
@@ -219,7 +230,9 @@ function love.mousepressed(x, y, button, touch)
             end
         end
     end
-    if cancel_event then return end
+    if cancel_event then
+        return
+    end
 
     if game_love_mousepressed then
         game_love_mousepressed(x, y, button, touch)
@@ -240,7 +253,9 @@ function love.mousereleased(x, y, button)
             end
         end
     end
-    if cancel_event then return end
+    if cancel_event then
+        return
+    end
 
     if game_love_mousereleased then
         game_love_mousereleased(x, y, button)
@@ -261,7 +276,9 @@ function love.mousemoved(x, y, dx, dy, istouch)
             end
         end
     end
-    if cancel_event then return end
+    if cancel_event then
+        return
+    end
 
     if game_love_mousemoved then
         game_love_mousemoved(x, y, dx, dy, istouch)
@@ -282,7 +299,9 @@ function love.joystickaxis(joystick, axis, value)
             end
         end
     end
-    if cancel_event then return end
+    if cancel_event then
+        return
+    end
 
     if game_love_joystick_axis then
         game_love_joystick_axis(joystick, axis, value)
@@ -317,7 +336,9 @@ function love.wheelmoved(x, y)
                 logger:warn("Mouse wheel event for mod ", mod.id, "failed: ", message)
             end
         end
-        if cancel_event then return end
+        if cancel_event then
+            return
+        end
     end
 
     if game_love_wheelmoved then
@@ -325,68 +346,68 @@ function love.wheelmoved(x, y)
     end
 end
 
-
 local game_create_UIBox_main_menu_buttons = create_UIBox_main_menu_buttons
 
 function create_UIBox_main_menu_buttons()
-  local t = game_create_UIBox_main_menu_buttons()
-  local modBtn = {
-    n = G.UIT.R,
-    config = {
-      align = "cm",
-      padding = 0.2,
-      r = 0.1,
-      emboss = 0.1,
-      colour = G.C.L_BLACK,
-    },
-    nodes={
-      {
-         n=G.UIT.R,
-         config={
-           align = "cm",
-           padding = 0.15,
-           minw = 1,
-           r = 0.1,
-           hover = true,
-           colour = G.C.PURPLE,
-           button = 'show_mods',
-           shadow = true,
-         },
-         nodes={
-          {
-             n=G.UIT.T,
-             config={
-               text = "MODS",
-               scale = 0.6,
-               colour = G.C.UI.TEXT_LIGHT,
-               shadow = true,
-             },
-          },
+    local t = game_create_UIBox_main_menu_buttons()
+    local modBtn = {
+        n = G.UIT.R,
+        config = {
+            align = "cm",
+            padding = 0.2,
+            r = 0.1,
+            emboss = 0.1,
+            colour = G.C.L_BLACK,
         },
-      },
-    },
-  }
+        nodes = {
+            {
+                n = G.UIT.R,
+                config = {
+                    align = "cm",
+                    padding = 0.15,
+                    minw = 1,
+                    r = 0.1,
+                    hover = true,
+                    colour = G.C.PURPLE,
+                    button = 'show_mods',
+                    shadow = true,
+                },
+                nodes = {
+                    {
+                        n = G.UIT.T,
+                        config = {
+                            text = "MODS",
+                            scale = 0.6,
+                            colour = G.C.UI.TEXT_LIGHT,
+                            shadow = true,
+                        },
+                    },
+                },
+            },
+        },
+    }
 
-  local insertIndex = #t.nodes[2].nodes
-  if not G.F_ENGLISH_ONLY then
-    insertIndex = insertIndex - 1
-  end
-  table.insert(t.nodes[2].nodes, insertIndex, modBtn)
-  return t
+    local insertIndex = #t.nodes[2].nodes
+    if not G.F_ENGLISH_ONLY then
+        insertIndex = insertIndex - 1
+    end
+    table.insert(t.nodes[2].nodes, insertIndex, modBtn)
+    return t
 end
-
 
 local modFolders = love.filesystem.getDirectoryItems("mods") -- Load all mods
 logger:info("Loading mods from folders ", modFolders)
-for i, modFolder in ipairs(modFolders) do
+for _, modFolder in ipairs(modFolders) do
     local mod = balamod.loadMod(modFolder)
-    logger:info("Loaded mod: ", mod.id)
     if mod ~= nil then
         balamod.mods[mod.id] = mod
+        logger:info("Loaded mod: ", mod.id)
     end
 end
 
-logger:info("Mods: ", utils.map(mods, function(mod) return mod.id end))
+logger:info("Mods: ", utils.map(mods, function(mod)
+    return mod.id
+end))
 
 for _, mod in ipairs(balamod.mods) do
     if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
@@ -436,7 +457,7 @@ function Card.set_sprites(self, _center, _front)
             if self.children.center then
                 self.children.center.atlas = G.ASSET_ATLAS[_center.balamod.asset_key]
                 -- custom assets are single images, their pos is always 0,0
-                self.children.center:set_sprite_pos({x = 0, y = 0})
+                self.children.center:set_sprite_pos({ x = 0, y = 0 })
             else
                 -- We process the asset with the normal function
                 -- this is done to keep the default behavior of the game
@@ -452,7 +473,7 @@ function Card.set_sprites(self, _center, _front)
                     -- as before, pos is always 0,0 becaue we have a single image
                     -- per atlas.
                     self.children.center.atlas = G.ASSET_ATLAS[_center.balamod.asset_key]
-                    self.children.center:set_sprite_pos({x = 0, y = 0})
+                    self.children.center:set_sprite_pos({ x = 0, y = 0 })
                 end
                 -- Get the 'back' instance we need from the selected deck
                 local back = G.GAME[self.back]
@@ -466,7 +487,7 @@ function Card.set_sprites(self, _center, _front)
                         -- from our back atlases
                         -- it's a custom deck as well (because the back center has a balamod table)
                         self.children.back.atlas = G.ASSET_ATLAS[back_center.balamod.asset_key]
-                        self.children.back:set_sprite_pos({x = 0, y = 0})
+                        self.children.back:set_sprite_pos({ x = 0, y = 0 })
                     else
                         -- it's not a playing card, so the game just sets
                         -- it to the red deck back
