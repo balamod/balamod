@@ -404,11 +404,6 @@ local function loadMod(modFolder)
         mod.enabled = false
     end
     logger:debug('Mod enabled: ', mod.enabled)
-    if mod.enabled then
-        if mod.on_enable and type(mod.on_enable) == 'function' then
-            pcall(mod.on_enable)
-        end
-    end
     return mod
 end
 
@@ -425,6 +420,29 @@ local function toggleMod(mod)
         pcall(mod.on_disable)
     end
     mods[mod.id] = mod
+end
+
+local function callModCallbacksIfExists(mods, callback_name, should_log, ...)
+    local sorted = utils.values(mods)
+    table.sort(sorted, function(a, b)
+        return a.order < b.order
+    end)
+    local mod_returns = {}
+    -- pre loading all mods
+    for _, mod in ipairs(sorted) do
+        if mod.enabled and mod[callback_name] and type(mod[callback_name]) == "function" then
+            if should_log then
+                logger:info("Calling mod callback", callback_name, "for", mod.id)
+            end
+            local status, message = pcall(mod[callback_name], ...) -- Call the on_pre_load function of the mod if it exists
+            if not status then
+                logger:warn("Callback", callback_name, "for mod ", mod.id, "failed: ", message)
+            else
+                table.insert(mod_returns, {modId = mod.id, result = message})
+            end
+        end
+    end
+    return mod_returns
 end
 
 local function installMod(modInfo)
@@ -814,9 +832,29 @@ mods["dev_console"] = {
                     local modId = args[1]
                     if isModPresent(modId) then
                         local mod = mods[modId]
+                        if mod.enabled and mod.on_disable and type(mod.on_disable) == "function" then
+                            local success, result = pcall(mod.on_disable)
+                            if not success then
+                                console.logger:error("Error disabling mod: " .. modId)
+                                console.logger:error(result)
+                                return false
+                            end
+                        end
                         mod = loadMod(modId)
                         mods[modId] = mod
                         mods = sortMods(mods)
+                        -- no need to redo the whole shebang, just call on_enable
+                        -- this is because the dependencies are most likely already loaded
+                        if mod.enabled then
+                            if mod.on_enable and type(mod.on_enable) == 'function' then
+                                local status, message = pcall(mod.on_enable)
+                                if not status then
+                                    console.logger:error("Error enabling mod: " .. modId)
+                                    console.logger:error(message)
+                                    return false
+                                end
+                            end
+                        end
                         console.logger:info("Reloaded mod: " .. modId)
                     else
                         console.logger:error("Mod not found: " .. modId)
@@ -1019,7 +1057,7 @@ mods["dev_console"] = {
 -- 2. Run a topological sort on the graph
 -- 3. Return the sorted list of mods
 local function sortMods(mods)
-    logger:trace('Sorting mods', mods)
+    logger:trace('Sorting mods', utils.keys(mods))
     local graph = {}
     for modId, mod in pairs(mods) do
         graph[modId] = {
@@ -1053,40 +1091,42 @@ local function sortMods(mods)
         logger:trace("Visiting node ", node)
         if visited[node] == "permanent" then
             logger:trace("Node ", node, " already visited")
-            return
+            return true
         end
         if visited[node] == "temporary" then
             logger:error('Mod ', node, ' has a circular dependency')
-            return nil
+            return false
         end
         visited[node] = "temporary"
         for other, _ in pairs(graph[node].before) do
             if not visit(other) then
-                return nil
+                return false
             end
         end
-        logger:trace("Inserting node ", node, " in sorted list", sorted)
         table.insert(sorted, node)
+        logger:trace("Inserted node ", node, " in sorted list", sorted)
         logger:trace("Marking node ", node, " as visited")
         visited[node] = "permanent"
+        return true
     end
     logger:trace("Starting to visit nodes")
     for node, _ in pairs(graph) do
         if not visited[node] then
-            if not visit(node) then
-                return mods
-            end
+            visit(node)
         end
     end
     local sortedMods = {}
+    local modCount = #sorted
     -- we need to keep the mapping between the mod id and the mod object
     -- to do so, mod order will be guaranteed through an order(int) field on the mod object
     for i, modId in ipairs(sorted) do
+        -- sorted is actually sorted in reverse order
+        -- to make the mod ordering work we need to reverse the order
         local mod = mods[modId]
-        mod.order = i
+        mod.order = modCount - i
         sortedMods[modId] = mod
     end
-    logger:trace("Built sorted mods", sortedMods)
+    logger:trace("Built sorted mods", utils.keys(sortedMods))
     return sortedMods
 end
 
@@ -1107,4 +1147,5 @@ return {
     loadMod = loadMod,
     toggleMod = toggleMod,
     sortMods = sortMods,
+    callModCallbacksIfExists = callModCallbacksIfExists,
 }

@@ -22,13 +22,9 @@ local logger = logging.getLogger('patches')
 local assets = require('assets')
 
 function love.load(args)
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_game_load then
-            local status, message = pcall(mod.on_game_load, args)
-            if not status then
-                logger:warn("Loading mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, message = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_game_load", true, args)
+    if not status then
+        logger:warn("Failed on_game_load for mods: ", message)
     end
     if game_love_load then
         game_love_load(args)
@@ -36,13 +32,9 @@ function love.load(args)
 end
 
 function love.quit()
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_game_quit then
-            local status, message = pcall(mod.on_game_quit)
-            if not status then
-                logger:warn("Quitting mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, message = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_game_quit", true)
+    if not status then
+        logger:warn("Failed on_game_quit for mods: ", message)
     end
     if game_love_quit then
         game_love_quit()
@@ -51,19 +43,14 @@ end
 
 function love.update(dt)
     local cancel_update = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_pre_update then
-            local status, message = pcall(mod.on_pre_update, dt)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Pre-updating mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_pre_update", false, dt)
+    if not status then
+        logger:warn("Failed on_pre_update for mods: ", result)
+    else
+        cancel_update = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
-
     if cancel_update then
         return
     end
@@ -74,65 +61,42 @@ function love.update(dt)
 
     if balamod.is_loaded == false then
         balamod.is_loaded = true
-        for modId, mod in pairs(balamod.mods) do
-            -- Load all mods after eveything else
-            if mod.enabled and mod.on_enable and type(mod.on_enable) == "function" then
-                local ok, message = pcall(mod.on_enable) -- Call the on_enable function of the mod if it exists
-                if not ok then
-                    logger:warn("Enabling mod ", mod.id, "failed: ", message)
-                end
-            end
+        local status, message = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_enable", true)
+        if not status then
+            logger:warn("Failed to load mods: ", message)
         end
     end
 
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_post_update then
-            local status, message = pcall(mod.on_post_update, dt)
-            if not status then
-                logger:warn("Post-updating mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_post_update", false, dt)
+    if not status then
+        logger:warn("Failed on_post_update for mods: ", result)
     end
 end
 
 function love.draw()
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_pre_render then
-            local status, message = pcall(mod.on_pre_render)
-            if not status then
-                logger:warn("Pre-rendering mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_pre_render", false)
+    if not status then
+        logger:warn("Failed on_pre_render for mods: ", result)
     end
 
     if game_love_draw then
         game_love_draw()
     end
-
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_post_render then
-            local status, message = pcall(mod.on_post_render)
-            if not status then
-                logger:warn("Post-rendering mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_post_render", false)
+    if not status then
+        logger:warn("Failed on_post_render for mods: ", result)
     end
-
 end
 
 function love.keypressed(key)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_key_pressed then
-            local status, message = pcall(mod.on_key_pressed, key)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Key pressed event for mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_key_pressed", false, key)
+    if not status then
+        logger:warn("Failed on_key_pressed for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
 
     if cancel_event then
@@ -146,17 +110,13 @@ end
 
 function love.keyreleased(key)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_key_released then
-            local status, message = pcall(mod.on_key_released, key)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Key released event for mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_key_released", false, key)
+    if not status then
+        logger:warn("Failed on_key_released for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
 
     if cancel_event then
@@ -170,17 +130,13 @@ end
 
 function love.gamepadpressed(joystick, button)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_gamepad_pressed then
-            local status, message = pcall(mod.on_gamepad_pressed, joystick, button)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Gamepad pressed event for mod ", modId, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_gamepad_pressed", false, joystick, button)
+    if not status then
+        logger:warn("Failed on_gamepad_pressed for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
     if cancel_event then
         return
@@ -193,17 +149,13 @@ end
 
 function love.gamepadreleased(joystick, button)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_gamepad_pressed then
-            local status, message = pcall(mod.on_gamepad_released, joystick, button)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Gamepad released event for mod ", modId, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_gamepad_released", false, joystick, button)
+    if not status then
+        logger:warn("Failed on_gamepad_released for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
     if cancel_event then
         return
@@ -216,17 +168,13 @@ end
 
 function love.mousepressed(x, y, button, touch)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_mouse_pressed then
-            local status, message = pcall(mod.on_mouse_pressed, x, y, button, touch)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Mouse pressed event for mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_mouse_pressed", false, x, y, button, touch)
+    if not status then
+        logger:warn("Failed on_mouse_pressed for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
     if cancel_event then
         return
@@ -239,17 +187,13 @@ end
 
 function love.mousereleased(x, y, button)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_mouse_released then
-            local status, message = pcall(mod.on_mouse_released, x, y, button)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Mouse released event for mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_mouse_released", false, x, y, button)
+    if not status then
+        logger:warn("Failed on_mouse_released for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
     if cancel_event then
         return
@@ -262,17 +206,13 @@ end
 
 function love.mousemoved(x, y, dx, dy, istouch)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_mouse_moved then
-            local status, message = pcall(mod.on_mouse_moved, x, y, dx, dy, istouch)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Mouse moved event for mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_mouse_moved", false, x, y, dx, dy, istouch)
+    if not status then
+        logger:warn("Failed on_mouse_moved for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
     if cancel_event then
         return
@@ -285,17 +225,13 @@ end
 
 function love.joystickaxis(joystick, axis, value)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_mouse_released then
-            local status, message = pcall(mod.on_joystick_axis, joystick, axis, value)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Joystick axis event for mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_joystick_axis", false, joystick, axis, value)
+    if not status then
+        logger:warn("Failed on_joystick_axis for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
     if cancel_event then
         return
@@ -307,13 +243,9 @@ function love.joystickaxis(joystick, axis, value)
 end
 
 function love.errhand(msg)
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_error then
-            local status, message = pcall(mod.on_error, msg)
-            if not status then
-                logger:warn("Error event for mod ", mod.id, "failed: ", message)
-            end
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_error", true, msg)
+    if not status then
+        logger:warn("Failed on_error for mods: ", result)
     end
 
     if game_love_errhand then
@@ -323,22 +255,18 @@ end
 
 function love.wheelmoved(x, y)
     local cancel_event = false
-    for modId, mod in pairs(balamod.mods) do
-        if mod.on_mousewheel then
-            local status, message = pcall(mod.on_mousewheel, x, y)
-            if status then
-                if message then
-                    cancel_update = true
-                end
-            else
-                logger:warn("Mouse wheel event for mod ", mod.id, "failed: ", message)
-            end
-        end
-        if cancel_event then
-            return
-        end
+    local status, result = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_mousewheel", false, x, y)
+    if not status then
+        logger:warn("Failed  for mods: ", result)
+    else
+        cancel_event = utils.reduce(result, function(acc, val)
+            return acc or val.result
+        end, false)
     end
 
+    if cancel_event then
+        return
+    end
     if game_love_wheelmoved then
         game_love_wheelmoved(x, y)
     end
@@ -411,17 +339,10 @@ else
     balamod.mods = sortedMods
 end
 
-logger:info("Mods: ", utils.map(mods, function(mod)
-    return mod.id
-end))
-
-for _, mod in ipairs(balamod.mods) do
-    if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
-        local status, message = pcall(mod.on_pre_load) -- Call the on_pre_load function of the mod if it exists
-        if not status then
-            logger:warn("Pre-loading mod ", mod.id, "failed: ", message)
-        end
-    end
+logger:info("Mods: ", utils.keys(mods))
+local status, message = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_pre_load", true)
+if not status then
+    logger:warn("Failed to preload mods: ", message)
 end
 
 G.set_render_settings = assets.patched_game_set_render_settings
