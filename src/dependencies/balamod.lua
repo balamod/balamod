@@ -1017,7 +1017,7 @@ table.insert(mods,
 -- 1. Create a directed graph with the mods as nodes and the load_before and load_after fields as edges
 -- 2. Run a topological sort on the graph
 -- 3. Return the sorted list of mods
-local function sortMods()
+local function sortMods(mods)
     local graph = {}
     for _, mod in ipairs(mods) do
         graph[mod.id] = {

@@ -1,5 +1,5 @@
 -- Asset loading API, in order to load assets from a mod's directory.
-
+local balamod = require("balamod")
 local assets = {}
 
 local game_set_render_settings = game_set_render_settings or Game.set_render_settings
