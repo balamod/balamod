@@ -1013,6 +1013,65 @@ table.insert(mods,
     }
 )
 
+-- Topological sort of mods based on load_before and load_after fields
+-- 1. Create a directed graph with the mods as nodes and the load_before and load_after fields as edges
+-- 2. Run a topological sort on the graph
+-- 3. Return the sorted list of mods
+local function sortMods()
+    local graph = {}
+    for _, mod in ipairs(mods) do
+        graph[mod.id] = {
+            before = {},
+        }
+    end
+    for _, mod in ipairs(mods) do
+        for _, before in ipairs(mod.load_before or {}) do -- load_before is a list of mod ids, if its nil, use an empty table to avoid a crash
+            if not graph[before] then
+                logger:error('Mod ', mod.id, ' has a load_before field that references a non-existent mod: ', before)
+                return nil
+            end
+            graph[mod.id].before[before] = true  -- we set to true just because we want a table behaving like a set() instead of an array
+        end
+        for _, after in ipairs(mod.load_after or {}) do -- load_after is a list of mod ids
+            -- load_after is there to ensure that a mod is loaded after another mod
+            -- this is equivalent to the other mod being loaded before the current mod
+            -- so we add an edge from the other mod to the current mod
+            if not graph[after] then
+                logger:error('Mod ', mod.id, ' has a load_after field that references a non-existent mod: ', after)
+                return nil
+            end
+            graph[after].before[mod.id] = true  -- we set to true just because we want a table behaving like a set() instead of an array
+        end
+    end
+    local sorted = {}
+    local visited = {}
+    local function visit(node)
+        if visited[node] == "permanent" then
+            return
+        end
+        if visited[node] == "temporary" then
+            logger:error('Mod ', node, ' has a circular dependency')
+            return nil
+        end
+        visited[node] = "temporary"
+        for other, _ in pairs(graph[node].before) do
+            if not visit(other) then
+                return nil
+            end
+        end
+        table.insert(sorted, node)
+        visited[node] = "permanent"
+    end
+    for node, _ in pairs(graph) do
+        if not visited[node] then
+            if not visit(node) then
+                return nil
+            end
+        end
+    end
+    return sorted
+end
+
 return {
     logger = logger,
     mods = mods,
@@ -1029,4 +1088,5 @@ return {
     console = console,
     loadMod = loadMod,
     toggleMod = toggleMod,
+    sortMods = sortMods,
 }
