@@ -1,40 +1,10 @@
 LOGGERS = {}
-local START_TIME = os.time()
-
-local LOG_LEVELS = {
-    TRACE = 10,
-    DEBUG = 20,
-    INFO = 30,
-    WARN = 40,
-    ERROR = 50,
-    PRINT = 1000,
-}
+START_TIME = os.time()
 
 local _MODULE = {
-    _VERSION = "0.2.0",
+    _VERSION = "0.1.0",
     LOGGERS = LOGGERS,
-    LOG_LEVELS = LOG_LEVELS,
-    START_TIME = START_TIME,
 }
-
-local function addZeroForLessThan10(number)
-    if(number < 10) then
-        return 0 .. number
-    else
-        return number
-    end
-end
-
-local function generateDateTime(start)
-    local dateTimeTable = os.date('*t', start)
-    local dateTime = dateTimeTable.year .. "-"
-            .. addZeroForLessThan10(dateTimeTable.month) .. "-"
-            .. addZeroForLessThan10(dateTimeTable.day) .. "-"
-            .. addZeroForLessThan10(dateTimeTable.hour) .. "-"
-            .. addZeroForLessThan10(dateTimeTable.min) .. "-"
-            .. addZeroForLessThan10(dateTimeTable.sec)
-    return dateTime
-end
 
 local function stringify(value)
     if type(value) == "table" then
@@ -57,73 +27,76 @@ local function stringify(value)
     return tostring(value)
 end
 
-local Message = {}
-function Message:init(level, text, loggerName)
-    self.level = level
-    self.level_numeric = LOG_LEVELS[level] or 0
-    self.text = text
-    self.time = os.time()
-    self.name = loggerName
-    return self
-end
-
-function Message:formatted(dump)
-    if self.level == "PRINT" and not dump then
-        return self.text
-    end
-    if dump then
-        return string.format("%s [%s] - %s :: %s", generateDateTime(self.time), self.name, self.level, self.text)
-    end
-    return string.format("[%s] - %s :: %s", self.name, self.level, self.text)
-end
-
-local Logger = {}
-function Logger:init(name, level)
-    self.name = name
-    self.level = level or "INFO"
-    self.numeric_level = LOG_LEVELS[level] or 30
-    self.messages = {}
-    return self
-end
-
-function Logger:log(level, ...)
-    local args = {...}
-    local text = ""
-    for i, v in ipairs(args) do
-        text = text .. stringify(v) .. " "
-    end
-    table.insert(self.messages, Message:init(level, text, self.name))
-end
-
-function Logger:info(...)
-    self:log("INFO", ...)
-end
-
-function Logger:warn(...)
-    self:log("WARN", ...)
-end
-
-function Logger:error(...)
-    self:log("ERROR", ...)
-end
-
-function Logger:debug(...)
-    self:log("DEBUG", ...)
-end
-
-function Logger:trace(...)
-    self:log("TRACE", ...)
-end
-
-function Logger:print(message)
-    self:log("PRINT", message)
+local function createLogger(name, lvl)
+    local log_levels = {
+        TRACE = 10,
+        DEBUG = 20,
+        INFO = 30,
+        WARN = 40,
+        ERROR = 50,
+        PRINT = 1000,
+    }
+    return {
+        name=name,
+        log_levels=log_levels,
+        level=lvl or "INFO",
+        numeric_level=log_levels[lvl] or 30,
+        messages={},
+        log=function(self, level, ...)
+            local args = {...}
+            local text = ""
+            if not love.filesystem.getInfo("logs/" .. generateDateTime(START_TIME) .. ".log") then
+                love.filesystem.write("logs/" .. generateDateTime(START_TIME) .. ".log", "")
+            end
+            for i, v in ipairs(args) do
+                text = text .. stringify(v) .. " "
+            end
+            local message = {
+                level=level,
+                level_numeric=self.log_levels[level] or 0,
+                text=text,
+                time=os.time(),
+                name=self.name,
+                formatted=function(self, dump)
+                    if self.level == "PRINT" and not dump then
+                        return self.text
+                    end
+                    if dump then
+                        return string.format("%s [%s] - %s :: %s", generateDateTime(self.time), self.name, self.level, self.text)
+                    end
+                    return string.format("[%s] - %s :: %s", self.name, self.level, self.text)
+                end,
+            }
+            table.insert(self.messages, message)
+            love.filesystem.append("logs/" .. generateDateTime(START_TIME) .. ".log", message:formatted(true) .. "\n")
+            love.filesystem.append("console.txt", message:formatted(true) .. "\n")
+        end,
+        info=function(self, ...)
+            self:log("INFO", ...)
+        end,
+        warn=function(self, ...)
+            self:log("WARN", ...)
+        end,
+        error=function(self, ...)
+            self:log("ERROR", ...)
+        end,
+        debug=function(self, ...)
+            self:log("DEBUG", ...)
+        end,
+        trace=function(self, ...)
+            self:log("TRACE", ...)
+        end,
+        print=function(self, message)
+            self:log("PRINT", message)
+        end,
+    }
 end
 
 local function getLogger(name, level)
     if LOGGERS[name] then
         return LOGGERS[name]
     else
-        local logger = Logger:init(name, level)
+        local logger = createLogger(name, level)
         LOGGERS[name] = logger
         return logger
     end
@@ -140,8 +113,26 @@ local function getAllMessages()
     return messages
 end
 
+function generateDateTime(start)
+    local dateTimeTable = os.date('*t', start)
+    local dateTime = dateTimeTable.year .. "-"
+            .. addZeroForLessThan10(dateTimeTable.month) .. "-"
+            .. addZeroForLessThan10(dateTimeTable.day) .. "-"
+            .. addZeroForLessThan10(dateTimeTable.hour) .. "-"
+            .. addZeroForLessThan10(dateTimeTable.min) .. "-"
+            .. addZeroForLessThan10(dateTimeTable.sec)
+    return dateTime
+end
 
-local function saveLogs()
+function addZeroForLessThan10(number)
+    if(number < 10) then
+        return 0 .. number
+    else
+        return number
+    end
+end
+
+function saveLogs()
     local filename = "logs/" .. generateDateTime() .. ".log"
     love.filesystem.write(filename, "")
     for _, message in ipairs(getAllMessages()) do
@@ -160,7 +151,5 @@ _MODULE.getLogger = getLogger
 _MODULE.saveLogs = saveLogs
 _MODULE.getAllMessages = getAllMessages
 _MODULE.clearLogs = clearLogs
-_MODULE.Logger = Logger
-_MODULE.Message = Message
 
 return _MODULE
