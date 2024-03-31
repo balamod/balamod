@@ -22,6 +22,7 @@ local logging = require('logging')
 local utils = require('utils')
 local logger = logging.getLogger('patches')
 local assets = require('assets')
+local jokerapi = require('jokerapi')
 
 function love.load(args)
     for modId, mod in pairs(balamod.mods) do
@@ -348,7 +349,7 @@ end
 
 local game_calculate_joker = Card.calculate_joker
 
-function Card.calculate_joker(context)
+function Card.calculate_joker(self, context)
     local old_return = game_calculate_joker(self, context)
     if self.ability.set == "Joker" and not self.debuff then
         for k, effect in pairs(jokerapi.jokerEffects) do
@@ -473,6 +474,7 @@ function Card.set_sprites(self, _center, _front)
                 self.children.center.atlas = G.ASSET_ATLAS[_center.balamod.asset_key]
                 -- custom assets are single images, their pos is always 0,0
                 self.children.center:set_sprite_pos({ x = 0, y = 0 })
+                self.children.center:reset()
             else
                 -- We process the asset with the normal function
                 -- this is done to keep the default behavior of the game
@@ -483,12 +485,13 @@ function Card.set_sprites(self, _center, _front)
                 -- if the center is locked, or not discovered yet, we don't want to
                 -- use the custom asset (it should show the game images for locked/undiscovered)
                 -- cards. Bypass discovery center though should still bypass that check
-                if (not _center.unlocked or not self.config.center.unlocked or not _center.discovered) and not self.params.bypass_discovery_center then
+                if (_center.unlocked and self.config.center.unlocked and _center.discovered) or self.params.bypass_discovery_center then
                     -- center has been unlocked, so we can use our custom atlas
                     -- as before, pos is always 0,0 becaue we have a single image
                     -- per atlas.
                     self.children.center.atlas = G.ASSET_ATLAS[_center.balamod.asset_key]
                     self.children.center:set_sprite_pos({ x = 0, y = 0 })
+                    self.children.center:reset()
                 end
                 -- Get the 'back' instance we need from the selected deck
                 local back = G.GAME[self.back]
@@ -509,7 +512,7 @@ function Card.set_sprites(self, _center, _front)
                         -- we replicate that behavior here
                         self.children.back.atlas = G.ASSET_ATLAS['centers']
                         -- card backs are in the centers atlas for some reason
-                        self.children.back:set_sprite_pos(G.P_CENTES['b_red'].pos)
+                        self.children.back:set_sprite_pos(G.P_CENTERS['b_red'].pos)
                     end
                 end
             end

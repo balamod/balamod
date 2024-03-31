@@ -1,10 +1,10 @@
+local balamod = require('balamod')
 
 joker = {}
 joker.jokers = {}
 joker.jokerEffects = {}
 joker.loc_vars = {}
-local function add(args)
-    -- if type(args) ~= "table" then balamod.logger:error("Joker API addJoker: Invalid parameters"); return; end
+local function add_joker(args)
     local id = args.id or "j_Joker_Placeholder" .. #G.P_CENTER_POOLS["Joker"] + 1
     local name = args.name or "Joker Placeholder"
     local joker_effect = args.joker_effect or function(_) end
@@ -12,13 +12,13 @@ local function add(args)
     local unlocked = args.unlocked or true
     local discovered = args.discovered or true
     local cost = args.cost or 4
-    local pos = {x=0, y=0} --blank joker sprite
+    local pos = {x=0, y=0}
     local effect = args.effect or ""
     local config = args.config or {}
     local desc = args.desc or {"Placeholder"}
     local rarity = args.rarity or 1
-    local blueprint_compat = args.blueprint_compat or false
-    local eternal_compat = args.eternal_compat or false
+    local blueprint_compat = args.blueprint_compat or true
+    local eternal_compat = args.eternal_compat or true
     local no_pool_flag = args.no_pool_flag or nil
     local yes_pool_flag = args.yes_pool_flag or nil
     local unlock_condition = args.unlock_condition or nil
@@ -28,9 +28,9 @@ local function add(args)
     --joker object
     local newJoker = {
         balamod = {
-            mod_id = mod_id,
+            mod_id = args.mod_id,
             key = id,
-            asset_key = mod_id .. "_" .. id
+            asset_key = args.mod_id .. "_" .. id
         },
         order = order,
         discovered = discovered,
@@ -82,7 +82,7 @@ local function add(args)
     return newJoker, newJokerText
 end
 
-local function remove(id)
+local function remove_joker(id)
     local rarity = G.P_CENTERS[id].rarity
     G.P_CENTER_POOLS['Joker'][joker.jokers[id].pool_indices[1]] = nil
     G.P_JOKER_RARITY_POOLS[rarity][joker.jokers[id].pool_indices[2]] = nil
@@ -92,16 +92,13 @@ local function remove(id)
     joker.jokers[id] = nil
 end
 local function getJokers()
-    return jokerAPI.jokers
+    return joker.jokers
 end
 
-local _MODULE = {
-    _VERSION = "0.1.0",
-    JOKER_API = jokerAPI
-}
+local _MODULE = joker
 
-_MODULE.add = add
-_MODULE.remove = remove
+_MODULE.add_joker = add_joker
+_MODULE.remove_joker = remove_joker
 _MODULE.getJokers = getJokers
 
 return _MODULE

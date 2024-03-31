@@ -674,9 +674,26 @@ table.insert(mods,
 
             console:registerCommand(
                 "give",
-                function()
-                    console.logger:error("Give command not implemented yet")
-                    return false
+                function(args)
+                    if args[1] then
+                        local joker_id = args[1]
+                        local c1 = create_card("Joker", G.jokers, nil, 1, true, false, joker_id, nil)
+                        c1.area = G.jokers
+                        G.E_MANAGER:add_event(Event({
+                            trigger = 'after',
+                            delay = 0.1,
+                            func = function()
+                            c1.area:remove_card(c1)
+                            c1:add_to_deck()
+                            G.jokers:emplace(c1)
+
+                            G.CONTROLLER:save_cardarea_focus('jokers')
+                            G.CONTROLLER:recall_cardarea_focus('jokers')
+                            return true
+                            end
+                        }))
+                        console.logger:info("Added "..joker_id.." to deck")
+                    end
                 end,
                 "Give an item to the player"
             )
@@ -862,7 +879,7 @@ table.insert(mods,
                     local func, err = load("return " .. code)
                     if func then
                         console.logger:info("Lua code executed successfully")
-                        console.logger:print(func)
+                        console.logger:print(func())
                         return true
                     else
                         console.logger:error("Error loading lua code: ", err)
