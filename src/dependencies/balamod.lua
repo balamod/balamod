@@ -279,6 +279,7 @@ local function validateManifest(modFolder, manifest)
         load_after = true,
         min_balamod_version = false,
         max_balamod_version = false,
+        dependencies = false,
     }
 
     -- check that all manifest expected fields are present
@@ -346,6 +347,56 @@ local function validateManifest(modFolder, manifest)
     if type(manifest.name) ~= 'string' then
         logger:error('Manifest in folder ', modFolder, ' has a non-string name field')
         return false
+    end
+
+    -- check that the dependencies field is a key-value table, if it exists
+    if manifest.dependencies then
+        local incorrectDependencies = {}
+        if type(manifest.dependencies) ~= 'table' then
+            logger:error('Manifest in folder ', modFolder, ' has a non-table dependencies field')
+            return false
+        end
+        for modId, version in pairs(manifest.dependencies) do
+            if type(modId) ~= 'string' then
+                logger:error('Manifest in folder ', modFolder, ' has a non-string key in dependencies field')
+                return false
+            end
+            if type(version) ~= 'string' then
+                logger:error('Manifest in folder ', modFolder, ' has a non-string value in dependencies field')
+                return false
+            end
+            local versionConstraintCorrect = false
+            -- exact version match or caret version constraint
+            if string.match(version, '%^?%d+%.%d+%.%d+') then
+                versionConstraintCorrect = true
+            end
+            -- also need to support version constraints like >=3,<4, >2.0,<6 and so on
+            -- though, lua doesn't support optional groups in its pattern matching for some dumb reason
+            -- so we'll build a table that contains all of the patterns programatically
+            -- we can at least match the operator with the [<>]=? pattern
+            local patterns = {}
+            local versionPatterns = {'%d+', '%d+%.%d+', '%d+%.%d+%.%d+'}
+            for _, versionPattern1 in ipairs(versionPatterns) do
+                for _, versionPattern2 in ipairs(versionPatterns) do
+                    table.insert(patterns, '[<>]=?' .. versionPattern1 .. ', ?[<>]=?' .. versionPattern2)
+                end
+            end
+            -- check every generated pattern, one at a time, if any of them matches, then the version constraint is correct
+            for _, pattern in ipairs(patterns) do
+                if string.match(version, pattern) then
+                    versionConstraintCorrect = true
+                    break
+                end
+            end
+            if not versionConstraintCorrect then
+                table.insert(incorrectDependencies, modId..':'..version)
+            end
+        end
+        if #incorrectDependencies > 0 then
+            -- some of the dependencies are incorrect for the mod, let's log them and return false
+            logger:error('Manifest in folder ', modFolder, ' has incorrect dependencies field: ', table.concat(incorrectDependencies, ', '))
+            return false
+        end
     end
 
     return true
