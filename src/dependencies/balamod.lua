@@ -497,6 +497,13 @@ local function callModCallbacksIfExists(mods, callback_name, should_log, ...)
 end
 
 local function installMod(modInfo)
+    -- TODO: when installing a mod, also install its dependencies
+    -- we need to fetch all of the dependencies of a mod from the repo index
+    -- then install the correct version of the dependency
+    -- we also need to make sure to check that the dependency version constraints are satisfied
+    -- if the constraints cannot be resolved, then the installation should fail with a status code
+    -- that way, we can ensure that the mod, and its dependencies are installed correctly without conflicts
+    -- as long as the mod authors follow the semantic versioning rules, that is...
     if modInfo == nil then
         logger:error('modInfo is nil')
         return RESULT.MOD_NOT_FOUND_IN_REPOS
