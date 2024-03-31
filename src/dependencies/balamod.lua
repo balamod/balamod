@@ -2,7 +2,7 @@ local logging = require('logging')
 local platform = require('platform')
 local math = require('math')
 local console = require('console')
-local jokerapi = require('jokerapi')
+-- local jokerapi = require('jokerapi')
 
 logger = logging.getLogger('balamod')
 mods = {}
@@ -11,7 +11,7 @@ local apis = {
     console = console,
     math = math,
     platform = platform,
-    jokerapi = jokerapi,
+    -- jokerapi = jokerapi,
 }
 is_loaded = false
 local RESULT = {

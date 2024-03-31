@@ -1,25 +1,22 @@
-local balamod = require('balamod')
-
 
 joker = {}
 joker.jokers = {}
 joker.jokerEffects = {}
 joker.loc_vars = {}
 local function add(args)
-    if type(args) ~= "table" then balamod.logger:error("Joker API addJoker: Invalid parameters"); return; end
+    -- if type(args) ~= "table" then balamod.logger:error("Joker API addJoker: Invalid parameters"); return; end
     local id = args.id or "j_Joker_Placeholder" .. #G.P_CENTER_POOLS["Joker"] + 1
     local name = args.name or "Joker Placeholder"
     local joker_effect = args.joker_effect or function(_) end
-    local order = args.order or #G.P_CENTER_POOLS["Joker"] + 1
+    local order = #G.P_CENTER_POOLS["Joker"] + 1
     local unlocked = args.unlocked or true
     local discovered = args.discovered or true
     local cost = args.cost or 4
-    local pos = args.pos or {x=9, y=9} --blank joker sprite
+    local pos = {x=0, y=0} --blank joker sprite
     local effect = args.effect or ""
     local config = args.config or {}
     local desc = args.desc or {"Placeholder"}
     local rarity = args.rarity or 1
-    local unlocked = args.unlocked or true
     local blueprint_compat = args.blueprint_compat or false
     local eternal_compat = args.eternal_compat or false
     local no_pool_flag = args.no_pool_flag or nil
@@ -72,7 +69,7 @@ local function add(args)
     G.localization.descriptions.Joker[id] = newJokerText
 
     --add joker effect to game
-    table.insert(joker.jokerEffects, use_effect)
+    table.insert(joker.jokerEffects, joker_effect)
 
     --add joker loc vars to the game
     joker.loc_vars[id] = loc_vars
@@ -98,13 +95,13 @@ local function getJokers()
     return jokerAPI.jokers
 end
 
+local _MODULE = {
+    _VERSION = "0.1.0",
+    JOKER_API = jokerAPI
+}
+
 _MODULE.add = add
 _MODULE.remove = remove
 _MODULE.getJokers = getJokers
-
-local _MODULE = {
-    _VERSION = "0.1.0"
-    JOKER_API = jokerAPI
-}
 
 return _MODULE
