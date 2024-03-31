@@ -3,6 +3,15 @@ local platform = require('platform')
 local math = require('math')
 local console = require('console')
 -- local jokerapi = require('jokerapi')
+local json = require('json')
+local utils = require('utils')
+local tar = require('tar')
+
+local dir = love.filesystem.getSourceBaseDirectory()
+local old_cpath = package.cpath
+package.cpath = package.cpath .. ';' .. dir .. '/?.so' .. ';' .. dir .. '/?.dll'
+local https = require('https')
+package.cpath = old_cpath
 
 logger = logging.getLogger('balamod')
 mods = {}
@@ -22,8 +31,11 @@ local RESULT = {
     NETWORK_ERROR = 4,
     MOD_FS_LOAD_ERROR = 5,
     MOD_PCALL_ERROR = 6,
+    TAR_DECOMPRESS_ERROR = 7,
+    MOD_NOT_CONFORM = 8,
 }
 local paths = {} -- Paths to the files that will be loaded
+local _VERSION = require('balamod_version')
 
 local function splitstring(inputstr, sep)
     if sep == nil then
@@ -63,13 +75,12 @@ end
 
 local function request(url)
     logger:debug('Request made with url: ', url)
-    local https = require 'https'
     local code
     local response
-    if love.system.getOS() == 'OS X' then
-        response, code = https.request(url)
-    else
-        code, response = https.request(url, {headers = {['User-Agent'] = 'Balamod-Client'}})
+    code, response, headers = https.request(url, {headers = {['User-Agent'] = 'Balamod-Client'}})
+    if (code == 301 or code == 302) and headers.location then
+        -- follow redirects if necessary
+        code, response = request(headers.location)
     end
     return code, response
 end
@@ -198,205 +209,12 @@ local function injectTail(path, function_name, code)
     end
 end
 
-local function getModByModId(tables, mod_id)
-    if not mod_id then
-        logger:error('Mod id is nil')
-        return nil
-    end
-    for _, mod in ipairs(tables) do
-        if mod.mod_id and mod.mod_id == mod_id then
-            return mod
-        end
-    end
-    logger:debug('Mod ' .. mod_id .. ' not found')
-    return nil
-end
-
 local function isModPresent(modId)
     if not modId then
         logger:error('Mod id is nil')
         return false
     end
-    if getModByModId(mods, modId) then
-        return true
-    else
-        return false
-    end
-end
-
-local function installMod(modInfo)
-    if modInfo == nil then
-        logger:error('modInfo is nil')
-        return RESULT.MOD_NOT_FOUND_IN_REPOS
-    end
-    local modId = modInfo.mod_id
-    if modInfo.present then
-        logger:debug('Mod ' .. modInfo.mod_id .. ' is already present')
-        local modVersion = modInfo.newVersion
-        if not modInfo.needUpdate then
-            return RESULT.SUCCESS
-        end
-        local skipUpdate = false
-
-        -- remove old mod
-        for i, mod in ipairs(mods) do
-            if mod.mod_id == modId then
-                if mod.on_disable then
-                    mod.on_disable()
-                end
-
-                table.remove(mods, i)
-                break
-            end
-        end
-    end
-
-    logger:debug('Downloading mod ' .. modInfo.mod_id)
-    local modUrl = modInfo.url
-
-    local owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/tree/([^/]+)/?(.*)")
-
-    if not owner or not repo or not branch then
-        owner, repo, branch, path = modUrl:match("https://github%.com/([^/]+)/([^/]+)/blob/([^/]+)/?(.*)")
-    end
-
-    logger:debug('Url: ' .. modUrl)
-    logger:debug('Owner: ' .. (owner or 'nil'))
-    logger:debug('Repo: ' .. (repo or 'nil'))
-    logger:debug('Branch: ' .. (branch or 'nil'))
-    logger:debug('Path: ' .. (path or 'nil'))
-
-    while path:sub(-1) == '/' do
-        path = path:sub(1, -2)
-    end
-
-    local url = 'https://api.github.com/repos/' .. owner .. '/' .. repo .. '/git/trees/' .. branch .. '?recursive=1'
-    local code, body = request(url)
-    if code ~= 200 then
-        logger:error('Request failed')
-        logger:error('Code: ' .. code)
-        logger:error('Response: ' .. body)
-        return RESULT.NETWORK_ERROR
-    end
-
-    logger:debug('Files to download:')
-
-    local paths = {}
-
-    for p, type in body:gmatch('"path":"(.-)".-"type":"(.-)"') do
-        if type == 'blob' then
-            if p:sub(1, #path) == path then
-                table.insert(paths, p)
-            end
-        end
-    end
-
-    for _, p in ipairs(paths) do
-        logger:trace(p)
-    end
-
-    for _, p in ipairs(paths) do
-        code, body = request(
-                         'https://raw.githubusercontent.com/' .. owner .. '/' .. repo .. '/' .. branch .. '/' .. p)
-        if code ~= 200 then
-            logger:error('Request failed')
-            logger:error('Code: ' .. code)
-            logger:error('Response: ' .. body)
-            return RESULT.NETWORK_ERROR
-        end
-        logger:debug('Downloaded ' .. p)
-        local filePath = p:sub(#path + 2)
-        logger:debug('Writing to ' .. filePath)
-        local dir = filePath:match('(.+)/[^/]+')
-		if dir ~= nil then
-			love.filesystem.createDirectory(dir)
-			--[[if not love.filesystem.getInfo(filePath) then
-				love.filesystem.write(filePath, body)
-			else
-				logger:warn("File " .. filePath .. " already exists")
-			end]] --
-			love.filesystem.write(filePath, body)
-		else
-            logger:warn("File " .. filePath .. " is in the root directory and will not be installed")
-        end
-    end
-
-    -- apis first
-    for _, p in ipairs(paths) do
-        if p:match('apis/.*%.lua') then
-            logger:info('Loading ' .. p:sub(#path + 2))
-
-            local modContent, loadErr = love.filesystem.load(p:sub(#path + 2))
-
-            if modContent then
-                local success, mod = pcall(modContent)
-                if success then
-                    logger:info('API ' .. p:sub(#path + 2) .. ' loaded')
-                else
-                    logger:error('Error loading api: ' .. p:sub(#path + 2))
-                    logger:error(mod)
-                    return RESULT.MOD_PCALL_ERROR
-                end
-            else
-                logger:error('Error reading api: ' .. p:sub(#path + 2))
-                logger:error(loadErr)
-                return RESULT.MOD_FS_LOAD_ERROR
-            end
-        end
-    end
-
-    -- mods second
-    for _, p in ipairs(paths) do
-        if p:match('mods/.*%.lua') then
-            logger:info('Loading ' .. p:sub(#path + 2))
-
-            local modContent, loadErr = love.filesystem.load(p:sub(#path + 2))
-
-            if modContent then
-                local success, mod = pcall(modContent)
-                if success then
-                    table.insert(mods, mod)
-                    logger:info('Mod ' .. p:sub(#path + 2) .. ' loaded')
-                else
-                    logger:error('Error loading mod: ' .. p:sub(#path + 2))
-                    logger:error(mod)
-                    return RESULT.MOD_PCALL_ERROR
-                end
-            else
-                logger:error('Error reading mod: ' .. p:sub(#path + 2))
-                logger:error(loadErr)
-                return RESULT.MOD_FS_LOAD_ERROR
-            end
-        end
-    end
-
-    return RESULT.SUCCESS
-end
-
-local function parseVersion(version)
-    local major, minor, patch = string.match(version, '(%d+)%.(%d+)%.(%d+)')
-    return {
-        major = tonumber(major),
-        minor = tonumber(minor),
-        patch = tonumber(patch)
-    }
-end
-
-local function v2GreaterThanV1(v1, v2)
-    if v2.major > v1.major then
-        return true
-    end
-    if v2.major == v1.major then
-        if v2.minor > v1.minor then
-            return true
-        end
-        if v2.minor == v1.minor then
-            if v2.patch > v1.patch then
-                return true
-            end
-        end
-    end
-    return false
+    return mods[modId] ~= nil
 end
 
 local function getRepoMods()
@@ -428,16 +246,16 @@ local function getRepoMods()
                 local needUpdate = true
                 local version = modVersion
                 if modPresent then
-                    local repoVersion = parseVersion(modVersion)
-                    local mod = getModByModId(mods, modId)
+                    local repoVersion = utils.parseVersion(modVersion)
+                    local mod = mods[modId]
                     if mod.version then
                         version = mod.version
-                        local modVersion = parseVersion(mod.version)
-                        needUpdate = v2GreaterThanV1(modVersion, repoVersion)
+                        local modVersion = utils.parseVersion(mod.version)
+                        needUpdate = utils.v2GreaterThanV1(modVersion, repoVersion)
                     end
                 end
                 table.insert(repoMods, {
-                    mod_id = modId,
+                    id = modId,
                     name = modName,
                     description = modDesc,
                     url = modUrl,
@@ -452,8 +270,259 @@ local function getRepoMods()
     return repoMods
 end
 
-local function registerMod(mod)
+local function validateManifest(modFolder, manifest)
+    local expectedFields = {
+        id = true,
+        name = true,
+        version = true,
+        description = true,
+        author = true,
+        load_before = true,
+        load_after = true,
+        min_balamod_version = false,
+        max_balamod_version = false,
+    }
+
+    -- check that all manifest expected fields are present
+    for field, required in pairs(expectedFields) do
+        if manifest[field] == nil and required then
+            logger:error('Manifest in folder ', modFolder, ' is missing field: ', field)
+            return false
+        end
+    end
+    -- check that none of the manifest fields are not in the expected fields
+    for key, _ in pairs(manifest) do
+        if expectedFields[key] == nil then
+            logger:error('Manifest in folder ', modFolder, ' contains unexpected field: ', key)
+            return false
+        end
+    end
+
+    -- check that the load_before, load_after and description fields are arrays
+    if type(manifest.load_before) ~= 'table' then
+        logger:error('Manifest in folder ', modFolder, ' has a non-array load_before field')
+        return false
+    end
+    if type(manifest.load_after) ~= 'table' then
+        logger:error('Manifest in folder ', modFolder, ' has a non-array load_after field')
+        return false
+    end
+    if type(manifest.description) ~= 'table' then
+        logger:error('Manifest in folder ', modFolder, ' has a non-array description field')
+        return false
+    end
+
+    -- check that the load_before and load_after fields are strings
+    for _, modId in ipairs(manifest.load_before) do
+        if type(modId) ~= 'string' then
+            logger:error('Manifest in folder ', modFolder, ' has a non-string load_before field')
+            return false
+        end
+    end
+    for _, modId in ipairs(manifest.load_after) do
+        if type(modId) ~= 'string' then
+            logger:error('Manifest in folder ', modFolder, ' has a non-string load_after field')
+            return false
+        end
+    end
+
+    -- check that the version field is a string, matching semantic versioning
+    if not manifest.version:match('%d+%.%d+%.%d+') then
+        logger:error('Manifest in folder ', modFolder, ' has a non-semantic versioning version field')
+        return false
+    end
+
+    -- check that the author field is a string
+    if type(manifest.author) ~= 'string' then
+        logger:error('Manifest in folder ', modFolder, ' has a non-string author field')
+        return false
+    end
+
+    -- check that the id field is a string
+    if type(manifest.id) ~= 'string' then
+        logger:error('Manifest in folder ', modFolder, ' has a non-string id field')
+        return false
+    end
+
+    -- check that the name field is a string
+    if type(manifest.name) ~= 'string' then
+        logger:error('Manifest in folder ', modFolder, ' has a non-string name field')
+        return false
+    end
+
+    return true
+end
+
+local function loadMod(modFolder)
+    local mod = {}
+    logger:debug('Trying to load mod from: ', modFolder)
+    if not love.filesystem.getInfo('mods/' .. modFolder, 'directory') then
+        logger:error('Mod folder ', modFolder, ' does not exist')
+        return nil
+    end
+    if not love.filesystem.getInfo('mods/' .. modFolder .. '/main.lua', 'file') then
+        logger:error('Mod folder ', modFolder, ' does not contain a main.lua file')
+        return nil
+    end
+    if not love.filesystem.getInfo('mods/' .. modFolder .. '/manifest.json', 'file') then
+        logger:error('Mod folder ', modFolder, ' does not contain a manifest.json file')
+        return nil
+    end
+    logger:debug("Loading manifest from: ", 'mods/'..modFolder..'/manifest.json')
+    -- load the manifest
+    local manifest = json.decode(love.filesystem.read('mods/'..modFolder..'/manifest.json'))
+    if not validateManifest(modFolder, manifest) then
+        return nil
+    end
+    logger:debug('Manifest loaded: ', manifest)
+    -- check that the mod is compatible with the current version of balamod
+    if manifest.min_balamod_version then
+        local minVersion = utils.parseVersion(manifest.min_balamod_version)
+        if not utils.v2GreaterThanV1(minVersion, _VERSION) then
+            logger:error('Mod ', modFolder, ' requires a newer version of balamod')
+            return nil
+        end
+    end
+    if manifest.max_balamod_version then
+        local maxVersion = utils.parseVersion(manifest.max_balamod_version)
+        if utils.v2GreaterThanV1(maxVersion, _VERSION) then
+            logger:error('Mod ', modFolder, ' requires an older version of balamod')
+            return nil
+        end
+    end
+    -- load the hooks (on_enable, on_game_load, etc...)
+    logger:debug("Loading hooks from: ", 'mods/'..modFolder..'/main.lua')
+    local modHooks = require('mods/'..modFolder..'/main')
+    for hookName, hook in pairs(modHooks) do
+        mod[hookName] = hook
+    end
+    for key, value in pairs(manifest) do
+        mod[key] = value
+    end
+    mod.enabled = true
+    logger:debug('Mod loaded: ', mod.id)
+    logger:debug("Checking if mod is disabled")
+    if love.filesystem.getInfo('mods/' .. modFolder .. '/disable.it', 'file') then
+        mod.enabled = false
+    end
+    logger:debug('Mod enabled: ', mod.enabled)
+    if mod.enabled then
+        if mod.on_enable and type(mod.on_enable) == 'function' then
+            pcall(mod.on_enable)
+        end
+    end
+    return mod
+end
+
+local function toggleMod(mod)
+    logger:debug('Toggling mod: ' .. mod.id)
+    mod.enabled = not mod.enabled
+    if mod.enabled and mod.on_enable and type(mod.on_enable) == 'function' then
+        if love.filesystem.getInfo('mods/' .. mod.id .. '/disable.it', 'file') then
+            love.filesystem.remove('mods/' .. mod.id .. '/disable.it')
+        end
+        pcall(mod.on_enable)
+    elseif not mod.enabled and mod.on_disable and type(mod.on_disable) == 'function' then
+        love.filesystem.write('mods/' .. mod.id .. '/disable.it', '')
+        pcall(mod.on_disable)
+    end
+    mods[mod.id] = mod
+end
+
+local function installMod(modInfo)
+    if modInfo == nil then
+        logger:error('modInfo is nil')
+        return RESULT.MOD_NOT_FOUND_IN_REPOS
+    end
+    local modId = modInfo.id
+    if modInfo.present then
+        logger:debug('Mod ' .. modInfo.id .. ' is already present')
+        local modVersion = modInfo.newVersion
+        if not modInfo.needUpdate then
+            return RESULT.SUCCESS
+        end
+
+        -- remove old mod
+        for i, mod in ipairs(mods) do
+            if mod.id == modId then
+                if mod.on_disable then
+                    mod.on_disable()
+                end
+
+                table.remove(mods, i)
+                break
+            end
+        end
+    end
+
+    logger:debug('Downloading mod ' .. modInfo.id)
+    local modUrl = modInfo.url
+
+    local code, body = request(modUrl)
+    if code ~= 200 and code ~= 302 then
+        logger:error('Request failed')
+        logger:error('Code: ' .. code)
+        logger:error('Response: ' .. body)
+        return RESULT.NETWORK_ERROR
+    end
+    logger:debug('Downloaded tarball with body ', body)
+
+    -- decompress the archive in memory
+    local decompressedData = love.data.decompress("data", "gzip", body)
+    local success, result = pcall(tar.unpack, decompressedData)
+    if not success then
+        logger:error('Error decompressing tarball')
+        logger:error(result)
+        return RESULT.TAR_DECOMPRESS_ERROR
+    end
+
+    -- result should be a table of tables with the following structure:
+    -- {
+    --   name = path to the file/directory
+    --   data = fileData
+    --   type = "file" | "directory"
+    -- }
+    -- sort the result table so that directories are processed first
+    table.sort(result, function(a, b) return a.type < b.type end)
+    -- check that the downloaded mod contains a main.lua file as well as a manifest.json file
+    local mainLua = false
+    local manifestJson = false
+    for _, file in ipairs(result) do
+        if file.type == "file" then
+            -- file.name is a path, we only want the filename
+            local _, _, filename = file.name:find(".+/(.+)")
+            if filename == "main.lua" then
+                mainLua = true
+            end
+            if filename == "manifest.json" then
+                manifestJson = true
+            end
+        end
+    end
+    if not mainLua then
+        logger:error('Downloaded mod does not contain a main.lua file')
+        return RESULT.MOD_NOT_CONFORM
+    end
+    if not manifestJson then
+        logger:error('Downloaded mod does not contain a manifest.json file')
+        return RESULT.MOD_NOT_CONFORM
+    end
+    for _, file in ipairs(result) do
+        -- replace the first part of file.name with the modId
+        file.name = modId .. file.name:sub(file.name:find("/"))
+        if file.type == "directory" then
+            love.filesystem.createDirectory("mods/"..file.name)
+        elseif file.type == "file" then
+            love.filesystem.write("mods/"..file.name, file.data)
+        end
+    end
+
+    local mod = loadMod(modId)
+    if mod == nil then
+        return RESULT.MOD_FS_LOAD_ERROR
+    end
     table.insert(mods, mod)
+    return RESULT.SUCCESS
 end
 
 buildPaths("",{"mods","apis","resources","localization"})
@@ -479,30 +548,9 @@ end
 
 -- apis will be loaded first, then mods
 
-local apis_files = love.filesystem.getDirectoryItems("apis") -- Load all apis
-for _, file in ipairs(apis_files) do
-    if file:sub(-4) == ".lua" then -- Only load lua files
-        local apiPath = "apis/" .. file
-        local apiContent, loadErr = love.filesystem.load(apiPath) -- Load the file
-
-        if apiContent then -- Check if the file was loaded successfully
-            local success, api = pcall(apiContent)
-            if success then -- Check if the file was executed successfully
-                table.insert(mods, api) -- Add the api to the list of mods if there is a mod in the file
-            else
-                logger:error("Error loading api: " .. apiPath) -- Log the error to the console Todo: Log to file
-                logger:error(api)
-            end
-        else
-            logger:error("Error reading api: " .. apiPath) -- Log the error to the console Todo: Log to file
-            logger:error(loadErr)
-        end
-    end
-end
-
 table.insert(mods,
     {
-        mod_id = "dev_console",
+        id = "dev_console",
         name = "Dev Console",
         version = "0.6.0",
         author = "sbordeyne & UwUDev",
@@ -760,7 +808,101 @@ table.insert(mods,
                     return nil
                 end
             )
-        console.logger:debug("Dev Console on_enable completed")
+
+            console:registerCommand(
+                "luamod",
+                function(args)
+                    if args[1] then
+                        local modId = args[1]
+                        if isModPresent(modId) then
+                            local mod = mods[modId]
+                            mod = loadMod(modId)
+                            mods[modId] = mod
+                            console.logger:info("Reloaded mod: " .. modId)
+                        else
+                            console.logger:error("Mod not found: " .. modId)
+                            return false
+                        end
+                    else
+                        console.logger:error("Usage: luamod <mod_id>")
+                        return false
+                    end
+                    return true
+                end,
+                "Reload a mod using its id",
+                function (current_arg)
+                    local completions = {}
+                    for modId, _ in pairs(mods) do
+                        if modId:find(current_arg, 1, true) == 1 then
+                            table.insert(completions, modId)
+                        end
+                    end
+                    return completions
+                end,
+                "Usage: luamod <mod_id>"
+            )
+
+            console:registerCommand(
+                "sandbox",
+                function (args)
+                    G:sandbox()
+                    return true
+                end,
+                "Goes to the sandbox stage",
+                function (current_arg)
+                    return nil
+                end,
+                "Usage: sandbox"
+            )
+
+            console:registerCommand(
+                "luarun",
+                function (args)
+                    local code = table.concat(args, " ")
+                    local func, err = load("return " .. code)
+                    if func then
+                        console.logger:info("Lua code executed successfully")
+                        console.logger:print(func)
+                        return true
+                    else
+                        console.logger:error("Error loading lua code: ", err)
+                        return false
+                    end
+                end,
+                "Run lua code in the context of the game",
+                function (current_arg)
+                    return nil
+                end,
+                "Usage: luarun <lua_code>"
+            )
+
+            console:registerCommand(
+                "installmod",
+                function (args)
+                    local url = args[1]
+                    local modInfo = {
+                        id = "testmod",
+                        url = url,
+                        present = false,
+                        needUpdate = true,
+                    }
+                    local result = installModFromTar(modInfo)
+                    if result == RESULT.SUCCESS then
+                        console.logger:info("Mod installed successfully")
+                        return true
+                    else
+                        console.logger:error("Error installing mod: ", result)
+                        return false
+                    end
+                end,
+                "Install a mod from a tarball",
+                function (current_arg)
+                    return nil
+                end,
+                "Usage: installmod <mod_url>"
+            )
+
+            console.logger:debug("Dev Console on_enable completed")
         end,
         on_disable = function()
             console.removeCommand("help")
@@ -797,13 +939,26 @@ table.insert(mods,
         end,
         on_post_render = function ()
             console.max_lines = math.floor(love.graphics.getHeight() / console.line_height) - 5  -- 5 lines of bottom padding
+            local font = love.graphics.getFont()
             if console.is_open then
                 love.graphics.setColor(0, 0, 0, 0.3)
                 love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-                for i, message in ipairs(console:getMessagesToDisplay()) do
+                local messagesToDisplay = console:getMessagesToDisplay()
+                local i = 1
+                for _, message in ipairs(messagesToDisplay) do
                     r, g, b = console:getMessageColor(message)
                     love.graphics.setColor(r, g, b, 1)
-                    love.graphics.print(message:formatted(), 10, 10 + i * 20)
+                    local formattedMessage = message:formatted()
+                    if font:getWidth(formattedMessage) > love.graphics.getWidth() then
+                        local lines = console:wrapText(formattedMessage, love.graphics.getWidth())
+                        for _, line in ipairs(lines) do
+                            love.graphics.print(line, 10, 10 + i * 20)
+                            i = i + 1
+                        end
+                    else
+                        love.graphics.print(formattedMessage, 10, 10 + i * 20)
+                        i = i + 1
+                    end
                 end
                 love.graphics.setColor(1, 1, 1, 1) -- white
                 love.graphics.print(console.cmd, 10, love.graphics.getHeight() - 30)
@@ -860,38 +1015,10 @@ table.insert(mods,
     }
 )
 
-local files = love.filesystem.getDirectoryItems("mods") -- Load all mods
-for _, file in ipairs(files) do
-    if file:sub(-4) == ".lua" then -- Only load lua files
-        local modPath = "mods/" .. file
-        local modContent, loadErr = love.filesystem.load(modPath) -- Load the file
-
-        if modContent then  -- Check if the file was loaded successfully
-            local success, mod = pcall(modContent) -- Execute the file
-            if success then
-                table.insert(mods, mod) -- Add the mod to the list of mods
-            else
-                logger:error("Error loading mod: " .. modPath) -- Log the error to the console Todo: Log to file
-                logger:error(mod)
-            end
-        else
-            logger:error("Error reading mod: " .. modPath) -- Log the error to the console Todo: Log to file
-            logger:error(loadErr)
-        end
-    end
-end
-
-for _, mod in ipairs(mods) do
-    if mod.enabled and mod.on_pre_load and type(mod.on_pre_load) == "function" then
-        pcall(mod.on_pre_load) -- Call the on_pre_load function of the mod if it exists
-    end
-end
-
 return {
     logger = logger,
     mods = mods,
     apis = apis,
-    getModByModId = getModByModId,
     installMod = installMod,
     isModPresent = isModPresent,
     getRepoMods = getRepoMods,
@@ -900,7 +1027,8 @@ return {
     injectHead = injectHead,
     injectTail = injectTail,
     is_loaded = is_loaded,
-    _VERSION = require('balamod_version'),
-    registerMod = registerMod,
+    _VERSION = _VERSION,
     console = console,
+    loadMod = loadMod,
+    toggleMod = toggleMod,
 }

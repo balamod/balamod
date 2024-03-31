@@ -1,4 +1,4 @@
-use crate::dependencies::{get_console_lua, get_https_lua, get_logging_lua, get_platform_lua, get_ssl_lua, get_ssl_so, get_balamod_lua, get_mod_menu_lua, get_balamod_version_lua, get_patches_lua, get_joker_api_lua};
+use crate::dependencies::*;
 use crate::finder::get_balatro_paths;
 use colour::red_ln;
 use libflate::deflate::Encoder;
@@ -28,15 +28,7 @@ impl Balatro {
         return self.path.clone().join("Balatro.exe");
     }
 
-    #[cfg(target_os = "macos")]
-    pub fn inject_dependencies(&self, balamod_version: &'static str) -> Result<(), std::io::Error> {
-        let exe_path_buf = self.get_exe_path();
-        let exe_path = exe_path_buf
-            .to_str()
-            .expect("Failed to convert exe_path to str");
-        self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_ssl_so(), "ssl.so")?;
-        self.add_file_in_exe(exe_path, get_ssl_lua().as_bytes().to_vec(), "ssl.lua")?;
-        self.add_file_in_exe(exe_path, get_https_lua().as_bytes().to_vec(), "https.lua")?;
+    fn inject_common_dependencies(&self, exe_path: &str, balamod_version: &'static str) -> Result<(), std::io::Error> {
         self.add_file_in_exe(exe_path, get_balamod_lua().as_bytes().to_vec(), "balamod.lua")?;
         self.add_file_in_exe(exe_path, get_mod_menu_lua().as_bytes().to_vec(), "mod_menu.lua")?;
         self.add_file_in_exe(exe_path, get_logging_lua().as_bytes().to_vec(), "logging.lua")?;
@@ -45,6 +37,22 @@ impl Balatro {
         self.add_file_in_exe(exe_path, get_joker_api_lua().as_bytes().to_vec(), "jokerapi.lua")?;
         self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
         self.add_file_in_exe(exe_path, get_patches_lua().as_bytes().to_vec(), "patches.lua")?;
+        self.add_file_in_exe(exe_path, get_json_lua().as_bytes().to_vec(), "json.lua")?;
+        self.add_file_in_exe(exe_path, get_utils_lua().as_bytes().to_vec(), "utils.lua")?;
+        self.add_file_in_exe(exe_path, get_tar_lua().as_bytes().to_vec(), "tar.lua")?;
+        self.add_file_in_exe(exe_path, get_mod_api_lua().as_bytes().to_vec(), "mod.lua")?;
+        self.add_file_in_exe(exe_path, get_assets_lua().as_bytes().to_vec(), "assets.lua")?;
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn inject_dependencies(&self, balamod_version: &'static str) -> Result<(), std::io::Error> {
+        let exe_path_buf = self.get_exe_path();
+        let exe_path = exe_path_buf
+            .to_str()
+            .expect("Failed to convert exe_path to str");
+        self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_https_so(), "https.so")?;
+        self.inject_common_dependencies(exe_path, balamod_version)?;
         Ok(())
     }
 
@@ -54,14 +62,8 @@ impl Balatro {
         let exe_path = exe_path_buf
             .to_str()
             .expect("Failed to convert exe_path to str");
-        self.add_file_in_exe(exe_path, get_balamod_lua().as_bytes().to_vec(), "balamod.lua")?;
-        self.add_file_in_exe(exe_path, get_mod_menu_lua().as_bytes().to_vec(), "mod_menu.lua")?;
-        self.add_file_in_exe(exe_path, get_logging_lua().as_bytes().to_vec(), "logging.lua")?;
-        self.add_file_in_exe(exe_path, get_platform_lua().as_bytes().to_vec(), "platform.lua")?;
-        self.add_file_in_exe(exe_path, get_console_lua().as_bytes().to_vec(), "console.lua")?;
-        self.add_file_in_exe(exe_path, get_joker_api_lua().as_bytes().to_vec(), "jokerapi.lua")?;
-        self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
-        self.add_file_in_exe(exe_path, get_patches_lua().as_bytes().to_vec(), "patches.lua")?;
+        self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_https_so(), "https.dll")?;
+        self.inject_common_dependencies(exe_path, balamod_version)?;
         Ok(())
     }
 
@@ -69,12 +71,15 @@ impl Balatro {
     pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
         let exe_path_buf = self.get_exe_path();
         let resource_dir = exe_path_buf.parent().unwrap();
-        fs::remove_file(resource_dir.join("ssl.so"))?;
+        fs::remove_file(resource_dir.join("https.so"))?;
         Ok(())
     }
 
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
+        let exe_path_buf = self.get_exe_path();
+        let resource_dir = exe_path_buf.parent().unwrap();
+        fs::remove_file(resource_dir.join("https.dll"))?;
         Ok(())
     }
 
