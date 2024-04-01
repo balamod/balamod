@@ -1,10 +1,12 @@
 local balamod = require('balamod')
 
 local joker = {}
+joker._VERSION = "0.1.0"
 joker.jokers = {}
 joker.jokerEffects = {}
 joker.loc_vars = {}
 local function add_joker(args)
+    if not args.mod_id then logger:error("jokerAPI: mod_id REQUIRED when adding a joker"); return; end
     local id = args.id or "j_Joker_Placeholder" .. #G.P_CENTER_POOLS["Joker"] + 1
     local name = args.name or "Joker Placeholder"
     local joker_effect = args.joker_effect or function(_) end
@@ -77,11 +79,10 @@ local function add_joker(args)
     for _, line in ipairs(type(newJokerText.name) == 'table' and newJokerText.name or {newJoker.name}) do
         newJokerText.name_parsed[#newJokerText.name_parsed+1] = loc_parse_string(line)
     end
-    if unlock_condition_desc then
-        for _, line in ipairs(unlock_condition_desc) do
-            newJokerText.unlock_parsed[#newJokerText.unlock_parsed+1] = loc_parse_string(line)
-        end
+    for _, line in ipairs(newJokerText.unlock) do
+        newJokerText.unlock_parsed[#newJokerText.unlock_parsed+1] = loc_parse_string(line)
     end
+    
     G.localization.descriptions.Joker[id] = newJokerText
 
 
@@ -107,6 +108,7 @@ local function remove_joker(id)
     G.P_CENTERS[id] = nil
     G.localization.descriptions.Joker[id] = nil
     joker.jokerEffects[joker.jokers[id].use_indices[1]] = nil
+    joker.loc_vars[id] = nil
     joker.jokers[id] = nil
 end
 local function getJokers()
