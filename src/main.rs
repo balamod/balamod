@@ -17,7 +17,7 @@ mod dependencies;
 mod luas;
 mod finder;
 
-const VERSION: &'static str = "0.1.12-test";
+const VERSION: &'static str = "0.1.11";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]

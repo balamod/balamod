@@ -2,7 +2,6 @@ local logging = require('logging')
 local platform = require('platform')
 local math = require('math')
 local console = require('console')
--- local jokerapi = require('jokerapi')
 local json = require('json')
 local utils = require('utils')
 local tar = require('tar')
@@ -20,7 +19,6 @@ local apis = {
     console = console,
     math = math,
     platform = platform,
-    -- jokerapi = jokerapi,
 }
 is_loaded = false
 local RESULT = {

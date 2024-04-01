@@ -1,6 +1,6 @@
 local balamod = require('balamod')
 
-joker = {}
+local joker = {}
 joker.jokers = {}
 joker.jokerEffects = {}
 joker.loc_vars = {}
@@ -9,8 +9,18 @@ local function add_joker(args)
     local name = args.name or "Joker Placeholder"
     local joker_effect = args.joker_effect or function(_) end
     local order = #G.P_CENTER_POOLS["Joker"] + 1
-    local unlocked = args.unlocked or true
-    local discovered = args.discovered or true
+    local unlocked = nil
+    local discovered = nil
+    if args.unlocked ~= nil then
+        unlocked = args.unlocked
+    else
+        unlocked = true
+    end
+    if args.discovered ~= nil then
+        discovered = args.discovered
+    else
+        discovered = true
+    end
     local cost = args.cost or 4
     local pos = {x=0, y=0}
     local effect = args.effect or ""
@@ -24,6 +34,7 @@ local function add_joker(args)
     local unlock_condition = args.unlock_condition or nil
     local alerted = args.alerted or true
     local loc_vars = args.loc_vars or function(_) return {} end
+    local unlock_condition_desc = args.unlock_condition_desc or {"LOCKED"}
 
     --joker object
     local newJoker = {
@@ -59,14 +70,21 @@ local function add_joker(args)
     G.P_CENTERS[id] = newJoker
 
     --add name + description to the localization object
-    local newJokerText = {name=name, text=desc, text_parsed={}, name_parsed={}}
+    local newJokerText = {name=name, text=desc, unlock=unlock_condition_desc, text_parsed={}, name_parsed={}, unlock_parsed={}}
     for _, line in ipairs(desc) do
         newJokerText.text_parsed[#newJokerText.text_parsed+1] = loc_parse_string(line)
     end
     for _, line in ipairs(type(newJokerText.name) == 'table' and newJokerText.name or {newJoker.name}) do
         newJokerText.name_parsed[#newJokerText.name_parsed+1] = loc_parse_string(line)
     end
+    if unlock_condition_desc then
+        for _, line in ipairs(unlock_condition_desc) do
+            newJokerText.unlock_parsed[#newJokerText.unlock_parsed+1] = loc_parse_string(line)
+        end
+    end
     G.localization.descriptions.Joker[id] = newJokerText
+
+
 
     --add joker effect to game
     table.insert(joker.jokerEffects, joker_effect)
