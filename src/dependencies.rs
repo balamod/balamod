@@ -37,6 +37,10 @@ pub fn get_mod_menu_lua() -> &'static str {
     include_str!("dependencies/mod_menu.lua")
 }
 
+pub fn get_joker_lua() -> &'static str{
+    include_str!("dependencies/joker.lua")
+}
+
 pub fn get_json_lua() -> &'static str {
     include_str!("dependencies/json.lua")
 }
