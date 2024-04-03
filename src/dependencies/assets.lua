@@ -117,7 +117,7 @@ local function getAtli(modId, textureScaling)
     for i, path in ipairs(dir) do
         local filename, extension = string.match(path, "([^/]+)%.(.+)$")
         local name = modId .. "_" .. filename
-        local image = love.graphics.newImage(path, {mipmaps = true, dpiscale = textureScaling})
+        local image = love.graphics.newImage(atliPath.."/"..path, {mipmaps = true, dpiscale = textureScaling})
         local assetType = assetTypes[string.match(filename, "(.+)_")]
         local px, py = 71, 95
         if assetType == "Chip" then
