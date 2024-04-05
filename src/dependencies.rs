@@ -41,6 +41,10 @@ pub fn get_joker_lua() -> &'static str{
     include_str!("dependencies/joker.lua")
 }
 
+pub fn get_seal_lua() -> &'static str{
+    include_str!("dependencies/seal.lua")
+}
+
 pub fn get_json_lua() -> &'static str {
     include_str!("dependencies/json.lua")
 }
