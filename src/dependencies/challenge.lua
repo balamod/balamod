@@ -6,12 +6,12 @@ local logging = require("logging")
 local logger = logging.getLogger("challenge")
 local utils = require("utils")
 _MODULE.logger = logger
-_MODULE.challenges = {}
+local challenges = {}
 
 -- The game implements these custom rules already, it's done for challenge
 -- validation purposes. When the challenge API supports adding custom rulesets,
 -- the custom rules will be added to this list so that all challenges may use them.
-_MODULE.customRules = {
+local customRules = {
     "no_reward_specific",
     "no_reward",
     "no_extra_hand_money",
@@ -29,7 +29,7 @@ _MODULE.customRules = {
     "set_seed",
 }
 
-_MODULE.modifiers = {
+local allModifiers = {
     "dollars",
     "discards",
     "hands",
@@ -89,10 +89,10 @@ local function validateChallengeRules(rules)
         end
     end
     -- validate rules exists
-    local nonExistingRules = utils.filter(rules, function(rule) return utils.contains(_MODULE.customRules, rule.id) end)
-    if #nonExistingRules > 0 then
-        error("Rules do not exist: " .. utils.stringify(utils.map(nonExistingRules, function(rule) return rule.id end)))
-    end
+    -- local nonExistingRules = utils.filter(rules, function(rule) return utils.contains(customRules, rule.id) end)
+    -- if #nonExistingRules > 0 then
+    --     error("Rules do not exist: " .. utils.stringify(utils.map(nonExistingRules, function(rule) return rule.id end)))
+    -- end
     return rules
 end
 
@@ -112,10 +112,10 @@ local function validateChallengeModifiers(modifiers)
         end
     end
     -- validate modifiers exists
-    local nonExistingModifiers = utils.filter(modifiers, function(modifier) return utils.contains(_MODULE.modifiers, modifier.id) end)
-    if #nonExistingModifiers > 0 then
-        error("Modifiers do not exist: " .. utils.stringify(utils.map(nonExistingModifiers, function(modifier) return modifier.id end)))
-    end
+    -- local nonExistingModifiers = utils.filter(modifiers, function(m) return utils.contains(allModifiers, m.id) end)
+    -- if #nonExistingModifiers > 0 then
+    --     error("Modifiers do not exist: " .. utils.stringify(utils.map(nonExistingModifiers, function(modifier) return modifier.id end)))
+    -- end
     return modifiers
 end
 
@@ -183,35 +183,54 @@ local function validateChallengeDeck(deck)
     return deck
 end
 
-function _MODULE:add(
-    challenge_id,
-    name,
-    rules,
-    modifiers,
-    jokers,
-    consumeables,
-    vouchers,
-    deck,
-    banned_cards,
-    banned_tags,
-    banned_other,
-)
-    if self.challenges[name] ~= nil then
+local function validateChallengeBannedCards(banned_cards)
+    if banned_cards == nil then
+        return {}  -- just means there's no banned cards
+    end
+    if type(banned_cards) ~= 'table' then
+        error("Banned cards are not a table")
+    end
+    for i, banned_card in ipairs(banned_cards) do
+        if banned_card.id == nil then
+            error("Banned card ID is nil")
+        end
+    end
+    return banned_cards
+end
+
+local function validateChallengeBannedTags(banned_tags)
+    if banned_tags == nil then
+        return {}  -- just means there's no banned tags
+    end
+    if type(banned_tags) ~= 'table' then
+        error("Banned tags are not a table")
+    end
+    for i, banned_tag in ipairs(banned_tags) do
+        if banned_tag.id == nil then
+            error("Banned tag ID is nil")
+        end
+    end
+    return banned_tags
+end
+
+local function add(challenge)
+    if challenges[name] ~= nil then
         logger:warn("Challenge already exists: " .. name)
         return nil
     end
-    challenge_id = validateChallengeId(challenge_id)
-    name = validateChallengeName(name)
-    rules = validateChallengeRules(rules)
-    modifiers = validateChallengeModifiers(modifiers)
-    jokers = validateChallengeJokers(jokers)
-    consumeables = validateChallengeConsumeables(consumeables)
-    vouchers = validateChallengeVouchers(vouchers)
-    deck = validateChallengeDeck(deck)
-    banned_cards = validateChallengeBannedCards(banned_cards)
-    banned_tags = validateChallengeBannedTags(banned_tags)
-    banned_other = banned_other or {}
-    local challenge = {
+
+    challenge_id = validateChallengeId(challenge.id)
+    name = validateChallengeName(challenge.name)
+    rules = validateChallengeRules(challenge.rules)
+    modifiers = validateChallengeModifiers(challenge.modifiers)
+    jokers = validateChallengeJokers(challenge.jokers)
+    consumeables = validateChallengeConsumeables(challenge.consumables)
+    vouchers = validateChallengeVouchers(challenge.vouchers)
+    deck = validateChallengeDeck(challenge.deck)
+    banned_cards = validateChallengeBannedCards(challenge.banned_cards)
+    banned_tags = validateChallengeBannedTags(challenge.banned_tags)
+    banned_other = challenge.banned_other or {}
+    local gameChallenge = {
         id = challenge_id,
         name = name,
         rules = {
@@ -228,19 +247,24 @@ function _MODULE:add(
             banned_other = banned_other,
         },
     }
-    self.challenges[name] = challenge
-    table.insert(G.CHALLENGES, challenge)  -- add to the game
+    challenges[name] = gameChallenge
+    table.insert(G.CHALLENGES, gameChallenge)  -- add to the game
 
-    logger:info("Challenge added:", name)
+    logger:info("Challenge added:", challenge.name)
 end
 
-function _MODULE:remove(name)
-    if self.challenges[name] ~= nil then
-        self.challenges[name] = nil
-        self.logger:info("Challenge removed: " .. name)
+local function remove(name)
+    if challenges[name] ~= nil then
+        challenges[name] = nil
+        logger:info("Challenge removed: " .. name)
     else
-        self.logger:warn("Challenge does not exist: " .. name)
+        logger:warn("Challenge does not exist: " .. name)
     end
 end
+
+_MODULE.customRules = customRules
+_MODULE.modifiers = allModifiers
+_MODULE.add = add
+_MODULE.remove = remove
 
 return _MODULE
