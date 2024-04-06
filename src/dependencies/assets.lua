@@ -55,7 +55,7 @@ local function patched_card_set_sprites(self, _center, _front)
                 -- if the center is locked, or not discovered yet, we don't want to
                 -- use the custom asset (it should show the game images for locked/undiscovered)
                 -- cards. Bypass discovery center though should still bypass that check
-                if (not _center.unlocked or not self.config.center.unlocked or not _center.discovered) and not self.params.bypass_discovery_center then
+                if (_center.unlocked and self.config.center.unlocked and _center.discovered) or self.params.bypass_discovery_center then
                     -- center has been unlocked, so we can use our custom atlas
                     -- as before, pos is always 0,0 becaue we have a single image
                     -- per atlas.
@@ -81,7 +81,7 @@ local function patched_card_set_sprites(self, _center, _front)
                         -- we replicate that behavior here
                         self.children.back.atlas = G.ASSET_ATLAS['centers']
                         -- card backs are in the centers atlas for some reason
-                        self.children.back:set_sprite_pos(G.P_CENTES['b_red'].pos)
+                        self.children.back:set_sprite_pos(G.P_CENTERS['b_red'].pos)
                     end
                 end
             end
