@@ -248,7 +248,7 @@ local function create_mod_tab_definition()
     G.MOD_PAGE_SIZE = 7
     mods_collection = {}
     mods_collection_size = 0
-    logger:info('Mods collection generation with mods', utils.map(balamod.mods, function(mod) return mod.id end))
+    logger:debug('Mods collection generation with mods', utils.map(balamod.mods, function(mod) return mod.id end))
     for mod_id, mod in pairs(balamod.mods) do
         logger:trace('Trying to add mod ', mod_id, ' to collection')
         if not mods_collection[mod_id] then
@@ -258,7 +258,7 @@ local function create_mod_tab_definition()
             balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
     end
-    logger:info('Mods collection before repoMods additions', mods_collection)
+    logger:debug('Mods collection before repoMods additions', utils.keys(mods_collection))
     for index, mod in ipairs(balamod.getRepoMods()) do
         local cur_mod = mods_collection[mod.id]
         if cur_mod == nil then
@@ -268,7 +268,7 @@ local function create_mod_tab_definition()
             balamod.logger:warn('Mod ' .. mod.name .. ' already in collection')
         end
     end
-    balamod.logger:info('Mods collection ', mods_collection)
+    balamod.logger:info('Mods collection ', utils.keys(mods_collection))
     local mod_pages = {}
     for i = 1, math.ceil(mods_collection_size / G.MOD_PAGE_SIZE) do
         table.insert(mod_pages, localize('k_page') .. ' ' .. tostring(i) .. '/' ..
