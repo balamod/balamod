@@ -19,6 +19,7 @@ local balamod = require("balamod")
 local logging = require('logging')
 local utils = require('utils')
 local logger = logging.getLogger('love')
+local localization = require('localization')
 
 function love.load(args)
     local status, message = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_game_load", true, args)
@@ -63,6 +64,8 @@ function love.update(dt)
         local status, message = pcall(balamod.callModCallbacksIfExists, balamod.mods, "on_enable", true)
         if not status then
             logger:warn("Failed to load mods: ", message)
+        else
+            localization.inject()
         end
     end
 
