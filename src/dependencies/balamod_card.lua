@@ -1,4 +1,5 @@
 local joker = require('joker')
+local seal = require('seal')
 local assets = require('assets')
 local logging = require('logging')
 local logger = logging.getLogger('card')
@@ -7,9 +8,39 @@ local logger = logging.getLogger('card')
 local card_calculate_joker = card_calculate_joker or Card.calculate_joker
 local card_generate_uibox_ability_table = card_generate_uibox_ability_table or Card.generate_UIBox_ability_table
 local card_set_sprites = card_set_sprites or Card.set_sprites
+local card_calculate_seal = card_calculate_seal or Card.calculate_seal
+local card_get_end_of_round_effect = card_get_end_of_round_effect or Card.get_end_of_round_effect
+local card_eval_card = eval_card
+local card_open = card_open or Card.open
 
 function Card:calculate_joker(context)
     local old_return = card_calculate_joker(self, context)
+    if context.first_hand_drawn and self.ability.name == "Certificate" then
+        G.E_MANAGER:add_event(Event({
+            func = function()
+                local _card = create_playing_card({
+                    front = pseudorandom_element(G.P_CARDS, pseudoseed('cert_fr')),
+                    center = G.P_CENTERS.c_base
+                }, G.hand, nil, nil, {G.C.SECONDARY_SET.Enhanced})
+                local seal_type = pseudorandom(pseudoseed('certsl'), 1, #G.P_CENTER_POOLS['Seal'])
+                local sealName
+                for k, v in pairs(G.P_SEALS) do
+                    if v.order == seal_type then
+                        sealName = k
+                        _card:set_seal(sealName, true)
+                    end
+                end
+                G.hand:sort()
+                if context.blueprint_card then
+                    context.blueprint_card:juice_up()
+                else
+                    self:juice_up()
+                end
+                return true
+            end
+        }))
+        playing_card_joker_effects({true})
+    end
     if self.ability.set == "Joker" and not self.debuff then
         for k, effect in pairs(joker.jokerEffects) do
             local status, new_return = pcall(effect, self, context)
@@ -130,5 +161,201 @@ function Card:set_sprites(_center, _front)
     else
         -- no center specified, just use the base function from the game
         card_set_sprites(self, _center, _front)
+    end
+end
+
+function Card.calculate_seal(self, context)
+    local old_return = card_calculate_seal(self, context)
+    for i, v in ipairs(seal.timings) do
+        if v[1] == "onDiscard" or v[1] == "onRepetition" then
+            local status, new_return = pcall(seal.effects[v[2]], self, context)
+            if new_return then
+                return new_return
+            end
+        end
+    end
+    return old_return
+end
+
+function Card.get_end_of_round_effect(self, context)
+    local old_return = card_get_end_of_round_effect(self, context)
+    for i, v in ipairs(seal.timings) do
+        if v[1] == "onHold" then
+            local status, new_return = pcall(seal.effects[v[2]], self, context)
+            if new_return then
+                return new_return
+            end
+        end
+    end
+    return old_return
+end
+
+function eval_card(card, context)
+    local old_return = card_eval_card(card, context)
+    for i, v in ipairs(seal.timings) do
+        if v[1] == "onEval" then
+            pcall(seal.effects[v[2]], card, context)
+        end
+    end
+    return old_return
+end
+
+function Card.get_p_dollars(self)
+    local ret = 0
+    if self.debuff then
+        return 0
+    end
+    for i, v in ipairs(seal.timings) do
+        if v[1] == "onDollars" then
+            local status, value_return = pcall(seal.effects[v[2]], self)
+            if value_return then
+                ret = ret + value_return
+            end
+        end
+    end
+    if self.seal == 'Gold' then
+        ret = ret + 3
+    end
+    if self.ability.p_dollars > 0 then
+        if self.ability.effect == "Lucky Card" then
+            if pseudorandom('lucky_money') < G.GAME.probabilities.normal / 15 then
+                self.lucky_trigger = true
+                ret = ret + self.ability.p_dollars
+            end
+        else
+            ret = ret + self.ability.p_dollars
+        end
+    end
+    if ret > 0 then
+        G.GAME.dollar_buffer = (G.GAME.dollar_buffer or 0) + ret
+        G.E_MANAGER:add_event(Event({
+            func = (function()
+                G.GAME.dollar_buffer = 0;
+                return true
+            end)
+        }))
+    end
+    return ret
+end
+
+function Card:open()
+    if self.ability.set == "Booster" and not self.ability.name:find('Standard') then
+        return card_open(self)
+    else
+        stop_use()
+        G.STATE_COMPLETE = false
+        self.opening = true
+
+        if not self.config.center.discovered then
+            discover_card(self.config.center)
+        end
+        self.states.hover.can = false
+        G.STATE = G.STATES.STANDARD_PACK
+        G.GAME.pack_size = self.ability.extra
+
+        G.GAME.pack_choices = self.config.center.config.choose or 1
+
+        if self.cost > 0 then
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after',
+                delay = 0.2,
+                func = function()
+                    inc_career_stat('c_shop_dollars_spent', self.cost)
+                    self:juice_up()
+                    return true
+                end
+            }))
+            ease_dollars(-self.cost)
+        else
+            delay(0.2)
+        end
+
+        G.E_MANAGER:add_event(Event({
+            trigger = 'after',
+            delay = 0.4,
+            func = function()
+                self:explode()
+                local pack_cards = {}
+
+                G.E_MANAGER:add_event(Event({
+                    trigger = 'after',
+                    delay = 1.3 * math.sqrt(G.SETTINGS.GAMESPEED),
+                    blockable = false,
+                    blocking = false,
+                    func = function()
+                        local _size = self.ability.extra
+
+                        for i = 1, _size do
+                            local card = nil
+                            card = create_card(
+                                (pseudorandom(pseudoseed('stdset' .. G.GAME.round_resets.ante)) > 0.6) and "Enhanced" or
+                                    "Base", G.pack_cards, nil, nil, nil, true, nil, 'sta')
+                            local edition_rate = 2
+                            local edition = poll_edition('standard_edition' .. G.GAME.round_resets.ante, edition_rate,
+                                true)
+                            card:set_edition(edition)
+                            local seal_rate = 10
+                            local seal_poll = pseudorandom(pseudoseed('stdseal' .. G.GAME.round_resets.ante))
+                            if seal_poll > 1 - 0.02 * seal_rate then
+                                local seal_type = pseudorandom(pseudoseed('stdsealtype' .. G.GAME.round_resets.ante), 1,
+                                    #G.P_CENTER_POOLS['Seal'])
+                                local sealName
+                                for k, v in pairs(G.P_SEALS) do
+                                    if v.order == seal_type then
+                                        sealName = k
+                                        card:set_seal(sealName)
+                                    end
+                                end
+                            end
+                            card.T.x = self.T.x
+                            card.T.y = self.T.y
+                            card:start_materialize({G.C.WHITE, G.C.WHITE}, nil, 1.5 * G.SETTINGS.GAMESPEED)
+                            pack_cards[i] = card
+                        end
+                        return true
+                    end
+                }))
+
+                G.E_MANAGER:add_event(Event({
+                    trigger = 'after',
+                    delay = 1.3 * math.sqrt(G.SETTINGS.GAMESPEED),
+                    blockable = false,
+                    blocking = false,
+                    func = function()
+                        if G.pack_cards then
+                            if G.pack_cards and G.pack_cards.VT.y < G.ROOM.T.h then
+                                for k, v in ipairs(pack_cards) do
+                                    G.pack_cards:emplace(v)
+                                end
+                                return true
+                            end
+                        end
+                    end
+                }))
+
+                for i = 1, #G.jokers.cards do
+                    G.jokers.cards[i]:calculate_joker({
+                        open_booster = true,
+                        card = self
+                    })
+                end
+
+                if G.GAME.modifiers.inflation then
+                    G.GAME.inflation = G.GAME.inflation + 1
+                    G.E_MANAGER:add_event(Event({
+                        func = function()
+                            for k, v in pairs(G.I.CARD) do
+                                if v.set_cost then
+                                    v:set_cost()
+                                end
+                            end
+                            return true
+                        end
+                    }))
+                end
+
+                return true
+            end
+        }))
     end
 end

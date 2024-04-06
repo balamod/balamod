@@ -32,6 +32,7 @@ pub fn get_balamod_dependencies_lua(version: &'static str) -> HashMap<&'static s
         ("console.lua", include_str!("dependencies/console.lua").as_bytes().to_vec()),
         ("joker.lua", include_str!("dependencies/joker.lua").as_bytes().to_vec()),
         ("json.lua", include_str!("dependencies/json.lua").as_bytes().to_vec()),
+        ("seal.lua", include_str!("dependencies/seal.lua").as_bytes().to_vec()),
         ("logging.lua", include_str!("dependencies/logging.lua").as_bytes().to_vec()),
         ("mod_menu.lua", include_str!("dependencies/mod_menu.lua").as_bytes().to_vec()),
         ("patches.lua", include_str!("dependencies/patches.lua").as_bytes().to_vec()),
