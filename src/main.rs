@@ -10,11 +10,9 @@ use colour::{
 };
 
 use crate::balamod::Balatro;
-use crate::luas::*;
 
 mod balamod;
 mod dependencies;
-mod luas;
 mod finder;
 
 const VERSION: &'static str = "0.1.11";
@@ -161,10 +159,10 @@ fn inject_modloader(
     if new_main.starts_with("-- balamod") {
         yellow_ln!("The main already has the modloader, skipping...");
     } else {
-        new_main = format!("-- balamod\n{}\n\n{}\n", get_imports(),new_main);
+        new_main = format!("-- balamod\n{}\n", new_main);
 
         new_main.push_str(
-            "\nrequire('patches')\nrequire('mod_menu')\n"
+            "\nrequire('patches')\n"
         );
     }
 
