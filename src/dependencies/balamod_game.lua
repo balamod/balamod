@@ -1,6 +1,7 @@
 local assets = require('assets')
 local logging = require('logging')
 local logger = logging.getLogger('game')
+local balamod = require('balamod')
 
 local game_set_render_settings = game_set_render_settings or Game.set_render_settings
 
