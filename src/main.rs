@@ -148,23 +148,6 @@ fn main() {
     }
 }
 
-#[cfg(all(
-    target_os = "macos",
-    not(any(target_arch = "aarch64", target_arch = "arm"))
-))]
-fn inject_modloader(
-    main_lua: String,
-    // balatro: Balatro,
-    durations: &mut Vec<StepDuration>,
-) -> String {
-    red_ln!("Architecture is not supported, skipping modloader injection...");
-    return main_lua;
-}
-
-#[cfg(not(all(
-    target_os = "macos",
-    not(any(target_arch = "aarch64", target_arch = "arm"))
-)))]
 fn inject_modloader(
     main_lua: String,
     // balatro: Balatro,

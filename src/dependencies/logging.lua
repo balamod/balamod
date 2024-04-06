@@ -1,5 +1,8 @@
+local socket = require('socket')
+local math = require('math')
+
 LOGGERS = {}
-START_TIME = os.time()
+START_TIME = socket.gettime() -- in seconds with ms precision
 
 local _MODULE = {
     _VERSION = "0.1.0",
@@ -55,7 +58,7 @@ local function createLogger(name, lvl)
                 level=level,
                 level_numeric=self.log_levels[level] or 0,
                 text=text,
-                time=os.time(),
+                time=socket.gettime(),
                 name=self.name,
                 formatted=function(self, dump)
                     if self.level == "PRINT" and not dump then
@@ -114,6 +117,9 @@ local function getAllMessages()
 end
 
 function generateDateTime(start)
+    -- start is now in ms
+    -- need to round to seconds for an accurate date/time
+    start = math.floor(start or socket.gettime())
     local dateTimeTable = os.date('*t', start)
     local dateTime = dateTimeTable.year .. "-"
             .. addZeroForLessThan10(dateTimeTable.month) .. "-"
