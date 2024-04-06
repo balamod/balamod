@@ -21,7 +21,7 @@ local function setData(args)
                 end
             end
         end
-        if args.info or not ignore or _c.set == "Other" and _c.key == args.loc_id then
+        if args.info or not ignore or (_c.set == "Other" and _c.key == args.loc_id) then
             local first_pass = nil
             if not full_UI_table then
                 first_pass = true
@@ -43,12 +43,6 @@ local function setData(args)
                         set = "Other"
                     }
                 end
-            end
-            if first_pass and not (_c.set == 'Edition') and not ignore then
-                info_queue[#info_queue + 1] = {
-                    key = cbadge,
-                    set = 'Other'
-                }
             end
 
             if full_UI_table.name then
@@ -116,6 +110,8 @@ local function setData(args)
                     nodes = desc_nodes,
                     vars = specific_vars
                 }
+            elseif hide_desc then
+                localize{type = 'other', key = 'undiscovered_'..(string.lower(_c.set)), set = _c.set, nodes = desc_nodes}
             elseif specific_vars and specific_vars.debuffed then
                 localize {
                     type = 'other',
@@ -210,6 +206,22 @@ local function setData(args)
                         nodes = desc_nodes,
                         vars = {specific_vars.bonus_chips}
                     }
+                end
+            elseif _c.set == 'Enhanced' then 
+                if specific_vars and _c.name ~= 'Stone Card' and specific_vars.nominal_chips then
+                    localize{type = 'other', key = 'card_chips', nodes = desc_nodes, vars = {specific_vars.nominal_chips}}
+                end
+                if _c.effect == 'Mult Card' then loc_vars = {_c.config.mult}
+                elseif _c.effect == 'Wild Card' then
+                elseif _c.effect == 'Glass Card' then loc_vars = {_c.config.Xmult, G.GAME.probabilities.normal, _c.config.extra}
+                elseif _c.effect == 'Steel Card' then loc_vars = {_c.config.h_x_mult}
+                elseif _c.effect == 'Stone Card' then loc_vars = {((specific_vars and specific_vars.bonus_chips) or _c.config.bonus)}
+                elseif _c.effect == 'Gold Card' then loc_vars = {_c.config.h_dollars}
+                elseif _c.effect == 'Lucky Card' then loc_vars = {G.GAME.probabilities.normal, _c.config.mult, 5, _c.config.p_dollars, 15}
+                end
+                localize{type = 'descriptions', key = _c.key, set = _c.set, nodes = desc_nodes, vars = loc_vars}
+                if _c.name ~= 'Stone Card' and ((specific_vars and specific_vars.bonus_chips) or _c.config.bonus) then
+                    localize{type = 'other', key = 'card_extra_chips', nodes = desc_nodes, vars = {((specific_vars and specific_vars.bonus_chips) or _c.config.bonus)}}
                 end
             elseif _c.set == 'Spectral' then
                 if _c.name == 'Familiar' or _c.name == 'Grim' or _c.name == 'Incantation' then
@@ -338,6 +350,7 @@ local function setData(args)
                             set = 'Other'
                         }
                     end
+                    if v == cbadge then info_queue[#info_queue+1] = {key = cbadge, set = 'Other'} end
                 end
             end
             for _, v in ipairs(info_queue) do
@@ -427,10 +440,13 @@ local function registerSeal(args)
             function Card:draw(layer)
                 if self.seal == newSeal.id then
                     layer = layer or 'both'
+
                     self.hover_tilt = 1
+
                     if not self.states.visible then
                         return
                     end
+
                     if (layer == 'shadow' or layer == 'both') then
                         self.ARGS.send_to_shader = self.ARGS.send_to_shader or {}
                         self.ARGS.send_to_shader[1] = math.min(self.VT.r * 3, 1) + G.TIMERS.REAL / (28) +
@@ -441,7 +457,10 @@ local function registerSeal(args)
                             v.VT.scale = self.VT.scale
                         end
                     end
+
                     G.shared_shadow = self.sprite_facing == 'front' and self.children.center or self.children.back
+
+                    -- Draw the shadow
                     if not self.no_shadow and G.SETTINGS.GRAPHICS.shadows == 'On' and
                         ((layer == 'shadow' or layer == 'both') and
                             (self.ability.effect ~= 'Glass Card' and not self.greyed) and
@@ -453,11 +472,13 @@ local function registerSeal(args)
                                                      0.04 or 0.1)
                         G.shared_shadow:draw_shader('dissolve', self.shadow_height)
                     end
+
                     if (layer == 'card' or layer == 'both') and self.area ~= G.hand then
                         if self.children.focused_ui then
                             self.children.focused_ui:draw()
                         end
                     end
+
                     if (layer == 'card' or layer == 'both') then
                         -- for all hover/tilting:
                         self.tilt_var = self.overwrite_tilt_var or self.tilt_var or {
@@ -514,89 +535,220 @@ local function registerSeal(args)
                         if self.children.use_button and self.highlighted then
                             self.children.use_button:draw()
                         end
-                        
-                        -- Draw the main part of the card
-                        if not self.greyed then
-                            self.children.center:draw_shader('dissolve')
-                        end
-                        if self.edition and self.edition.holo then
-                            self.children.center:draw_shader('holo', nil, self.ARGS.send_to_shader)
-                            if self.children.front and self.ability.effect ~= 'Stone Card' then
-                                self.children.front:draw_shader('holo', nil, self.ARGS.send_to_shader)
+
+                        if self.vortex then
+                            if self.facing == 'back' then
+                                self.children.back:draw_shader('vortex')
+                            else
+                                self.children.center:draw_shader('vortex')
+                                if self.children.front then
+                                    self.children.front:draw_shader('vortex')
+                                end
                             end
-                        end
-                        if self.edition and self.edition.foil then
-                            self.children.center:draw_shader('foil', nil, self.ARGS.send_to_shader)
-                            if self.children.front and self.ability.effect ~= 'Stone Card' then
-                                self.children.front:draw_shader('foil', nil, self.ARGS.send_to_shader)
+
+                            love.graphics.setShader()
+                        elseif self.sprite_facing == 'front' then
+                            -- Draw the main part of the card
+                            if (self.edition and self.edition.negative) or
+                                (self.ability.name == 'Antimatter' and
+                                    (self.config.center.discovered or self.bypass_discovery_center)) then
+                                self.children.center:draw_shader('negative', nil, self.ARGS.send_to_shader)
+                                if self.children.front and self.ability.effect ~= 'Stone Card' then
+                                    self.children.front:draw_shader('negative', nil, self.ARGS.send_to_shader)
+                                end
+                            elseif not self.greyed then
+                                self.children.center:draw_shader('dissolve')
+                                -- If the card has a front, draw that next
+                                if self.children.front and self.ability.effect ~= 'Stone Card' then
+                                    self.children.front:draw_shader('dissolve')
+                                end
                             end
-                        end
-                        if self.edition and self.edition.polychrome then
-                            self.children.center:draw_shader('polychrome', nil, self.ARGS.send_to_shader)
-                            if self.children.front and self.ability.effect ~= 'Stone Card' then
-                                self.children.front:draw_shader('polychrome', nil, self.ARGS.send_to_shader)
+
+                            -- If the card is not yet discovered
+                            if not self.config.center.discovered and
+                                (self.ability.consumeable or self.config.center.unlocked) and
+                                not self.config.center.demo and not self.bypass_discovery_center then
+                                local shared_sprite = (self.ability.set == 'Edition' or self.ability.set == 'Joker') and
+                                                          G.shared_undiscovered_joker or G.shared_undiscovered_tarot
+                                local scale_mod = -0.05 + 0.05 * math.sin(1.8 * G.TIMERS.REAL)
+                                local rotate_mod = 0.03 * math.sin(1.219 * G.TIMERS.REAL)
+
+                                shared_sprite.role.draw_major = self
+                                shared_sprite:draw_shader('dissolve', nil, nil, nil, self.children.center, scale_mod,
+                                    rotate_mod)
                             end
-                        end
-                        if self.seal then
-                            G.shared_seals[self.seal].role.draw_major = self
-                            G.shared_seals[self.seal]:draw_shader('dissolve', nil, nil, nil, self.children.center)
-                            G.shared_seals[self.seal]:draw_shader(shader, nil, self.ARGS.send_to_shader, nil,
-                                self.children.center)
-                        end
-                        if self.debuff then
-                            self.children.center:draw_shader('debuff', nil, self.ARGS.send_to_shader)
-                            if self.children.front and self.ability.effect ~= 'Stone Card' then
-                                self.children.front:draw_shader('debuff', nil, self.ARGS.send_to_shader)
+
+                            if self.ability.name == 'Invisible Joker' and
+                                (self.config.center.discovered or self.bypass_discovery_center) then
+                                self.children.center:draw_shader('voucher', nil, self.ARGS.send_to_shader)
                             end
-                        end
-                        if self.greyed then
-                            self.children.center:draw_shader('played', nil, self.ARGS.send_to_shader)
-                            if self.children.front and self.ability.effect ~= 'Stone Card' then
-                                self.children.front:draw_shader('played', nil, self.ARGS.send_to_shader)
+
+                            -- If the card has any edition/seal, add that here
+                            if self.edition or self.seal or self.ability.eternal or self.sticker or self.ability.set ==
+                                'Spectral' or self.debuff or self.greyed or self.ability.name == 'The Soul' or
+                                self.ability.set == 'Voucher' or self.ability.set == 'Booster' or
+                                self.config.center.soul_pos or self.config.center.demo then
+                                if (self.ability.set == 'Voucher' or self.config.center.demo) and
+                                    (self.ability.name ~= 'Antimatter' or
+                                        not (self.config.center.discovered or self.bypass_discovery_center)) then
+                                    self.children.center:draw_shader('voucher', nil, self.ARGS.send_to_shader)
+                                end
+                                if self.ability.set == 'Booster' or self.ability.set == 'Spectral' then
+                                    self.children.center:draw_shader('booster', nil, self.ARGS.send_to_shader)
+                                end
+                                if self.edition and self.edition.holo then
+                                    self.children.center:draw_shader('holo', nil, self.ARGS.send_to_shader)
+                                    if self.children.front and self.ability.effect ~= 'Stone Card' then
+                                        self.children.front:draw_shader('holo', nil, self.ARGS.send_to_shader)
+                                    end
+                                end
+                                if self.edition and self.edition.foil then
+                                    self.children.center:draw_shader('foil', nil, self.ARGS.send_to_shader)
+                                    if self.children.front and self.ability.effect ~= 'Stone Card' then
+                                        self.children.front:draw_shader('foil', nil, self.ARGS.send_to_shader)
+                                    end
+                                end
+                                if self.edition and self.edition.polychrome then
+                                    self.children.center:draw_shader('polychrome', nil, self.ARGS.send_to_shader)
+                                    if self.children.front and self.ability.effect ~= 'Stone Card' then
+                                        self.children.front:draw_shader('polychrome', nil, self.ARGS.send_to_shader)
+                                    end
+                                end
+                                if (self.edition and self.edition.negative) or
+                                    (self.ability.name == 'Antimatter' and
+                                        (self.config.center.discovered or self.bypass_discovery_center)) then
+                                    self.children.center:draw_shader('negative_shine', nil, self.ARGS.send_to_shader)
+                                end
+                                if self.seal then
+                                    G.shared_seals[self.seal].role.draw_major = self
+                                    G.shared_seals[self.seal]:draw_shader('dissolve', nil, nil, nil, self.children.center)
+                                    G.shared_seals[self.seal]:draw_shader(shader, nil, self.ARGS.send_to_shader, nil,
+                                        self.children.center)
+                                end
+                                if self.ability.eternal then
+                                    G.shared_sticker_eternal.role.draw_major = self
+                                    G.shared_sticker_eternal:draw_shader('dissolve', nil, nil, nil, self.children.center)
+                                    G.shared_sticker_eternal:draw_shader('voucher', nil, self.ARGS.send_to_shader, nil,
+                                        self.children.center)
+                                end
+                                if self.sticker and G.shared_stickers[self.sticker] then
+                                    G.shared_stickers[self.sticker].role.draw_major = self
+                                    G.shared_stickers[self.sticker]:draw_shader('dissolve', nil, nil, nil,
+                                        self.children.center)
+                                    G.shared_stickers[self.sticker]:draw_shader('voucher', nil,
+                                        self.ARGS.send_to_shader, nil, self.children.center)
+                                end
+
+                                if self.ability.name == 'The Soul' and
+                                    (self.config.center.discovered or self.bypass_discovery_center) then
+                                    local scale_mod = 0.05 + 0.05 * math.sin(1.8 * G.TIMERS.REAL) + 0.07 *
+                                                          math.sin(
+                                            (G.TIMERS.REAL - math.floor(G.TIMERS.REAL)) * math.pi * 14) *
+                                                          (1 - (G.TIMERS.REAL - math.floor(G.TIMERS.REAL))) ^ 3
+                                    local rotate_mod = 0.1 * math.sin(1.219 * G.TIMERS.REAL) + 0.07 *
+                                                           math.sin((G.TIMERS.REAL) * math.pi * 5) *
+                                                           (1 - (G.TIMERS.REAL - math.floor(G.TIMERS.REAL))) ^ 2
+
+                                    G.shared_soul.role.draw_major = self
+                                    G.shared_soul:draw_shader('dissolve', 0, nil, nil, self.children.center, scale_mod,
+                                        rotate_mod, nil, 0.1 + 0.03 * math.sin(1.8 * G.TIMERS.REAL), nil, 0.6)
+                                    G.shared_soul:draw_shader('dissolve', nil, nil, nil, self.children.center,
+                                        scale_mod, rotate_mod)
+                                end
+
+                                if self.config.center.soul_pos and
+                                    (self.config.center.discovered or self.bypass_discovery_center) then
+                                    local scale_mod = 0.07 + 0.02 * math.sin(1.8 * G.TIMERS.REAL) + 0.00 *
+                                                          math.sin(
+                                            (G.TIMERS.REAL - math.floor(G.TIMERS.REAL)) * math.pi * 14) *
+                                                          (1 - (G.TIMERS.REAL - math.floor(G.TIMERS.REAL))) ^ 3
+                                    local rotate_mod = 0.05 * math.sin(1.219 * G.TIMERS.REAL) + 0.00 *
+                                                           math.sin((G.TIMERS.REAL) * math.pi * 5) *
+                                                           (1 - (G.TIMERS.REAL - math.floor(G.TIMERS.REAL))) ^ 2
+
+                                    if self.ability.name == 'Hologram' then
+                                        self.hover_tilt = self.hover_tilt * 1.5
+                                        self.children.floating_sprite:draw_shader('hologram', nil,
+                                            self.ARGS.send_to_shader, nil, self.children.center, 2 * scale_mod,
+                                            2 * rotate_mod)
+                                        self.hover_tilt = self.hover_tilt / 1.5
+                                    else
+                                        self.children.floating_sprite:draw_shader('dissolve', 0, nil, nil,
+                                            self.children.center, scale_mod, rotate_mod, nil, 0.1 + 0.03 *
+                                                math.sin(1.8 * G.TIMERS.REAL), nil, 0.6)
+                                        self.children.floating_sprite:draw_shader('dissolve', nil, nil, nil,
+                                            self.children.center, scale_mod, rotate_mod)
+                                    end
+
+                                end
+                                if self.debuff then
+                                    self.children.center:draw_shader('debuff', nil, self.ARGS.send_to_shader)
+                                    if self.children.front and self.ability.effect ~= 'Stone Card' then
+                                        self.children.front:draw_shader('debuff', nil, self.ARGS.send_to_shader)
+                                    end
+                                end
+                                if self.greyed then
+                                    self.children.center:draw_shader('played', nil, self.ARGS.send_to_shader)
+                                    if self.children.front and self.ability.effect ~= 'Stone Card' then
+                                        self.children.front:draw_shader('played', nil, self.ARGS.send_to_shader)
+                                    end
+                                end
                             end
-                        end
-                        if self.sprite_facing == 'back' then
+                        elseif self.sprite_facing == 'back' then
                             local overlay = G.C.WHITE
                             if self.area and self.area.config.type == 'deck' and self.rank > 3 then
-                                overlay = {0.5 + ((#self.area.cards - self.rank)%7)/50, 0.5 + ((#self.area.cards - self.rank)%7)/50, 0.5 +((#self.area.cards - self.rank)%7)/50, 1}
+                                overlay = {0.5 + ((#self.area.cards - self.rank) % 7) / 50,
+                                           0.5 + ((#self.area.cards - self.rank) % 7) / 50,
+                                           0.5 + ((#self.area.cards - self.rank) % 7) / 50, 1}
                             end
-                
+
                             if self.area and self.area.config.type == 'deck' then
                                 self.children.back:draw(overlay)
                             else
                                 self.children.back:draw_shader('dissolve')
                             end
-                
+
                             if self.sticker and G.shared_stickers[self.sticker] then
                                 G.shared_stickers[self.sticker].role.draw_major = self
-                                G.shared_stickers[self.sticker]:draw_shader('dissolve', nil, nil, true, self.children.center)
-                                if self.sticker == 'Gold' then G.shared_stickers[self.sticker]:draw_shader('voucher', nil, self.ARGS.send_to_shader, true, self.children.center) end
+                                G.shared_stickers[self.sticker]:draw_shader('dissolve', nil, nil, true,
+                                    self.children.center)
+                                if self.sticker == 'Gold' then
+                                    G.shared_stickers[self.sticker]:draw_shader('voucher', nil,
+                                        self.ARGS.send_to_shader, true, self.children.center)
+                                end
                             end
                         end
-                
-                        if self.children.overwrite and self.tilt_var  then 
-                
+
+                        if self.children.overwrite and self.tilt_var then
+
                             self.children.overwrite.overwrite_tilt_var = copy_table(self.tilt_var)
-                
+
                         end
-                
+
                         for k, v in pairs(self.children) do
-                            if k ~= 'focused_ui' and k ~= "front" and k ~= "overwrite" and k ~= "back" and k ~= "soul_parts" and k ~= "center" and k ~= 'floating_sprite' and k~= "shadow" and k~= "use_button" and k ~= 'buy_button' and k ~= 'buy_and_use_button' and k~= "debuff" and k ~= 'price' and k~= 'particles' and k ~= 'h_popup' then v:draw() end
+                            if k ~= 'focused_ui' and k ~= "front" and k ~= "overwrite" and k ~= "back" and k ~=
+                                "soul_parts" and k ~= "center" and k ~= 'floating_sprite' and k ~= "shadow" and k ~=
+                                "use_button" and k ~= 'buy_button' and k ~= 'buy_and_use_button' and k ~= "debuff" and k ~=
+                                'price' and k ~= 'particles' and k ~= 'h_popup' then
+                                v:draw()
+                            end
                         end
-                
-                        if self.children.overwrite then 
+
+                        if self.children.overwrite then
                             love.graphics.push()
                             love.graphics.setColor(G.C.BLUE)
-                            G.BRUTE_OVERLAY = {1,1,1,math.sin(5*G.TIMERS.REAL)}
+                            G.BRUTE_OVERLAY = {1, 1, 1, math.sin(5 * G.TIMERS.REAL)}
                             self.children.overwrite:draw('card')
                             G.BRUTE_OVERLAY = nil
                             love.graphics.pop()
                         end
-                
-                        if (layer == 'card' or layer == 'both') and self.area == G.hand then 
-                            if self.children.focused_ui then self.children.focused_ui:draw() end
+
+                        if (layer == 'card' or layer == 'both') and self.area == G.hand then
+                            if self.children.focused_ui then
+                                self.children.focused_ui:draw()
+                            end
                         end
-                
+
                         add_to_drawhash(self)
                         self:draw_boundingrect()
                     end

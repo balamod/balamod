@@ -11,7 +11,6 @@ local card_set_sprites = card_set_sprites or Card.set_sprites
 local card_calculate_seal = card_calculate_seal or Card.calculate_seal
 local card_get_end_of_round_effect = card_get_end_of_round_effect or Card.get_end_of_round_effect
 local card_eval_card = eval_card
-local card_get_p_dollars = card_get_p_dollars or Card.get_p_dollars
 local card_open = card_open or Card.open
 
 function Card:calculate_joker(context)
@@ -166,7 +165,7 @@ function Card:set_sprites(_center, _front)
 end
 
 function Card.calculate_seal(self, context)
-    local old_return = game_calculate_seal(self, context)
+    local old_return = card_calculate_seal(self, context)
     for i, v in ipairs(seal.timings) do
         if v[1] == "onDiscard" or v[1] == "onRepetition" then
             local status, new_return = pcall(seal.effects[v[2]], self, context)
@@ -179,7 +178,7 @@ function Card.calculate_seal(self, context)
 end
 
 function Card.get_end_of_round_effect(self, context)
-    local old_return = game_get_end_of_round_effect(self, context)
+    local old_return = card_get_end_of_round_effect(self, context)
     for i, v in ipairs(seal.timings) do
         if v[1] == "onHold" then
             local status, new_return = pcall(seal.effects[v[2]], self, context)
@@ -192,7 +191,7 @@ function Card.get_end_of_round_effect(self, context)
 end
 
 function eval_card(card, context)
-    local old_return = game_eval_card(card, context)
+    local old_return = card_eval_card(card, context)
     for i, v in ipairs(seal.timings) do
         if v[1] == "onEval" then
             pcall(seal.effects[v[2]], card, context)
@@ -241,7 +240,7 @@ end
 
 function Card:open()
     if self.ability.set == "Booster" and not self.ability.name:find('Standard') then
-        return open_ref(self)
+        return card_open(self)
     else
         stop_use()
         G.STATE_COMPLETE = false
