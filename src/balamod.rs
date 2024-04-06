@@ -29,9 +29,8 @@ impl Balatro {
     }
 
     fn inject_common_dependencies(&self, exe_path: &str, balamod_version: &'static str) -> Result<(), std::io::Error> {
-        self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
-        for (file_name, file_data) in get_balamod_dependencies_lua() {
-            self.add_file_in_exe(exe_path, file_data.as_bytes().to_vec(), file_name)?;
+        for (file_dst, file_data) in get_balamod_dependencies_lua(balamod_version) {
+            self.add_file_in_exe(exe_path, file_data, file_dst)?;
         }
         Ok(())
     }
