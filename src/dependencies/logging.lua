@@ -1,5 +1,6 @@
 local socket = require('socket')
 local math = require('math')
+local utils = require('utils')
 
 LOGGERS = {}
 START_TIME = socket.gettime() -- in seconds with ms precision
@@ -8,27 +9,6 @@ local _MODULE = {
     _VERSION = "0.1.0",
     LOGGERS = LOGGERS,
 }
-
-local function stringify(value)
-    if type(value) == "table" then
-        local str = "{"
-        for k, v in pairs(value) do
-            str = str .. k .. "=" .. stringify(v) .. ", "
-        end
-        str = str .. "}"
-        return str
-    end
-
-    if type(value) == "function" then
-        return "function"
-    end
-
-    if value == nil then
-        return "nil"
-    end
-
-    return tostring(value)
-end
 
 local function createLogger(name, lvl)
     local log_levels = {
@@ -52,7 +32,7 @@ local function createLogger(name, lvl)
                 love.filesystem.write("logs/" .. generateDateTime(START_TIME) .. ".log", "")
             end
             for i, v in ipairs(args) do
-                text = text .. stringify(v) .. " "
+                text = text .. utils.stringify(v) .. " "
             end
             local message = {
                 level=level,
