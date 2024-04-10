@@ -29,20 +29,9 @@ impl Balatro {
     }
 
     fn inject_common_dependencies(&self, exe_path: &str, balamod_version: &'static str) -> Result<(), std::io::Error> {
-        self.add_file_in_exe(exe_path, get_balamod_lua().as_bytes().to_vec(), "balamod.lua")?;
-        self.add_file_in_exe(exe_path, get_mod_menu_lua().as_bytes().to_vec(), "mod_menu.lua")?;
-        self.add_file_in_exe(exe_path, get_logging_lua().as_bytes().to_vec(), "logging.lua")?;
-        self.add_file_in_exe(exe_path, get_platform_lua().as_bytes().to_vec(), "platform.lua")?;
-        self.add_file_in_exe(exe_path, get_console_lua().as_bytes().to_vec(), "console.lua")?;
-        self.add_file_in_exe(exe_path, get_joker_lua().as_bytes().to_vec(), "joker.lua")?;
-        self.add_file_in_exe(exe_path, get_consumables_lua().as_bytes().to_vec(), "consumable.lua")?;
-        self.add_file_in_exe(exe_path, get_balamod_version_lua(balamod_version).as_bytes().to_vec(), "balamod_version.lua")?;
-        self.add_file_in_exe(exe_path, get_patches_lua().as_bytes().to_vec(), "patches.lua")?;
-        self.add_file_in_exe(exe_path, get_json_lua().as_bytes().to_vec(), "json.lua")?;
-        self.add_file_in_exe(exe_path, get_utils_lua().as_bytes().to_vec(), "utils.lua")?;
-        self.add_file_in_exe(exe_path, get_tar_lua().as_bytes().to_vec(), "tar.lua")?;
-        self.add_file_in_exe(exe_path, get_mod_api_lua().as_bytes().to_vec(), "mod.lua")?;
-        self.add_file_in_exe(exe_path, get_assets_lua().as_bytes().to_vec(), "assets.lua")?;
+        for (file_dst, file_data) in get_balamod_dependencies_lua(balamod_version) {
+            self.add_file_in_exe(exe_path, file_data, file_dst)?;
+        }
         Ok(())
     }
 

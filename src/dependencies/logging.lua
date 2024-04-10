@@ -1,31 +1,14 @@
+local socket = require('socket')
+local math = require('math')
+local utils = require('utils')
+
 LOGGERS = {}
-START_TIME = os.time()
+START_TIME = socket.gettime() -- in seconds with ms precision
 
 local _MODULE = {
     _VERSION = "0.1.0",
     LOGGERS = LOGGERS,
 }
-
-local function stringify(value)
-    if type(value) == "table" then
-        local str = "{"
-        for k, v in pairs(value) do
-            str = str .. k .. "=" .. stringify(v) .. ", "
-        end
-        str = str .. "}"
-        return str
-    end
-
-    if type(value) == "function" then
-        return "function"
-    end
-
-    if value == nil then
-        return "nil"
-    end
-
-    return tostring(value)
-end
 
 local function createLogger(name, lvl)
     local log_levels = {
@@ -49,13 +32,13 @@ local function createLogger(name, lvl)
                 love.filesystem.write("logs/" .. generateDateTime(START_TIME) .. ".log", "")
             end
             for i, v in ipairs(args) do
-                text = text .. stringify(v) .. " "
+                text = text .. utils.stringify(v) .. " "
             end
             local message = {
                 level=level,
                 level_numeric=self.log_levels[level] or 0,
                 text=text,
-                time=os.time(),
+                time=socket.gettime(),
                 name=self.name,
                 formatted=function(self, dump)
                     if self.level == "PRINT" and not dump then
@@ -114,6 +97,9 @@ local function getAllMessages()
 end
 
 function generateDateTime(start)
+    -- start is now in ms
+    -- need to round to seconds for an accurate date/time
+    start = math.floor(start or socket.gettime())
     local dateTimeTable = os.date('*t', start)
     local dateTime = dateTimeTable.year .. "-"
             .. addZeroForLessThan10(dateTimeTable.month) .. "-"

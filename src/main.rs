@@ -10,11 +10,9 @@ use colour::{
 };
 
 use crate::balamod::Balatro;
-use crate::luas::*;
 
 mod balamod;
 mod dependencies;
-mod luas;
 mod finder;
 
 const VERSION: &'static str = "0.1.11";
@@ -148,23 +146,6 @@ fn main() {
     }
 }
 
-#[cfg(all(
-    target_os = "macos",
-    not(any(target_arch = "aarch64", target_arch = "arm"))
-))]
-fn inject_modloader(
-    main_lua: String,
-    // balatro: Balatro,
-    durations: &mut Vec<StepDuration>,
-) -> String {
-    red_ln!("Architecture is not supported, skipping modloader injection...");
-    return main_lua;
-}
-
-#[cfg(not(all(
-    target_os = "macos",
-    not(any(target_arch = "aarch64", target_arch = "arm"))
-)))]
 fn inject_modloader(
     main_lua: String,
     // balatro: Balatro,
@@ -178,10 +159,10 @@ fn inject_modloader(
     if new_main.starts_with("-- balamod") {
         yellow_ln!("The main already has the modloader, skipping...");
     } else {
-        new_main = format!("-- balamod\n{}\n\n{}\n", get_imports(),new_main);
+        new_main = format!("-- balamod\n{}\n", new_main);
 
         new_main.push_str(
-            "\nrequire('patches')\nrequire('mod_menu')\n"
+            "\nrequire('patches')\n"
         );
     }
 

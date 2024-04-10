@@ -1,43 +1,7 @@
--- -----------------------------------------
--- sendDebugMessage("Adding Test to centers!")
-
--- local joker, text = jokerHook.addJoker(self, "j_test", "Test", nil, true, 5, { x = 0, y = 0 }, nil, {mult = 5, extra = 1}, {"testestestes", "testestestestestestes", "testestestestestes", "testestestest"}, 4, true, true) -- see centerhook by @arachneii
-
--- ------------------------------------------
--- sendDebugMessage("Adding texture file for Test!")
-
--- local toReplaceAtlas = "{name = 'chips', path = \"resources/textures/\"..self.SETTINGS.GRAPHICS.texture_scaling..\"x/chips.png\",px=29,py=29}"
-
--- local replacementAtlas = [[
---     {name = 'test', path = "pack/"..self.SETTINGS.GRAPHICS.texture_scaling.."x/test.png",px=71,py=95},
---     {name = 'chips', path = "resources/textures/"..self.SETTINGS.GRAPHICS.texture_scaling.."x/chips.png",px=29,py=29}
--- ]]
-
--- inject("game.lua", "Game:set_render_settings", toReplaceAtlas:gsub("([^%w])", "%%%1"), replacementAtlas)
-
-
--- G:set_render_settings()
-
--- -------------------------------------------------------
--- sendDebugMessage("Adding sprite draw logic for Test!")
-
--- local toReplaceTexLoad = "elseif self.config.center.set == 'Voucher' and not self.config.center.unlocked and not self.params.bypass_discovery_center then"
-
--- local replacementTexLoad = [[
---     elseif _center.name == 'Test' then
---         self.children.center = Sprite(self.T.x, self.T.y, self.T.w, self.T.h, G.ASSET_ATLAS["test"], j_test)
---     elseif self.config.center.set == 'Voucher' and not self.config.center.unlocked and not self.params.bypass_discovery_center then
--- ]]
-
--- inject("card.lua", "Card:set_sprites", toReplaceTexLoad:gsub("([^%w])", "%%%1"), replacementTexLoad)
-
--- -------------------------------------------------------
-
 -- Asset loading API, in order to load assets from a mod's directory.
-
 local assets = {}
 
-function assets.getAtli(modId, textureScaling)
+local function getAtli(modId, textureScaling)
     local atli = {
         asset = {},
         animation = {}
@@ -94,5 +58,7 @@ function assets.getAtli(modId, textureScaling)
     end
     return atli
 end
+
+assets.getAtli = getAtli
 
 return assets
