@@ -43,6 +43,7 @@ local function add_joker(args)
     local calculate_dollar_bonus_effect = args.calculate_dollar_bonus_effect or function(_) end
     local add_to_deck_effect = args.add_to_deck_effect or function(_) end
     local remove_from_deck_effect = args.remove_from_deck_effect or function(_) end
+    local enhancement_gate = args.enhancement_gate or nil
 
     --joker object
     local newJoker = {
@@ -70,6 +71,7 @@ local function add_joker(args)
         yes_pool_flag = yes_pool_flag,
         unlock_condition = unlock_condition,
         alerted = alerted,
+        enhancement_gate = enhancement_gate,
     }
 
     --add it to all the game tables

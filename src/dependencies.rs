@@ -42,7 +42,7 @@ pub fn get_balamod_dependencies_lua(version: &'static str) -> HashMap<&'static s
         ("platform.lua", include_str!("dependencies/platform.lua").as_bytes().to_vec()),
         ("tar.lua", include_str!("dependencies/tar.lua").as_bytes().to_vec()),
         ("utils.lua", include_str!("dependencies/utils.lua").as_bytes().to_vec()),
-        ("")
+        ("consumable.lua", include_str!("dependencies/consumable.lua").as_bytes().to_vec()),
         ("balamod_version.lua", get_balamod_version_lua(version).as_bytes().to_vec()),
     ])
 }
