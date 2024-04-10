@@ -6,6 +6,8 @@ consumeable.useEffects = {}
 consumeable.useConditions = {}
 consumeable.loc_vars = {}
 consumeable.consumeables = {}
+consumeable.sets = {"Tarot", "Planet", "Spectral", "Tarot_Planet", "Consumeables"}
+consumeable.tarot_loc_vars = {}
 local function add(args)
     if not args.set then logger:error("consumable API: set REQUIRED when adding a consumable"); return end
     if not args.mod_id then logger:error("consumable API: mod_id REQUIRED when adding a consumable"); return end
@@ -86,7 +88,7 @@ local function add(args)
     for _, line in ipairs(desc) do
         consumeableText.text_parsed[#consumeableText.text_parsed+1] = loc_parse_string(line)
     end
-    for _, line in ipairs(type(consumeableText.name) == 'table' and consumeableText.name or {newJoker.name}) do
+    for _, line in ipairs(type(consumeableText.name) == 'table' and consumeableText.name or {newConsumeable.name}) do
         consumeableText.name_parsed[#consumeableText.name_parsed+1] = loc_parse_string(line)
     end
     for _, line in ipairs(consumeableText.unlock) do
@@ -103,6 +105,9 @@ local function add(args)
 
     -- consumeable loc vars
     consumeable.loc_vars[id] = loc_vars
+    if args.set == "Tarot" then
+        consumeable.tarot_loc_vars[id] = loc_vars
+    end
 
     -- indices for removal
     consumeable.consumeables[id] = {indices=save_indices, set=args.set}
@@ -118,10 +123,19 @@ local function remove(id)
     consumeable.loc_vars[id] = nil
     consumeable.consumeables[id] = nil
 end
+local function isConsumeableSet(set)
+    for _, v in pairs(consumeable.sets) do
+        if set == v then
+            return true
+        end
+    end
+    return false
+end
 
 local _MODULE = consumeable
 
 _MODULE.add = add
 _MODULE.remove = remove
+_MODULE.isConsumeableSet = isConsumeableSet
 
 return _MODULE
