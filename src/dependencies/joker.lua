@@ -1,15 +1,18 @@
 local balamod = require('balamod')
 
 local joker = {}
-joker._VERSION = "0.1.0"
+joker._VERSION = "0.9.0"
 joker.jokers = {}
-joker.jokerEffects = {}
+joker.calculateJokerEffects = {}
+joker.dollarBonusEffects = {}
+joker.addToDeckEffects = {}
+joker.removeFromDeckEffects = {}
 joker.loc_vars = {}
 local function add_joker(args)
     if not args.mod_id then logger:error("jokerAPI: mod_id REQUIRED when adding a joker"); return; end
     local id = args.id or "j_Joker_Placeholder" .. #G.P_CENTER_POOLS["Joker"] + 1
     local name = args.name or "Joker Placeholder"
-    local joker_effect = args.joker_effect or function(_) end
+    local calculate_joker_effect = args.calculate_joker_effect or function(_) end
     local order = #G.P_CENTER_POOLS["Joker"] + 1
     local unlocked = nil
     local discovered = nil
@@ -37,6 +40,9 @@ local function add_joker(args)
     local alerted = args.alerted or true
     local loc_vars = args.loc_vars or function(_) return {} end
     local unlock_condition_desc = args.unlock_condition_desc or {"LOCKED"}
+    local calculate_dollar_bonus_effect = args.calculate_dollar_bonus_effect or function(_) end
+    local add_to_deck_effect = args.add_to_deck_effect or function(_) end
+    local remove_from_deck_effect = args.remove_from_deck_effect or function(_) end
 
     --joker object
     local newJoker = {
@@ -87,8 +93,11 @@ local function add_joker(args)
 
 
 
-    --add joker effect to game
-    table.insert(joker.jokerEffects, joker_effect)
+    --add joker effects to game
+    joker.calculateJokerEffects[id] = calculate_joker_effect
+    joker.dollarBonusEffects[id] = calculate_dollar_bonus_effect
+    joker.addToDeckEffects[id] = add_to_deck_effect
+    joker.removeFromDeckEffects[id] = remove_from_deck_effect
 
     --add joker loc vars to the game
     joker.loc_vars[id] = loc_vars
@@ -96,7 +105,6 @@ local function add_joker(args)
     --save indices for removal
     joker.jokers[id] = {
         pool_indices={#G.P_CENTER_POOLS["Joker"], #G.P_JOKER_RARITY_POOLS[rarity]}, 
-        use_indices={#joker.jokerEffects},
     }
     return newJoker, newJokerText
 end
@@ -107,18 +115,17 @@ local function remove_joker(id)
     G.P_JOKER_RARITY_POOLS[rarity][joker.jokers[id].pool_indices[2]] = nil
     G.P_CENTERS[id] = nil
     G.localization.descriptions.Joker[id] = nil
-    joker.jokerEffects[joker.jokers[id].use_indices[1]] = nil
+    joker.calculateJokerEffects[id] = nil
+    joker.dollarBonusEffects[id] = nil
+    joker.addToDeckEffects[id] = nil
+    joker.removeFromDeckEffects[id] = nil
     joker.loc_vars[id] = nil
     joker.jokers[id] = nil
-end
-local function getJokers()
-    return joker.jokers
 end
 
 local _MODULE = joker
 
-_MODULE.add_joker = add_joker
-_MODULE.remove_joker = remove_joker
-_MODULE.getJokers = getJokers
+_MODULE.add = add_joker
+_MODULE.remove = remove_joker
 
 return _MODULE

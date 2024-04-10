@@ -16,6 +16,9 @@ local game_love_joystick_axis = love.joystickaxis
 local game_love_errhand = love.errhand
 local game_set_render_settings = G.set_render_settings
 local card_set_sprites = Card.set_sprites
+local card_calculate_dollar_bonus = Card.calculate_dollar_bonus
+local card_add_to_deck = Card.add_to_deck
+local card_remove_from_deck = Card.remove_from_deck
 
 local balamod = require("balamod")
 local logging = require('logging')
@@ -23,6 +26,7 @@ local utils = require('utils')
 local logger = logging.getLogger('patches')
 local assets = require('assets')
 local joker = require('joker')
+local consumable = require('consumable')
 
 function love.load(args)
     for modId, mod in pairs(balamod.mods) do
@@ -352,7 +356,7 @@ local game_calculate_joker = Card.calculate_joker
 function Card.calculate_joker(self, context)
     local old_return = game_calculate_joker(self, context)
     if self.ability.set == "Joker" and not self.debuff then
-        for k, effect in pairs(joker.jokerEffects) do
+        for _, effect in pairs(joker.calculateJokerEffects) do
             local status, new_return = pcall(effect, self, context)
             if new_return then 
                 return new_return
@@ -365,57 +369,56 @@ end
 local game_generate_uibox_ability_table = Card.generate_UIBox_ability_table
 
 function Card:generate_UIBox_ability_table()
-    local old_return = game_generate_uibox_ability_table(self)
     if self.config.center.balamod then
-        local card_type = self.ability.set or "None"
-        local hide_desc = nil
-        local loc_vars = nil
-        local main_start, main_end = nil, nil
-        local no_badge = nil
         if not self.bypass_lock and self.config.center.unlocked ~= false and
         (self.ability.set == 'Joker' or self.ability.set == 'Edition' or self.ability.consumeable or self.ability.set == 'Voucher' or self.ability.set == 'Booster') and
         not self.config.center.discovered and 
         ((self.area ~= G.jokers and self.area ~= G.consumeables and self.area) or not self.area) then
-            return old_return
+            return game_generate_uibox_ability_table(self)
         elseif not self.config.center.unlocked and not self.bypass_lock then
-            return old_return
+            return game_generate_uibox_ability_table(self)
         elseif not self.config.center.discovered and not self.bypass_discovery_ui then
-            return old_return
+            return game_generate_uibox_ability_table(self)
         elseif self.debuff then
-            return old_return
+            return game_generate_uibox_ability_table(self)
         elseif card_type == 'Default' or card_type == 'Enhanced' then
-            return old_return
+            return game_generate_uibox_ability_table(self)
         elseif self.ability.set == 'Joker' then
-            loc_vars = joker.loc_vars[self.config.center.balamod.key](self)
-        end
+            local card_type = self.ability.set or "None"
+            local hide_desc = nil
+            local loc_vars = nil
+            local main_start, main_end = nil, nil
+            local no_badge = nil
+            local loc_loc_vars = joker.loc_vars[self.config.center.balamod.key] or consumeable.loc_vars[self.config.center.balamod.key]
+            loc_vars = loc_loc_vars(self)
 
-        local badges = {}
+            local badges = {}
 
-        if (card_type ~= 'Locked' and card_type ~= 'Undiscovered' and card_type ~= 'Default') or self.debuff then
-            badges.card_type = card_type
-        end
-
-        if self.ability.set == 'Joker' and self.bypass_discovery_ui and (not no_badge) then
-            badges.force_rarity = true
-        end
-
-        if self.edition then
-            if self.edition.type == 'negative' and self.ability.consumeable then
-                badges[#badges + 1] = 'negative_consumable'
-            else
-                badges[#badges + 1] = (self.edition.type == 'holo' and 'holographic' or self.edition.type)
+            if (card_type ~= 'Locked' and card_type ~= 'Undiscovered' and card_type ~= 'Default') or self.debuff then
+                badges.card_type = card_type
             end
+
+            if self.ability.set == 'Joker' and self.bypass_discovery_ui and (not no_badge) then
+                badges.force_rarity = true
+            end
+
+            if self.edition then
+                if self.edition.type == 'negative' and self.ability.consumeable then
+                    badges[#badges + 1] = 'negative_consumable'
+                else
+                    badges[#badges + 1] = (self.edition.type == 'holo' and 'holographic' or self.edition.type)
+                end
+            end
+            if self.seal then badges[#badges + 1] = string.lower(self.seal)..'_seal' end
+            if self.ability.eternal then badges[#badges + 1] = 'eternal' end
+            if self.pinned then badges[#badges + 1] = 'pinned_left' end
+        
+            if self.sticker then loc_vars = loc_vars or {}; loc_vars.sticker=self.sticker end
+        
+            return generate_card_ui(self.config.center, nil, loc_vars, card_type, badges, hide_desc, main_start, main_end)
         end
-        if self.seal then badges[#badges + 1] = string.lower(self.seal)..'_seal' end
-        if self.ability.eternal then badges[#badges + 1] = 'eternal' end
-        if self.pinned then badges[#badges + 1] = 'pinned_left' end
-    
-        if self.sticker then loc_vars = loc_vars or {}; loc_vars.sticker=self.sticker end
-    
-        return generate_card_ui(self.config.center, nil, loc_vars, card_type, badges, hide_desc, main_start, main_end)
-    else
-        return old_return
     end
+    return game_generate_uibox_ability_table(self)
 end
 local game_create_UIBox_main_menu_buttons = create_UIBox_main_menu_buttons
 
@@ -573,5 +576,71 @@ function Card.set_sprites(self, _center, _front)
     else
         -- no center specified, just use the base function from the game
         card_set_sprites(self, _center, _front)
+    end
+end
+
+function Card:calculate_dollar_bonus()
+    local old_return = card_calculate_dollar_bonus(self)
+    if not self.debuff and self.ability.set == "Joker" then
+        for _, effect in pairs(joker.dollarBonusEffects) do
+            local status, new_return = pcall(effect, self)
+            if new_return then 
+                return new_return
+            end 
+        end
+    end
+    return old_return
+end
+
+function Card:add_to_deck(from_debuff)
+    local old_return = card_add_to_deck(self, from_debuff)
+    for _, effect in pairs(joker.addToDeckEffects) do
+        local status, new_return = pcall(effect, self, from_debuff)
+        if new_return then
+            return new_return
+        end
+    end
+    return old_return
+end
+
+function Card:remove_from_deck(from_debuff)
+    local old_return = card_remove_from_deck(self, from_debuff)
+    for _, effect in pairs(joker.removeFromDeckEffects) do
+        local status, new_return = pcall(effect, self, from_debuff)
+        if new_return then
+            return new_return
+        end
+    end
+    return old_return
+end
+
+local card_can_use_consumeable = Card.can_use_consumeable
+function Card:can_use_consumeable(any_state, skip_check)
+    local old_return = card_can_use_consumeable(self, any_state, skip_check)
+    if not skip_check and ((G.play and #G.play.cards > 0) or
+        (G.CONTROLLER.locked) or
+        (G.GAME.STOP_USE and G.GAME.STOP_USE > 0))
+        then  
+        return false 
+    end
+    if G.STATE ~= G.STATES.HAND_PLAYED and G.STATE ~= G.STATES.DRAW_TO_HAND and G.STATE ~= G.STATES.PLAY_TAROT or any_state then
+        for _, condition in pairs(consumable.useConditions) do
+            local status, new_return = pcall(condition, self, any_state, skip_check)
+            if new_return then
+                return new_return
+            end
+        end
+    end
+    return old_return
+end
+
+local card_use_consumeable = Card.use_consumeable
+function Card:use_consumeable(area, copier)
+    local old_return = card_use_consumeable(self, area, copier)
+    for _, effect in pairs(consumable.useEffects) do
+        local status, new_return = pcall(condition, self, area, copier)
+        if new_return then
+            return new_return
+        end
     end
 end

@@ -672,9 +672,24 @@ table.insert(mods,
 
             console:registerCommand(
                 "give",
-                function()
-                    console.logger:error("Give command not implemented yet")
-                    return false
+                function(args)
+                    local amount = args[2] or 1
+                    local id = args[1]
+                    local area = nil
+                    local set = nil
+                    if args[1]:find("j_") then
+                        area = G.jokers
+                        set = "Joker"
+                    end
+                    local status, card = pcall(create_card, set, area, nil, 1, true, false, id, nil)
+                    if status == false then
+                        console.logger:error("Invalid id")
+                    else
+                        card:add_to_deck()
+                        area:emplace(card)
+                        console.logger:info("Given ".. id .." to the player")
+                    end
+                    return true
                 end,
                 "Give an item to the player"
             )
@@ -860,7 +875,7 @@ table.insert(mods,
                     local func, err = load("return " .. code)
                     if func then
                         console.logger:info("Lua code executed successfully")
-                        console.logger:print(func)
+                        console.logger:print(func())
                         return true
                     else
                         console.logger:error("Error loading lua code: ", err)

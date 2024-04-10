@@ -61,6 +61,10 @@ pub fn get_assets_lua() -> &'static str {
     include_str!("dependencies/assets.lua")
 }
 
+pub fn get_consumables_lua() -> &'static str{
+    include_str!("dependencies/consumable.lua")
+}
+
 pub fn get_balamod_version_lua(version: &'static str) -> String {
     format!(r#"
     return "{}"
