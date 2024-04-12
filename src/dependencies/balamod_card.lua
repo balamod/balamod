@@ -48,7 +48,7 @@ function Card:calculate_joker(context)
         playing_card_joker_effects({true})
     end
     if self.ability.set == "Joker" and not self.debuff then
-        for k, effect in pairs(joker.jokerEffects) do
+        for k, effect in pairs(joker.calculateJokerEffects) do
             local status, new_return = pcall(effect, self, context)
             if new_return then
                 return new_return
