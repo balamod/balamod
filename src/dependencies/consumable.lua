@@ -1,13 +1,13 @@
 local balamod = require('balamod')
 
-local consumeable = {}
-consumeable._VERSION = "0.1.0"
-consumeable.useEffects = {}
-consumeable.useConditions = {}
-consumeable.loc_vars = {}
-consumeable.consumeables = {}
-consumeable.sets = {"Tarot", "Planet", "Spectral", "Tarot_Planet", "Consumeables"}
-consumeable.tarot_loc_vars = {}
+local consumable = {}
+consumable._VERSION = "0.1.0"
+consumable.useEffects = {}
+consumable.useConditions = {}
+consumable.loc_vars = {}
+consumable.consumables = {}
+consumable.sets = {"Tarot", "Planet", "Spectral", "Tarot_Planet", "Consumeables"}
+consumable.tarot_loc_vars = {}
 local function add(args)
     if not args.set then logger:error("consumable API: set REQUIRED when adding a consumable"); return end
     if not args.mod_id then logger:error("consumable API: mod_id REQUIRED when adding a consumable"); return end
@@ -40,7 +40,7 @@ local function add(args)
     local no_pool_flag = args.no_pool_flag or nil
     local yes_pool_flag = args.yes_pool_flag or nil
 
-    local newConsumeable = {
+    local newConsumable = {
         balamod = {
             mod_id = args.mod_id,
             key = id,
@@ -70,72 +70,64 @@ local function add(args)
     if not G.P_CENTER_POOLS[args.set] then
         logger:info("Creating new center set: "..args.set)
         G.P_CENTER_POOLS[args.set] = {}
+        table.insert(consumable.sets, args.set)
     end
-    table.insert(G.P_CENTER_POOLS[args.set], newConsumeable)
-    table.insert(G.P_CENTER_POOLS["Consumeables"], newConsumeable)
+    table.insert(G.P_CENTER_POOLS[args.set], newConsumable)
+    table.insert(G.P_CENTER_POOLS["Consumeables"], newConsumable)
     if args.set == "Tarot" or args.set == "Planet" then
-        table.insert(G.P_CENTER_POOLS["Tarot_Planet"], newConsumeable)
+        table.insert(G.P_CENTER_POOLS["Tarot_Planet"], newConsumable)
         save_indices["Tarot_Planet"] = #G.P_CENTER_POOLS["Tarot_Planet"]
     end
-    G.P_CENTERS[id] = newConsumeable
+    G.P_CENTERS[id] = newConsumable
 
     --save indices to remove
     save_indices["Consumeables"] = #G.P_CENTER_POOLS["Consumeables"]
     save_indices[args.set] = #G.P_CENTER_POOLS[args.set]
 
     --add name + description to the localization object
-    local consumeableText = {name=name, text=desc, unlock=unlock_condition_desc, text_parsed={}, name_parsed={}, unlock_parsed={}}
+    local consumableText = {name=name, text=desc, unlock=unlock_condition_desc, text_parsed={}, name_parsed={}, unlock_parsed={}}
     for _, line in ipairs(desc) do
-        consumeableText.text_parsed[#consumeableText.text_parsed+1] = loc_parse_string(line)
+        consumableText.text_parsed[#consumableText.text_parsed+1] = loc_parse_string(line)
     end
-    for _, line in ipairs(type(consumeableText.name) == 'table' and consumeableText.name or {newConsumeable.name}) do
-        consumeableText.name_parsed[#consumeableText.name_parsed+1] = loc_parse_string(line)
+    for _, line in ipairs(type(consumableText.name) == 'table' and consumableText.name or {newConsumable.name}) do
+        consumableText.name_parsed[#consumableText.name_parsed+1] = loc_parse_string(line)
     end
-    for _, line in ipairs(consumeableText.unlock) do
-        consumeableText.unlock_parsed[#consumeableText.unlock_parsed+1] = loc_parse_string(line)
+    for _, line in ipairs(consumableText.unlock) do
+        consumableText.unlock_parsed[#consumableText.unlock_parsed+1] = loc_parse_string(line)
     end
     if not G.localization.descriptions[args.set] then
         G.localization.descriptions[args.set] = {}
     end
-    G.localization.descriptions[args.set][id] = consumeableText
+    G.localization.descriptions[args.set][id] = consumableText
 
     -- consumeable effects
-    consumeable.useEffects[id] = use_effect
-    consumeable.useConditions[id] = use_condition
+    consumable.useEffects[id] = use_effect
+    consumable.useConditions[id] = use_condition
 
     -- consumeable loc vars
-    consumeable.loc_vars[id] = loc_vars
+    consumable.loc_vars[id] = loc_vars
     if args.set == "Tarot" then
-        consumeable.tarot_loc_vars[id] = loc_vars
+        consumable.tarot_loc_vars[id] = loc_vars
     end
 
     -- indices for removal
-    consumeable.consumeables[id] = {indices=save_indices, set=args.set}
+    consumable.consumables[id] = {indices=save_indices, set=args.set}
 end
 local function remove(id)
-    for k, v in pairs(consumeable.consumeables[id].indices) do
+    for k, v in pairs(consumable.consumables[id].indices) do
         G.P_CENTER_POOLS[k][v] = nil
     end
     G.P_CENTERS[id] = nil
-    G.localization.descriptions[consumeable.consumeables[id].set][id] = nil
-    consumeable.useConditions[id] = nil
-    consumeable.useEffects[id] = nil
-    consumeable.loc_vars[id] = nil
-    consumeable.consumeables[id] = nil
-end
-local function isConsumeableSet(set)
-    for _, v in pairs(consumeable.sets) do
-        if set == v then
-            return true
-        end
-    end
-    return false
+    G.localization.descriptions[consumable.consumables[id].set][id] = nil
+    consumable.useConditions[id] = nil
+    consumable.useEffects[id] = nil
+    consumable.loc_vars[id] = nil
+    consumable.consumables[id] = nil
 end
 
-local _MODULE = consumeable
+local _MODULE = consumable
 
 _MODULE.add = add
 _MODULE.remove = remove
-_MODULE.isConsumeableSet = isConsumeableSet
 
 return _MODULE

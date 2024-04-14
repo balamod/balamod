@@ -13,10 +13,11 @@ local card_calculate_seal = card_calculate_seal or Card.calculate_seal
 local card_get_end_of_round_effect = card_get_end_of_round_effect or Card.get_end_of_round_effect
 local card_eval_card = eval_card
 local card_open = card_open or Card.open
-local card_set_sprites = Card.set_sprites
 local card_calculate_dollar_bonus = Card.calculate_dollar_bonus
 local card_add_to_deck = Card.add_to_deck
 local card_remove_from_deck = Card.remove_from_deck
+local card_use_consumeable = Card.use_consumeable
+local card_can_use_consumeable = Card.can_use_consumeable
 
 
 function Card:calculate_joker(context)
@@ -400,7 +401,6 @@ function Card:remove_from_deck(from_debuff)
     return old_return
 end
 
-local card_can_use_consumeable = Card.can_use_consumeable
 function Card:can_use_consumeable(any_state, skip_check)
     local old_return = card_can_use_consumeable(self, any_state, skip_check)
     if not skip_check and ((G.play and #G.play.cards > 0) or
@@ -412,7 +412,7 @@ function Card:can_use_consumeable(any_state, skip_check)
     if G.STATE ~= G.STATES.HAND_PLAYED and G.STATE ~= G.STATES.DRAW_TO_HAND and G.STATE ~= G.STATES.PLAY_TAROT or any_state then
         for _, condition in pairs(consumable.useConditions) do
             local status, new_return = pcall(condition, self, any_state, skip_check)
-            if new_return then
+            if status and new_return then
                 return new_return
             end
         end
@@ -420,12 +420,11 @@ function Card:can_use_consumeable(any_state, skip_check)
     return old_return
 end
 
-local card_use_consumeable = Card.use_consumeable
 function Card:use_consumeable(area, copier)
     local old_return = card_use_consumeable(self, area, copier)
     for _, effect in pairs(consumable.useEffects) do
         local status, new_return = pcall(effect, self, area, copier)
-        if new_return then
+        if status and new_return then
             return new_return
         end
     end
