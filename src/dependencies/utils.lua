@@ -230,6 +230,16 @@ local function mergeTables(table1, table2, logger)
     return result
 end
 
+local function getCenterFromName(name)
+    for k,v in pairs(G.P_CENTERS) do
+        if v.name == name then
+            return v
+        end
+    end
+    return false
+end
+
+utils.getCenterFromName = getCenterFromName
 utils.stringify = stringify
 utils.contains = contains
 utils.filter = filter
