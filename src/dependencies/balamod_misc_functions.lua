@@ -12,7 +12,7 @@ end
 
 function generate_card_ui(_c, full_UI_table, specific_vars, card_type, badges, hide_desc, main_start, main_end)
     local old_return = misc_generate_card_ui(_c, full_UI_table, specific_vars, card_type, badges, hide_desc, main_start, main_end)
-    if _c.balamod and not full_UI_table then
+    if _c.balamod and _c.consumable and not full_UI_table then
         -- if a modded tarot is the main description, rewrite the main description with correct loc_vars
         local loc_vars = {}
         if consumable.loc_vars[_c.key] then
@@ -23,7 +23,7 @@ function generate_card_ui(_c, full_UI_table, specific_vars, card_type, badges, h
         end
         old_return.main = {}
         localize{type = 'descriptions', key = _c.key, set = _c.set, nodes = old_return.main, vars = loc_vars}
-    elseif _c.balamod and full_UI_table then
+    elseif _c.balamod and _c.consumable and full_UI_table then
         -- if a modded tarot is a tooltip, find which tooltip it is, then rewrite the tooltip with correct loc_vars
         local loc_vars = {}
         if consumable.loc_vars[_c.key] then
