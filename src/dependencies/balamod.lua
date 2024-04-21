@@ -775,7 +775,7 @@ mods["dev_console"] = {
                 return true
             end,
             "Give an item to the player",
-            function(current_arg, previous_args)
+            function(current_arg)
                 local ret = {}
                 for k,_ in pairs(G.P_CENTERS) do
                     if string.find(k, current_arg) == 1 then
