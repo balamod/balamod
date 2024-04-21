@@ -80,9 +80,9 @@ return {
             local commandName = cmd[1]
             local command = self.commands[commandName]
             local previousArgs = cmd
-            table.remove(previousArgs)
+            local current_arg = table.remove(previousArgs)
             if command then
-                completions = command.autocomplete(cmd[#cmd], previousArgs) or {}
+                completions = command.autocomplete(current_arg, previousArgs) or {}
             end
         end
         logger:trace("Autocomplete matches: " .. #completions .. " " .. table.concat(completions, ", "))
