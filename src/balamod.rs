@@ -231,7 +231,8 @@ impl Balatro {
         }
 
         exe_data.splice(zip_start.., new_zip.into_iter());
-        fs::write(exe_path, exe_data)?;
+        fs::write(exe_path, exe_data.clone())?;
+        drop(exe_data);
         Ok(())
     }
 
