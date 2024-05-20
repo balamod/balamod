@@ -1,4 +1,3 @@
-use crate::dependencies::*;
 use crate::finder::get_balatro_paths;
 use colour::red_ln;
 use libflate::deflate::Encoder;
@@ -26,51 +25,6 @@ impl Balatro {
     #[cfg(target_os = "linux")]
     pub fn get_exe_path(&self) -> PathBuf {
         return self.path.clone().join("Balatro.exe");
-    }
-
-    fn inject_common_dependencies(&self, exe_path: &str, balamod_version: &'static str) -> Result<(), std::io::Error> {
-        for (file_dst, file_data) in get_balamod_dependencies_lua(balamod_version) {
-            self.add_file_in_exe(exe_path, file_data, file_dst)?;
-        }
-        Ok(())
-    }
-
-    #[cfg(target_os = "macos")]
-    pub fn inject_dependencies(&self, balamod_version: &'static str) -> Result<(), std::io::Error> {
-        let exe_path_buf = self.get_exe_path();
-        let exe_path = exe_path_buf
-            .to_str()
-            .expect("Failed to convert exe_path to str");
-        self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_https_so(), "https.so")?;
-        self.inject_common_dependencies(exe_path, balamod_version)?;
-        Ok(())
-    }
-
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
-    pub fn inject_dependencies(&self, balamod_version: &'static str) -> Result<(), std::io::Error> {
-        let exe_path_buf = self.get_exe_path();
-        let exe_path = exe_path_buf
-            .to_str()
-            .expect("Failed to convert exe_path to str");
-        self.copy_file_in_resources(exe_path_buf.parent().unwrap(), get_https_so(), "https.dll")?;
-        self.inject_common_dependencies(exe_path, balamod_version)?;
-        Ok(())
-    }
-
-    #[cfg(target_os = "macos")]
-    pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
-        let exe_path_buf = self.get_exe_path();
-        let resource_dir = exe_path_buf.parent().unwrap();
-        fs::remove_file(resource_dir.join("https.so"))?;
-        Ok(())
-    }
-
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
-    pub fn remove_dependencies(&self) -> Result<(), std::io::Error> {
-        let exe_path_buf = self.get_exe_path();
-        let resource_dir = exe_path_buf.parent().unwrap();
-        fs::remove_file(resource_dir.join("https.dll"))?;
-        Ok(())
     }
 
     pub fn replace_file(&self, file_name: &str, new_contents: &[u8]) -> Result<(), std::io::Error> {
@@ -117,20 +71,6 @@ impl Balatro {
         Ok(files)
     }
 
-    pub fn get_file_as_string(
-        &self,
-        file_name: &str,
-        decompress: bool,
-    ) -> Result<String, std::io::Error> {
-        let data = self.get_file_data(file_name)?;
-        if decompress {
-            let decompressed = self.decompress_bytes(&data)?;
-            Ok(String::from_utf8(decompressed).unwrap())
-        } else {
-            Ok(String::from_utf8(data).unwrap())
-        }
-    }
-
     pub fn get_version(&self) -> Result<String, std::io::Error> {
         let file = File::open(self.get_exe_path())?;
         let mut archive = ZipArchive::new(BufReader::new(file))?;
@@ -146,52 +86,6 @@ impl Balatro {
         }
         red_ln!("'version.jkr' not found in the archive.");
         Ok("0.0.0".to_string())
-    }
-
-    fn copy_file_in_resources(
-        &self,
-        dst: &Path,
-        file_data: &[u8],
-        file_name: &str,
-    ) -> Result<(), std::io::Error> {
-        let mut file = File::create(dst.join(file_name))?;
-        file.write_all(file_data)?;
-        Ok(())
-    }
-
-    fn add_file_in_exe(
-        &self,
-        exe_path: &str,
-        file_data: Vec<u8>,
-        file_dst: &str,
-    ) -> Result<(), std::io::Error> {
-        let mut exe_data = fs::read(exe_path)?;
-
-        let zip_start = self.find_zip_start(&exe_data).unwrap();
-        let cursor = Cursor::new(&exe_data[zip_start..]);
-
-        let mut zip_archive = ZipArchive::new(cursor)?;
-        let mut new_zip = Vec::new();
-
-        {
-            let mut zip_writer = ZipWriter::new(Cursor::new(&mut new_zip));
-
-            for i in 0..zip_archive.len() {
-                let raw_file = zip_archive.by_index_raw(i)?;
-                zip_writer.raw_copy_file(raw_file)?;
-            }
-            zip_writer.start_file(
-                file_dst,
-                FileOptions::default().compression_method(CompressionMethod::Stored),
-            )?;
-            zip_writer.write_all(&file_data)?;
-
-            zip_writer.finish()?;
-        }
-
-        exe_data.splice(zip_start.., new_zip.into_iter());
-        fs::write(exe_path, exe_data)?;
-        Ok(())
     }
 
     fn replace_file_in_exe(
@@ -231,7 +125,8 @@ impl Balatro {
         }
 
         exe_data.splice(zip_start.., new_zip.into_iter());
-        fs::write(exe_path, exe_data)?;
+        fs::write(exe_path, exe_data.clone())?;
+        drop(exe_data);
         Ok(())
     }
 
@@ -280,15 +175,8 @@ impl Balatro {
         Ok(())
     }
 
-    pub fn decompress_bytes(&self, input: &[u8]) -> Result<Vec<u8>, std::io::Error> {
-        let mut decoder = libflate::deflate::Decoder::new(input);
-        let mut decompressed = Vec::new();
-        decoder.read_to_end(&mut decompressed)?;
-        Ok(decompressed)
-    }
-
     pub fn is_valid(&self) -> bool {
-        return self.get_exe_path().exists()
+        return self.get_exe_path().exists();
     }
 }
 
@@ -303,4 +191,24 @@ pub fn find_balatros() -> Vec<Balatro> {
         }
     }
     balatros
+}
+
+pub fn get_save_dir() -> PathBuf {
+    let mut save_dir = String::new();
+    if cfg!(target_os = "macos") {
+        let home_dir = format!("/Users/{}", std::env::var("USER").unwrap());
+        save_dir = format!("{}/Library/Application Support/Balatro", home_dir);
+    } else if cfg!(target_os = "windows") {
+        let appdata = std::env::var("APPDATA").unwrap();
+        save_dir = format!("{}/Balatro", appdata);
+    } else if cfg!(target_os = "linux") {
+        let home = std::env::var("HOME").unwrap();
+        save_dir = format!("{}/.local/share/Steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro", home);
+    }
+
+    if save_dir.is_empty() {
+        panic!("Unsupported OS");
+    }
+
+    PathBuf::from(save_dir)
 }

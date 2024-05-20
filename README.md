@@ -8,18 +8,18 @@ Mod loader, Injector and Decompiler that supports **in-game code injection for B
 - [Balamod](#balamod)
 - [Summary](#summary)
 - [Easy Install](#easy-install)
-  - [Linux](#linux)
-  - [Windows](#windows)
-  - [MacOS](#macos)
-  - [How to Install Mods](#how-to-install-mods)
-  - [CLI Usage](#cli-usage)
-    - [Example of usages](#example-of-usages)
-  - [Modding](#modding)
-    - [Modding API](#modding-api)
-    - [Events](#events)
-  - [How to add you mods to the repos](#how-to-add-you-mods-to-the-repos)
-  - [How to Use Code Injection](#how-to-use-code-injection)
-  - [How to find the function names, where to inject code, etc...](#how-to-find-the-function-names-where-to-inject-code-etc)
+    - [Linux](#linux)
+    - [Windows](#windows)
+    - [MacOS](#macos)
+    - [How to Install Mods](#how-to-install-mods)
+    - [CLI Usage](#cli-usage)
+        - [Example of usages](#example-of-usages)
+    - [Modding](#modding)
+        - [Modding API](#modding-api)
+        - [Events](#events)
+    - [How to add you mods to the repos](#how-to-add-you-mods-to-the-repos)
+    - [How to Use Code Injection](#how-to-use-code-injection)
+    - [How to find the function names, where to inject code, etc...](#how-to-find-the-function-names-where-to-inject-code-etc)
 
 # Easy Install
 > [!IMPORTANT]
@@ -87,7 +87,7 @@ In case no installation is detected, you will be prompted to specify one using t
     ```bash
     ./balamod -d
     ```
-    or to decompile it into multiple folders,
+  or to decompile it into multiple folders,
     ```bash
     ./balamod -d -o MyCustomFolder
     ```
@@ -239,6 +239,3 @@ inject(file_name, fun_name, to_replace, replacement)
 
 ## How to find the function names, where to inject code, etc...
 You can use the `./balamod -d` command to decompile the game and take a look at the code.
-
-
-> *I love Arch, by the way.*

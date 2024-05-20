@@ -1,48 +1,47 @@
-use std::collections::HashMap;
+fn get_tar_file_name() -> String {
+    let mut tar_file = String::new();
 
-#[cfg(target_os = "macos")]
-pub fn get_https_so() -> &'static [u8]{
-    include_bytes!("dependencies/macos/https.so")
+    if cfg!(target_os = "macos") {
+        tar_file = String::from("balamod-macos");
+    } else if cfg!(target_os = "windows") {
+        tar_file = String::from("balamod-windows");
+    } else if cfg!(target_os = "linux") {
+        tar_file = String::from("balamod-linux-proton");
+    }
+
+    if tar_file.is_empty() {
+        panic!("Unsupported OS");
+    }
+
+    format!("{}.tar.gz", tar_file)
 }
 
-#[cfg(target_os = "windows")]
-pub fn get_https_so() -> &'static [u8]{
-    include_bytes!("dependencies/windows/https.dll")
+pub fn download_tar(tag: Option<String>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let url = match tag {
+        Some(tag) => format!("https://github.com/balamod/balamod_lua/releases/download/{}/{}", tag, get_tar_file_name()),
+        None => format!("https://github.com/balamod/balamod_lua/releases/latest/download/{}", get_tar_file_name())
+    };
+    let response = reqwest::blocking::get(&url)?;
+    let body = response.bytes()?;
+    Ok(body.to_vec())
 }
 
-#[cfg(target_os = "linux")]
-pub fn get_https_so() -> &'static [u8]{
-    include_bytes!("dependencies/windows/https.dll")
+pub fn unpack_tar(dir: &str, tar: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
+    let tar = std::io::Cursor::new(tar);
+    let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(tar));
+    archive.unpack(dir)?;
+    let tar_file_name = get_tar_file_name();
+    // regt before first .
+    let dir_name = tar_file_name.split('.').next().unwrap();
+    // rename dir to balamod
+    std::fs::rename(format!("{}/{}", dir, dir_name), format!("{}/balamod", dir))?; // rename dir to balamod
+    Ok(())
 }
 
-fn get_balamod_version_lua(version: &'static str) -> String {
-    format!(r#"
-    return "{}"
-    "#, version)
-}
-
-pub fn get_balamod_dependencies_lua(version: &'static str) -> HashMap<&'static str, Vec<u8>>{
-    HashMap::from([
-        ("assets.lua", include_str!("dependencies/assets.lua").as_bytes().to_vec()),
-        ("balamod_card.lua", include_str!("dependencies/balamod_card.lua").as_bytes().to_vec()),
-        ("balamod_game.lua", include_str!("dependencies/balamod_game.lua").as_bytes().to_vec()),
-        ("balamod_love.lua", include_str!("dependencies/balamod_love.lua").as_bytes().to_vec()),
-        ("balamod_misc_functions.lua", include_str!("dependencies/balamod_misc_functions.lua").as_bytes().to_vec()),
-        ("balamod_uidefs.lua", include_str!("dependencies/balamod_uidefs.lua").as_bytes().to_vec()),
-        ("balamod.lua", include_str!("dependencies/balamod.lua").as_bytes().to_vec()),
-        ("challenge.lua", include_str!("dependencies/challenge.lua").as_bytes().to_vec()),
-        ("console.lua", include_str!("dependencies/console.lua").as_bytes().to_vec()),
-        ("joker.lua", include_str!("dependencies/joker.lua").as_bytes().to_vec()),
-        ("json.lua", include_str!("dependencies/json.lua").as_bytes().to_vec()),
-        ("localization.lua", include_str!("dependencies/localization.lua").as_bytes().to_vec()),
-        ("seal.lua", include_str!("dependencies/seal.lua").as_bytes().to_vec()),
-        ("logging.lua", include_str!("dependencies/logging.lua").as_bytes().to_vec()),
-        ("mod_menu.lua", include_str!("dependencies/mod_menu.lua").as_bytes().to_vec()),
-        ("patches.lua", include_str!("dependencies/patches.lua").as_bytes().to_vec()),
-        ("platform.lua", include_str!("dependencies/platform.lua").as_bytes().to_vec()),
-        ("tar.lua", include_str!("dependencies/tar.lua").as_bytes().to_vec()),
-        ("utils.lua", include_str!("dependencies/utils.lua").as_bytes().to_vec()),
-        ("consumable.lua", include_str!("dependencies/consumable.lua").as_bytes().to_vec()),
-        ("balamod_version.lua", get_balamod_version_lua(version).as_bytes().to_vec()),
-    ])
+pub fn download_patched_main() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    let url = format!("https://raw.githubusercontent.com/balamod/balamod_lua/main/main.patch.lua?t={}", timestamp); // cache buster
+    let response = reqwest::blocking::get(&url)?;
+    let body = response.bytes()?;
+    Ok(body.to_vec())
 }
