@@ -11,6 +11,9 @@ zip = "0.6.6"
 clap = { version = "4.4.11", features = ["derive"] }
 colour = "0.7.0"
 libflate = "2.0.0"
+reqwest = { version = "0.12.4", features = ["blocking"] }
+tar = "0.4.40"
+flate2 = "1.0.28"
 
 
 [target.'cfg(target_os = "windows")'.dependencies]

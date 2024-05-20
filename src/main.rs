@@ -9,13 +9,13 @@ use colour::{
     blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln,
 };
 
-use crate::balamod::Balatro;
+use crate::balamod::{Balatro, get_save_dir};
 
 mod balamod;
 mod dependencies;
 mod finder;
 
-const VERSION: &'static str = "0.1.11";
+const VERSION: &str = "CLI_1.0.0";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
@@ -24,6 +24,8 @@ struct Args {
     inject: bool,
     #[clap(short = 'b', long = "balatro-path")]
     balatro_path: Option<String>,
+    #[clap(short = 'v', long = "version")]
+    version: Option<String>,
     #[clap(short = 'c', long = "compress")]
     compress: bool,
     #[clap(short = 'a', long = "auto")]
@@ -116,8 +118,7 @@ fn main() {
     let global_start = Instant::now();
 
     if args.uninstall {
-        uninstall(balatro.clone(), &mut durations);
-        return;
+        uninstall(&mut durations);
     }
 
     if args.inject {
@@ -136,7 +137,7 @@ fn main() {
         )) {
             red_ln!("Architecture is not supported, skipping modloader injection...");
         } else {
-            install(balatro, &mut durations);
+            install(args.version, &mut durations);
         }
     }
 
@@ -146,105 +147,78 @@ fn main() {
     }
 }
 
-fn inject_modloader(
-    main_lua: String,
-    // balatro: Balatro,
-    durations: &mut Vec<StepDuration>,
-) -> String {
-    let mut new_main = main_lua.clone();
-
-    cyan_ln!("Implementing modloader on main...");
-    let start = Instant::now();
-
-    if new_main.starts_with("-- balamod") {
-        yellow_ln!("The main already has the modloader, skipping...");
-    } else {
-        new_main = format!("-- balamod\n{}\n", new_main);
-
-        new_main.push_str(
-            "\nrequire('patches')\n"
-        );
+fn install(version: Option<String>, durations: &mut Vec<StepDuration>) {
+    let save_dir = get_save_dir();
+    // check if main.lua exists
+    if fs::metadata(save_dir.join("main.lua").as_path()).is_ok() {
+        yellow_ln!("main.lua already exists, skipping modloader installation...");
+        yellow_ln!("To reinstall the modloader, please uninstall it first with -u");
+        return;
     }
-
+    let start = Instant::now();
+    let start_dowload_main = Instant::now();
+    cyan_ln!("Downloading patched main.lua...");
+    let main_lua = dependencies::download_patched_main().expect("Error while downloading main.lua");
     durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Modloader implementation (main)"),
+        duration: start_dowload_main.elapsed(),
+        name: String::from("Download patched main.lua"),
     });
-
     green_ln!("Done!");
 
-    new_main
-}
-
-fn uninstall(balatro: Balatro, durations: &mut Vec<StepDuration>) {
-    // restore from the backup
-    let start = Instant::now();
-    let backup_path = balatro.get_exe_path().clone().with_extension("bak");
-    if fs::metadata(backup_path.as_path()).is_ok() {
-        yellow_ln!("Restoring backup...");
-        fs::remove_file(balatro.get_exe_path()).expect("Error while deleting file");
-        fs::copy(backup_path.as_path(), balatro.get_exe_path())
-            .expect("Error while copying file");
-        fs::remove_file(backup_path.as_path()).expect("Error while deleting file");
-        green_ln!("Done!");
-    } else {
-        red_ln!("No backup found!");
-    }
+    let start_patch_main = Instant::now();
+    cyan_ln!("Patching main.lua...");
+    let mut main_lua_file = File::create(save_dir.join("main.lua")).expect("Error while creating main.lua");
+    main_lua_file.write_all(&main_lua).expect("Error while writing to main.lua");
     durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Restoration of executable"),
+        duration: start_patch_main.elapsed(),
+        name: String::from("Patch main.lua"),
     });
-    cyan_ln!("Uninstalling dependencies...");
-    let start = Instant::now();
-    balatro
-        .remove_dependencies()
-        .expect("Error while uninstalling dependencies");
+    green_ln!("Done!");
+
+    let start_download_balamod = Instant::now();
+    cyan_ln!("Downloading Balatro...");
+    let tar = dependencies::download_tar(version).expect("Error while downloading Balatro");
+    durations.push(StepDuration {
+        duration: start_download_balamod.elapsed(),
+        name: String::from("Download Balatro"),
+    });
+    green_ln!("Done!");
+
+    let start_install_balamod = Instant::now();
+    cyan_ln!("Installing Balatro...");
+    dependencies::unpack_tar(save_dir.to_str().unwrap(), tar).expect("Error while installing Balatro");
+    durations.push(StepDuration {
+        duration: start_install_balamod.elapsed(),
+        name: String::from("Install Balatro"),
+    });
+    green_ln!("Done!");
+
     durations.push(StepDuration {
         duration: start.elapsed(),
-        name: String::from("Dependency uninstallation"),
+        name: String::from("Modloader installation"),
     });
 }
 
-fn install(balatro: Balatro, durations: &mut Vec<StepDuration>) {
+fn uninstall(durations: &mut Vec<StepDuration>) {
+    cyan_ln!("Removing modloader...");
     let start = Instant::now();
-    // Copy the balatro executable to back it up and restore it later if needed
-    let backup_path = balatro.get_exe_path().clone().with_extension("bak");
-    if fs::metadata(backup_path.as_path()).is_ok() {
-        yellow_ln!("Deleting existing backup...");
-        fs::remove_file(backup_path.as_path()).expect("Error while deleting file");
+    let save_dir = get_save_dir();
+    // delete main.lua
+    let main_lua_path = save_dir.join("main.lua");
+    if fs::metadata(main_lua_path.as_path()).is_ok() {
+        fs::remove_file(main_lua_path.as_path()).expect("Error while deleting main.lua");
     }
-    fs::copy(balatro.get_exe_path(), backup_path.as_path()).expect("Error while copying file");
+
+    // delete balamod
+    let balamod_path = save_dir.join("balamod");
+    if fs::metadata(balamod_path.as_path()).is_ok() {
+        fs::remove_dir_all(balamod_path.as_path()).expect("Error while deleting balamod");
+    }
+
     durations.push(StepDuration {
         duration: start.elapsed(),
-        name: String::from("Backup of executable"),
+        name: String::from("Modloader uninstallation"),
     });
-
-    let main_lua = balatro
-        .get_file_as_string("main.lua", false)
-        .expect("Error while reading file");
-
-    let new_main = inject_modloader(main_lua, durations);
-
-    cyan_ln!("Injecting main");
-    let start: Instant = Instant::now();
-    balatro
-        .replace_file("main.lua", new_main.as_bytes())
-        .expect("Error while replacing file");
-    durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Modloader injection (main)"),
-    });
-    green_ln!("Done!");
-    cyan_ln!("Injecting dependencies");
-    let start = Instant::now();
-    balatro
-        .inject_dependencies(VERSION)
-        .expect("Error while injecting dependencies");
-    durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Dependency injection"),
-    });
-    green_ln!("Done!");
 }
 
 fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
