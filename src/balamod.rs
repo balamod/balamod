@@ -193,7 +193,7 @@ pub fn find_balatros() -> Vec<Balatro> {
     balatros
 }
 
-pub fn get_save_dir() -> PathBuf {
+pub fn get_save_dir(linux_native: bool) -> PathBuf {
     let mut save_dir = String::new();
     if cfg!(target_os = "macos") {
         let home_dir = format!("/Users/{}", std::env::var("USER").unwrap());
@@ -202,8 +202,13 @@ pub fn get_save_dir() -> PathBuf {
         let appdata = std::env::var("APPDATA").unwrap();
         save_dir = format!("{}/Balatro", appdata);
     } else if cfg!(target_os = "linux") {
-        let home = std::env::var("HOME").unwrap();
-        save_dir = format!("{}/.local/share/Steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro", home);
+        if linux_native {
+            let home = std::env::var("HOME").unwrap();
+            save_dir = format!("{home}/.local/share/love/Balatro");
+        } else {
+            let home = std::env::var("HOME").unwrap();
+            save_dir = format!("{home}/.local/share/Steam/steamapps/compatdata/2379780/pfx/drive_c/users/steamuser/AppData/Roaming/Balatro");
+        }
     }
 
     if save_dir.is_empty() {

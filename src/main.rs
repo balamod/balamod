@@ -15,7 +15,7 @@ mod balamod;
 mod dependencies;
 mod finder;
 
-const VERSION: &str = "CLI_1.0.0";
+const VERSION: &str = "CLI_1.0.1";
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
@@ -38,6 +38,8 @@ struct Args {
     output: Option<String>,
     #[clap(short = 'u', long = "uninstall")]
     uninstall: bool,
+    #[clap(long = "linux-native")]
+    linux_native: bool,
 }
 
 struct StepDuration {
@@ -118,7 +120,7 @@ fn main() {
     let global_start = Instant::now();
 
     if args.uninstall {
-        uninstall(&mut durations);
+        uninstall(&mut durations, args.linux_native);
     }
 
     if args.inject {
@@ -137,7 +139,7 @@ fn main() {
         )) {
             red_ln!("Architecture is not supported, skipping modloader injection...");
         } else {
-            install(args.version, &mut durations);
+            install(args.version, &mut durations, args.linux_native);
         }
     }
 
@@ -147,20 +149,19 @@ fn main() {
     }
 }
 
-fn install(version: Option<String>, durations: &mut Vec<StepDuration>) {
-    let save_dir = get_save_dir();
-    // check if main.lua exists
+fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_native: bool) {
+    let save_dir = get_save_dir(linux_native);
     if fs::metadata(save_dir.join("main.lua").as_path()).is_ok() {
         yellow_ln!("main.lua already exists, skipping modloader installation...");
         yellow_ln!("To reinstall the modloader, please uninstall it first with -u");
         return;
     }
     let start = Instant::now();
-    let start_dowload_main = Instant::now();
+    let start_download_main = Instant::now();
     cyan_ln!("Downloading patched main.lua...");
     let main_lua = dependencies::download_patched_main().expect("Error while downloading main.lua");
     durations.push(StepDuration {
-        duration: start_dowload_main.elapsed(),
+        duration: start_download_main.elapsed(),
         name: String::from("Download patched main.lua"),
     });
     green_ln!("Done!");
@@ -176,8 +177,8 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>) {
     green_ln!("Done!");
 
     let start_download_balamod = Instant::now();
-    cyan_ln!("Downloading Balatro...");
-    let tar = dependencies::download_tar(version).expect("Error while downloading Balatro");
+    cyan_ln!("Downloading Balamod...");
+    let tar = dependencies::download_tar(version, linux_native).expect("Error while downloading Balamod");
     durations.push(StepDuration {
         duration: start_download_balamod.elapsed(),
         name: String::from("Download Balatro"),
@@ -185,13 +186,26 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>) {
     green_ln!("Done!");
 
     let start_install_balamod = Instant::now();
-    cyan_ln!("Installing Balatro...");
-    dependencies::unpack_tar(save_dir.to_str().unwrap(), tar).expect("Error while installing Balatro");
+    cyan_ln!("Installing Balamod...");
+    dependencies::unpack_tar(save_dir.to_str().unwrap(), tar, linux_native).expect("Error while installing Balamod");
     durations.push(StepDuration {
         duration: start_install_balamod.elapsed(),
-        name: String::from("Install Balatro"),
+        name: String::from("Install Balamod"),
     });
     green_ln!("Done!");
+
+    if cfg!(target_os = "linux") && linux_native {
+        cyan_ln!("Changing http lib...");
+        let start_change_http = Instant::now();
+        let http_so_path = save_dir.join("https.so");
+        let balamod_http_path = save_dir.join("balamod").join("https.so");
+        fs::rename(balamod_http_path, http_so_path).expect("Error while changing http lib");
+        durations.push(StepDuration {
+            duration: start_change_http.elapsed(),
+            name: String::from("Change http lib"),
+        });
+        green_ln!("Done!");
+    }
 
     durations.push(StepDuration {
         duration: start.elapsed(),
@@ -199,10 +213,10 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>) {
     });
 }
 
-fn uninstall(durations: &mut Vec<StepDuration>) {
+fn uninstall(durations: &mut Vec<StepDuration>, linux_native: bool) {
     cyan_ln!("Removing modloader...");
     let start = Instant::now();
-    let save_dir = get_save_dir();
+    let save_dir = get_save_dir(linux_native);
     // delete main.lua
     let main_lua_path = save_dir.join("main.lua");
     if fs::metadata(main_lua_path.as_path()).is_ok() {
