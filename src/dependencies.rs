@@ -31,6 +31,40 @@ pub fn download_tar(tag: Option<String>, linux_native: bool) -> Result<Vec<u8>, 
     Ok(body.to_vec())
 }
 
+pub fn get_balalib_name(linux_native: bool) -> String {
+    let mut lib_file = String::new();
+    if cfg!(target_os = "macos") {
+        lib_file = String::from("balalib.dylib");
+    } else if cfg!(target_os = "windows") {
+        lib_file = String::from("balalib.dll");
+    } else if cfg!(target_os = "linux") {
+        if linux_native {
+            lib_file = String::from("balalib.so");
+        } else {
+            lib_file = String::from("balalib.dll");
+        }
+    }
+
+    if lib_file.is_empty() {
+        panic!("Unsupported OS");
+    }
+
+    lib_file
+}
+
+pub fn download_balalib(tag: Option<String>, linux_native: bool) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let lib_file = get_balalib_name(linux_native);
+
+    let url = match tag {
+        Some(tag) => format!("https://github.com/balamod/balalib/releases/download/{}/{}", tag, lib_file),
+        None => format!("https://github.com/balamod/balalib/releases/latest/download/{}", lib_file)
+    };
+
+    let response = reqwest::blocking::get(&url)?;
+    let body = response.bytes()?;
+    Ok(body.to_vec())
+}
+
 pub fn unpack_tar(dir: &str, tar: Vec<u8>, linux_native: bool) -> Result<(), Box<dyn std::error::Error>> {
     let tar = std::io::Cursor::new(tar);
     let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(tar));

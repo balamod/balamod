@@ -178,7 +178,7 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_nat
 
     let start_download_balamod = Instant::now();
     cyan_ln!("Downloading Balamod...");
-    let tar = dependencies::download_tar(version, linux_native).expect("Error while downloading Balamod");
+    let tar = dependencies::download_tar(version.clone(), linux_native).expect("Error while downloading Balamod");
     durations.push(StepDuration {
         duration: start_download_balamod.elapsed(),
         name: String::from("Download Balatro"),
@@ -193,6 +193,25 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_nat
         name: String::from("Install Balamod"),
     });
     green_ln!("Done!");
+
+    let start_download_balalib = Instant::now();
+    cyan_ln!("Downloading Balalib...");
+    let balalib = dependencies::download_balalib(version, linux_native).expect("Error while downloading Balalib");
+    durations.push(StepDuration {
+        duration: start_download_balalib.elapsed(),
+        name: String::from("Download Balalib"),
+    });
+
+    let start_install_balalib = Instant::now();
+    cyan_ln!("Installing Balalib...");
+    let balalib_path = save_dir.join(dependencies::get_balalib_name(linux_native));
+    let mut balalib_file = File::create(balalib_path).expect("Error while creating Balalib");
+    balalib_file.write_all(&balalib).expect("Error while writing to Balalib");
+    durations.push(StepDuration {
+        duration: start_install_balalib.elapsed(),
+        name: String::from("Install Balalib"),
+    });
+
 
     if cfg!(target_os = "linux") && linux_native {
         cyan_ln!("Changing http lib...");
@@ -233,6 +252,21 @@ fn uninstall(durations: &mut Vec<StepDuration>, linux_native: bool) {
         duration: start.elapsed(),
         name: String::from("Modloader uninstallation"),
     });
+
+    green_ln!("Done!");
+    cyan_ln!("Removing Balalib...");
+    let start = Instant::now();
+    let balalib_path = save_dir.join(dependencies::get_balalib_name(linux_native));
+    if fs::metadata(balalib_path.as_path()).is_ok() {
+        fs::remove_file(balalib_path.as_path()).expect("Error while deleting Balalib");
+    }
+
+    durations.push(StepDuration {
+        duration: start.elapsed(),
+        name: String::from("Balalib uninstallation"),
+    });
+
+    green_ln!("Done!");
 }
 
 fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
