@@ -129,7 +129,7 @@ dependencies = [
 
 [[package]]
 name = "balamod"
-version = "0.1.11"
+version = "1.0.1"
 dependencies = [
  "clap",
  "colour",

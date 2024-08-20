@@ -15,7 +15,7 @@ mod balamod;
 mod dependencies;
 mod finder;
 
-const VERSION: &str = "CLI_1.0.1";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version = VERSION)]
