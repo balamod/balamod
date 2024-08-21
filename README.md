@@ -80,6 +80,8 @@ Example to inject a Lua file:
 
 Documentation moved to [balamod.github.io](https://balamod.github.io/modding-basics.html)
 
+For a complete example see [example-mod](https://github.com/balamod/example-mod) which shows events, api, injection and a github action for release
+
 ## How to Use Code Injection
 
 Before the game starts, Balamod will retrieve all the code and store it in a map where one file equals to one key. It allows Balamod to know the current state of the game code, and to overwrite parts of it already loaded by the engine.
