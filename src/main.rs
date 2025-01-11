@@ -3,13 +3,14 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use std::{fs, str};
-
+use std::process::exit;
 use clap::Parser;
 use colour::{
     blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln,
 };
 
-use crate::balamod::{Balatro, get_save_dir};
+use crate::balamod::{get_save_dir, Balatro};
+use crate::dependencies::balamod_version_exists;
 
 mod balamod;
 mod dependencies;
@@ -24,8 +25,8 @@ struct Args {
     inject: bool,
     #[clap(short = 'b', long = "balatro-path")]
     balatro_path: Option<String>,
-    #[clap(short = 'v', long = "version")]
-    version: Option<String>,
+    #[clap(short = 'v', long = "balatro-version")]
+    balatro_version: Option<String>,
     #[clap(short = 'c', long = "compress")]
     compress: bool,
     #[clap(short = 'a', long = "auto")]
@@ -139,7 +140,7 @@ fn main() {
         )) {
             red_ln!("Architecture is not supported, skipping modloader injection...");
         } else {
-            install(args.version, &mut durations, args.linux_native);
+            install(args.balatro_version, &mut durations, args.linux_native);
         }
     }
 
@@ -150,6 +151,16 @@ fn main() {
 }
 
 fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_native: bool) {
+    if let Some(version) = version.clone() {
+        magenta_ln!("Installing Balamod v{}", version);
+        if !balamod_version_exists(&version, linux_native) {
+            red_ln!("Version {} does not exist!", version);
+            exit(1);
+        }
+    } else {
+        magenta_ln!("Installing latest Balamod");
+    }
+
     let save_dir = get_save_dir(linux_native);
     if fs::metadata(save_dir.join("main.lua").as_path()).is_ok() {
         yellow_ln!("main.lua already exists, skipping modloader installation...");
@@ -168,8 +179,11 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_nat
 
     let start_patch_main = Instant::now();
     cyan_ln!("Patching main.lua...");
-    let mut main_lua_file = File::create(save_dir.join("main.lua")).expect("Error while creating main.lua");
-    main_lua_file.write_all(&main_lua).expect("Error while writing to main.lua");
+    let mut main_lua_file =
+        File::create(save_dir.join("main.lua")).expect("Error while creating main.lua");
+    main_lua_file
+        .write_all(&main_lua)
+        .expect("Error while writing to main.lua");
     durations.push(StepDuration {
         duration: start_patch_main.elapsed(),
         name: String::from("Patch main.lua"),
@@ -178,7 +192,8 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_nat
 
     let start_download_balamod = Instant::now();
     cyan_ln!("Downloading Balamod...");
-    let tar = dependencies::download_tar(version.clone(), linux_native).expect("Error while downloading Balamod");
+    let tar = dependencies::download_tar(version.clone(), linux_native)
+        .expect("Error while downloading Balamod");
     durations.push(StepDuration {
         duration: start_download_balamod.elapsed(),
         name: String::from("Download Balatro"),
@@ -187,7 +202,8 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_nat
 
     let start_install_balamod = Instant::now();
     cyan_ln!("Installing Balamod...");
-    dependencies::unpack_tar(save_dir.to_str().unwrap(), tar, linux_native).expect("Error while installing Balamod");
+    dependencies::unpack_tar(save_dir.to_str().unwrap(), tar, linux_native)
+        .expect("Error while installing Balamod");
     durations.push(StepDuration {
         duration: start_install_balamod.elapsed(),
         name: String::from("Install Balamod"),
@@ -196,7 +212,8 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_nat
 
     let start_download_balalib = Instant::now();
     cyan_ln!("Downloading Balalib...");
-    let balalib = dependencies::download_balalib(version, linux_native).expect("Error while downloading Balalib");
+    let balalib = dependencies::download_balalib(version, linux_native)
+        .expect("Error while downloading Balalib");
     durations.push(StepDuration {
         duration: start_download_balalib.elapsed(),
         name: String::from("Download Balalib"),
@@ -206,12 +223,13 @@ fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_nat
     cyan_ln!("Installing Balalib...");
     let balalib_path = save_dir.join(dependencies::get_balalib_name(linux_native));
     let mut balalib_file = File::create(balalib_path).expect("Error while creating Balalib");
-    balalib_file.write_all(&balalib).expect("Error while writing to Balalib");
+    balalib_file
+        .write_all(&balalib)
+        .expect("Error while writing to Balalib");
     durations.push(StepDuration {
         duration: start_install_balalib.elapsed(),
         name: String::from("Install Balalib"),
     });
-
 
     if cfg!(target_os = "linux") && linux_native {
         cyan_ln!("Changing http lib...");
@@ -302,11 +320,12 @@ fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
 
         cyan_ln!("Compressing {} ...", args.input.clone().unwrap());
         let compress_start: Instant = Instant::now();
-        balatro.compress_file(
-            args.input.clone().unwrap().as_str(),
-            compression_output.as_str(),
-        )
-        .expect("Error while compressing file");
+        balatro
+            .compress_file(
+                args.input.clone().unwrap().as_str(),
+                compression_output.as_str(),
+            )
+            .expect("Error while compressing file");
 
         durations.push(StepDuration {
             duration: compress_start.elapsed(),

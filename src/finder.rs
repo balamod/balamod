@@ -1,15 +1,15 @@
-use std::path::PathBuf;
 use colour::{blue_ln, red_ln};
+#[cfg(target_os = "windows")]
+use std::fs::File;
+#[cfg(target_os = "windows")]
+use std::io::{BufReader, Read};
+#[cfg(target_os = "windows")]
+use std::path::Path;
+use std::path::PathBuf;
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
-#[cfg(target_os = "windows")]
-use std::path::Path;
-#[cfg(target_os = "windows")]
-use std::io::{BufReader, Read};
-#[cfg(target_os = "windows")]
-use std::fs::File;
 
 #[cfg(target_os = "windows")]
 fn read_path_from_registry() -> Result<String, std::io::Error> {
@@ -87,9 +87,14 @@ pub fn get_balatro_paths() -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = vec![];
     match home::home_dir() {
         Some(path) => {
-            let mut path = path;
-            path.push(".local/share/Steam/steamapps/common/Balatro");
-            paths.push(path);
+            {
+                let mut path = path.clone();
+                path.push(".local/share/Steam/steamapps/common/Balatro");
+                paths.push(path);
+            }
+            let mut other_path = path;
+            other_path.push(".steam/debian-installation/steamapps/common/Balatro");
+            paths.push(other_path);
         }
         None => red_ln!("Impossible to get your home dir!"),
     }
