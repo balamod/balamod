@@ -3,13 +3,14 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use std::{fs, str};
-
+use std::process::exit;
 use clap::Parser;
 use colour::{
     blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln,
 };
 
 use crate::balamod::{get_save_dir, Balatro};
+use crate::dependencies::balamod_version_exists;
 
 mod balamod;
 mod dependencies;
@@ -150,6 +151,16 @@ fn main() {
 }
 
 fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_native: bool) {
+    if let Some(version) = version.clone() {
+        magenta_ln!("Installing Balamod v{}", version);
+        if !balamod_version_exists(&version, linux_native) {
+            red_ln!("Version {} does not exist!", version);
+            exit(1);
+        }
+    } else {
+        magenta_ln!("Installing latest Balamod");
+    }
+
     let save_dir = get_save_dir(linux_native);
     if fs::metadata(save_dir.join("main.lua").as_path()).is_ok() {
         yellow_ln!("main.lua already exists, skipping modloader installation...");

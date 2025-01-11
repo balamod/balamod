@@ -84,3 +84,10 @@ pub fn download_patched_main() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let body = response.bytes()?;
     Ok(body.to_vec())
 }
+
+pub fn balamod_version_exists(ver: &String, linux_native: bool) -> bool {
+    let url = format!("https://github.com/balamod/balamod_lua/releases/download/{}/{}", ver, get_tar_file_name(linux_native));
+    let response = reqwest::blocking::get(&url);
+    let code = response.unwrap().status().as_u16();
+    code != 404
+}
