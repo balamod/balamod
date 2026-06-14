@@ -1,424 +1,436 @@
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
-use std::time::{Duration, Instant};
-use std::{fs, str};
-use std::process::exit;
-use clap::Parser;
-use colour::{
-    blue, cyan, cyan_ln, green, green_ln, magenta, magenta_ln, red_ln, yellow, yellow_ln,
-};
+use textfmt::*;
+use smol::{io::AsyncWriteExt, stream::StreamExt};
 
-use crate::balamod::{get_save_dir, Balatro};
-use crate::dependencies::balamod_version_exists;
-
-mod balamod;
+mod archive;
+mod parser;
+mod paths;
 mod dependencies;
-mod finder;
 
+type Error = Box<dyn std::error::Error>;
+type SendError = Box<dyn std::error::Error + std::marker::Send + std::marker::Sync>;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[derive(Parser, Debug, Clone)]
-#[clap(version = VERSION)]
-struct Args {
-    #[clap(short = 'x', long = "inject")]
-    inject: bool,
-    #[clap(short = 'b', long = "balatro-path")]
-    balatro_path: Option<String>,
-    #[clap(short = 'v', long = "balatro-version")]
-    balatro_version: Option<String>,
-    #[clap(short = 'c', long = "compress")]
-    compress: bool,
-    #[clap(short = 'a', long = "auto")]
-    auto: bool,
-    #[clap(short = 'd', long = "decompile")]
-    decompile: bool,
-    #[clap(short = 'i', long = "input")]
-    input: Option<String>,
-    #[clap(short = 'o', long = "output")]
-    output: Option<String>,
-    #[clap(short = 'u', long = "uninstall")]
-    uninstall: bool,
-    #[clap(long = "linux-native")]
-    linux_native: bool,
+const BIN_NAME: &'static str = env!("CARGO_BIN_NAME");
+fn print_help_info() {
+    let balatro = "Balatro".cyan().italic();
+    println!("{} is a {}, {}, and {} for {balatro} that supports in-game code injection.",
+        BIN_NAME.red().italic(),
+        "mod loader".blue(),
+        "injector".blue(),
+        "decompiler".blue());
+    println!();
+    println!("{}{}", "Usage".yellow(), ":");
+    println!("    {} {} {}", 
+        BIN_NAME.yellow(), 
+        "a".blue(), 
+        "[OPTIONS]".red());
+    println!("        Auto-injects the modloader into your {balatro} install.");
+    println!("    {} {} {} {} {} {} {}", 
+        BIN_NAME.yellow(), 
+        "x".blue(), 
+        "-i/--input".red(), 
+        "<FILE>".green(),
+        "-o/--output".red(), 
+        "<FILE>".green(),
+        "[OPTIONS]".red());
+    println!("        Injects a specific {} file into your {balatro} install.", 
+        "input".red());
+    println!("        The file is injected into the game at the relative {} location.",
+        "output".red());
+    println!("    {} {} {}",
+        BIN_NAME.yellow(),
+        "d".blue(),
+        "[OPTIONS]".red());
+    println!("        Decompile/extract the {balatro} game files, optionally to a given {} location.",
+        "output".red());
+    println!();
+    println!("{}{}", "Options".yellow(), ":");
+    println!("    {}", "--help".red());
+    println!("        Display this message.");
+    println!("    {}", "--version".red());
+    println!("        Display the {} version.", BIN_NAME.red().italic());
+    println!("    {}, {} {}", "-i".red(), "--input".red(), "<FILE>".green());
+    println!("        Specify an {} file to inject into {balatro}.", "input".red());
+    println!("    {}, {} {}", "-o".red(), "--output".red(), "<FILE>".green());
+    println!("        Specify where to decompile {balatro} files to, or");
+    println!("        where to place files within {balatro} when injecting them.");
+    println!("    {}, {} {}", "-b".red(), "--balatro-path".red(), "<PATH>".green());
+    println!("        Specify a path to look for {balatro} installations.");
+    println!("    {}, {} {}", "-v".red(), "--balatro-version".red(), "<VERSION>".green());
+    println!("        Specify a particular {balatro} version to modify.");
+    println!("    {}", "--linux-native".red());
+    println!("        Specify that {balatro} is running natively on Linux {}.",
+        "(not through Proton)".italic().faint());
 }
 
-struct StepDuration {
-    duration: Duration,
-    name: String,
+struct Timer { duration: std::time::Duration, name: &'static str }
+struct Timers(Vec<Timer>);
+
+impl Timers {
+    pub fn init() -> Self { Self(Vec::new()) }
+    pub fn add(&mut self, elapsed: &std::time::Instant, name: &'static str) -> &mut Self {
+        self.0.push(Timer { duration: elapsed.elapsed(), name });
+        return self;
+    }
+    pub fn inner<'a>(&'a self) -> &'a Vec<Timer> { &self.0 }
 }
 
-fn main() {
-    let args = Args::parse();
-
-    let mut durations: Vec<StepDuration> = Vec::new();
+fn main() -> Result<(), Error> {
+    let arg_vec = std::env::args()
+        .skip(1)
+        .collect();
+    let args = parser::parse_args(parser::split_args(&arg_vec));
+    let mut durations: Timers = Timers::init();
+    if cfg!(target_os = "windows") { enable_ansi_support::enable_ansi_support()?; }
+    if args.help { return Ok(print_help_info()) }
+    if args.version { return Ok(println!("balamod v{}", VERSION)) }
 
     if args.inject && args.auto {
-        red_ln!("You can't use -x and -a at the same time!");
-        return;
+        "You can't use inject/x and auto/a at the same time!"
+            .bg_red()
+            .bright_white()
+            .underline()
+            .eprintln();
+        return Ok(());
     }
 
     if args.inject && args.decompile {
-        red_ln!("You can't use -x and -d at the same time!");
-        return;
+        "You can't use inject/x and decompile/d at the same time!"
+            .bg_red()
+            .bright_white()
+            .underline()
+            .eprintln();
+        return Ok(());
     }
 
     if args.auto && args.decompile {
-        red_ln!("You can't use -a and -d at the same time!");
-        return;
+        "You can't use auto/a and decompile/d at the same time!"
+            .bg_red()
+            .bright_white()
+            .underline()
+            .eprintln();
+        return Ok(());
     }
 
-    let balatros = balamod::find_balatros();
+    let balatros = paths::get_balatro_paths();
+    println!("{}{}{}", 
+        "Found "
+            .blue(), 
+        balatros.len()
+            .to_string()
+            .blue()
+            .bold()
+            .underline(),
+        " Balatro installations."
+            .blue());
 
-    let balatro: Balatro;
-    if let Some(ref path) = args.balatro_path {
-        balatro = Balatro {
-            path: std::path::PathBuf::from(path),
-        };
-    } else {
-        if balatros.len() == 0 {
-            red_ln!("No Balatro found!");
-            println!("Please specify the path to your Balatro installation with the -b option");
-            return;
-        } else if balatros.len() == 1 {
-            balatro = balatros[0].clone();
-            green!("Balatro ");
-            yellow!("v{}", balatro.get_version().unwrap());
-            green_ln!(" found !")
-        } else {
-            println!("Multiple Balatro found");
-            for (i, balatro) in balatros.iter().enumerate() {
-                green!("[");
-                yellow!("{}", i + 1);
-                green!("] ");
-                magenta!("Balatro ");
-                cyan!("v{} ", balatro.get_version().unwrap());
-                magenta!("in ");
-                cyan_ln!("{}", balatro.path.display());
+    let balatro_path = match args.balatro_path {
+        Some(path) => std::path::Path::new(path),
+        None => dependencies::get_balatro_path(args.balatro_path, &balatros).map_err(|e| e.to_string())?,
+    };
+
+    let save_dir = paths::get_save_dir(args.linux_native);
+    if !save_dir.exists() { panic!("OS Unsupported!") }
+
+    let global_start = std::time::Instant::now();
+    if args.uninstall { uninstall(&save_dir, &mut durations, args.linux_native); }
+    if args.inject { inject(args.clone(), balatro_path, &mut durations)?; }
+    if args.decompile { extract_game_files(balatro_path, args.output, &mut durations); }
+    if args.auto { install(&save_dir, args.balatro_version, &mut durations, args.linux_native)?; }
+
+    format!("Total time: {:?}", global_start.elapsed())
+        .red()
+        .println();
+    for duration in durations.inner() {
+        format!("{}: {:?}", duration.name, duration.duration)
+            .red()
+            .println();
+    }
+    return Ok(());
+}
+
+#[cfg(not(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm")))))]
+fn install(
+    save_dir: &std::path::Path,
+    version: Option<&str>, 
+    durations: &mut Timers, 
+    linux_native: bool
+) 
+    -> Result<(), Error>
+{
+    Ok(smol::block_on(async {
+        if check_version(version, linux_native).await.is_err() { return Ok(()) }
+        let lua_ft = dependencies::download_file(dependencies::MAIN_PATCH);
+        let balamod_url = dependencies::get_tar_url(version, linux_native);
+        let balalib_url = dependencies::get_balalib_url(version, linux_native);
+        let balamod_ft = dependencies::download_file(&balamod_url);
+        let balalib_ft = dependencies::download_file(&balalib_url);
+        if save_dir.join("main.lua").exists() {
+            "main.lua already exists, skipping modloader installation...".yellow().println();
+            "To reinstall the modloader, please uninstall it first with -u".yellow().println();
+            return Ok(());
+        }
+        let start = std::time::Instant::now();
+        for res in easy_parallel::Parallel::new()
+            .add(|| smol::future::block_on(install::patch_lua_file(lua_ft, &save_dir)))
+            .add(|| smol::future::block_on(install::patch_balamod(balamod_ft, &save_dir, linux_native)))
+            .add(|| smol::future::block_on(install::patch_balalib(balalib_ft, &save_dir, linux_native)))
+            .run() 
+        {
+            match res {
+                Ok(timers) => for timer in timers.0 { durations.0.push(timer) },
+                Err(_) => return Err("Error downloading and patching Balamod"),
             }
-
-            blue!("Please choose a Balatro: ");
-            let mut input = String::new();
-            std::io::stdin()
-                .read_line(&mut input)
-                .expect("Error while reading input");
-            let input = input.trim();
-            let input: usize = match input.parse() {
-                Ok(input) => input,
-                Err(_) => {
-                    red_ln!("Invalid input!");
-                    return;
-                }
-            };
-            if input > balatros.len() || input == 0 {
-                red_ln!("Invalid input!");
-                return;
-            }
-            balatro = balatros[input - 1].clone();
         }
-    }
-
-    let global_start = Instant::now();
-
-    if args.uninstall {
-        uninstall(&mut durations, args.linux_native);
-    }
-
-    if args.inject {
-        inject(args.clone(), balatro.clone(), &mut durations);
-    }
-
-    if args.decompile {
-        decompile_game(balatro.clone(), args.output, &mut durations);
-    }
-
-    if args.auto {
-        // check for macos intel
-        if cfg!(all(
-            target_os = "macos",
-            not(any(target_arch = "aarch64", target_arch = "arm"))
-        )) {
-            red_ln!("Architecture is not supported, skipping modloader injection...");
-        } else {
-            install(args.balatro_version, &mut durations, args.linux_native);
-        }
-    }
-
-    magenta_ln!("Total time: {:?}", global_start.elapsed());
-    for duration in durations {
-        magenta_ln!("{}: {:?}", duration.name, duration.duration);
-    }
+        durations.add(&start, "Modloader installation");
+        "Done!"
+            .green()
+            .bold()
+            .println();
+        return Ok(());
+    })?)
 }
 
-fn install(version: Option<String>, durations: &mut Vec<StepDuration>, linux_native: bool) {
-    if let Some(version) = version.clone() {
-        magenta_ln!("Installing Balamod v{}", version);
-        if !balamod_version_exists(&version, linux_native) {
-            red_ln!("Version {} does not exist!", version);
-            exit(1);
+#[cfg(all(target_os = "macos", not(any(target_arch = "aarch64", target_arch = "arm"))))]
+fn install(
+    _save_dir: &std::path::Path,
+    _version: Option<&str>, 
+    _durations: &mut Timers, 
+    _linux_native: bool
+) 
+    -> Result<(), Error>
+{
+    Ok("Architecture is not supported, skipping modloader injection..."
+        .bg_red()
+        .bright_white()
+        .underline()
+        .eprintln())
+}
+
+async fn check_version(version: Option<&str>, linux_native: bool) -> Result<(), Error> {
+    if let Some(version) = version {
+        let version_str = format!("v{}", version);
+        format!("Installing Balamod {}...", version_str)
+            .cyan()
+            .italic()
+            .println();
+        if !dependencies::balamod_version_exists(&version, linux_native).await {
+            (version_str + "does not exist!")
+                .bg_red()
+                .bright_white()
+                .underline()
+                .eprintln();
+            return Err("Version does not exist".into());
         }
     } else {
-        magenta_ln!("Installing latest Balamod");
+        "Installing latest Balamod..."
+            .cyan()
+            .italic()
+            .println();
     }
-
-    let save_dir = get_save_dir(linux_native);
-    if fs::metadata(save_dir.join("main.lua").as_path()).is_ok() {
-        yellow_ln!("main.lua already exists, skipping modloader installation...");
-        yellow_ln!("To reinstall the modloader, please uninstall it first with -u");
-        return;
-    }
-    let start = Instant::now();
-    let start_download_main = Instant::now();
-    cyan_ln!("Downloading patched main.lua...");
-    let main_lua = dependencies::download_patched_main().expect("Error while downloading main.lua");
-    durations.push(StepDuration {
-        duration: start_download_main.elapsed(),
-        name: String::from("Download patched main.lua"),
-    });
-    green_ln!("Done!");
-
-    let start_patch_main = Instant::now();
-    cyan_ln!("Patching main.lua...");
-    let mut main_lua_file =
-        File::create(save_dir.join("main.lua")).expect("Error while creating main.lua");
-    main_lua_file
-        .write_all(&main_lua)
-        .expect("Error while writing to main.lua");
-    durations.push(StepDuration {
-        duration: start_patch_main.elapsed(),
-        name: String::from("Patch main.lua"),
-    });
-    green_ln!("Done!");
-
-    let start_download_balamod = Instant::now();
-    cyan_ln!("Downloading Balamod...");
-    let tar = dependencies::download_tar(version.clone(), linux_native)
-        .expect("Error while downloading Balamod");
-    durations.push(StepDuration {
-        duration: start_download_balamod.elapsed(),
-        name: String::from("Download Balatro"),
-    });
-    green_ln!("Done!");
-
-    let start_install_balamod = Instant::now();
-    cyan_ln!("Installing Balamod...");
-    dependencies::unpack_tar(save_dir.to_str().unwrap(), tar, linux_native)
-        .expect("Error while installing Balamod");
-    durations.push(StepDuration {
-        duration: start_install_balamod.elapsed(),
-        name: String::from("Install Balamod"),
-    });
-    green_ln!("Done!");
-
-    let start_download_balalib = Instant::now();
-    cyan_ln!("Downloading Balalib...");
-    let balalib = dependencies::download_balalib(version, linux_native)
-        .expect("Error while downloading Balalib");
-    durations.push(StepDuration {
-        duration: start_download_balalib.elapsed(),
-        name: String::from("Download Balalib"),
-    });
-
-    let start_install_balalib = Instant::now();
-    cyan_ln!("Installing Balalib...");
-    let balalib_path = save_dir.join(dependencies::get_balalib_name(linux_native));
-    let mut balalib_file = File::create(balalib_path).expect("Error while creating Balalib");
-    balalib_file
-        .write_all(&balalib)
-        .expect("Error while writing to Balalib");
-    durations.push(StepDuration {
-        duration: start_install_balalib.elapsed(),
-        name: String::from("Install Balalib"),
-    });
-
-    if cfg!(target_os = "linux") && linux_native {
-        cyan_ln!("Changing http lib...");
-        let start_change_http = Instant::now();
-        let http_so_path = save_dir.join("https.so");
-        let balamod_http_path = save_dir.join("balamod").join("https.so");
-        fs::rename(balamod_http_path, http_so_path).expect("Error while changing http lib");
-        durations.push(StepDuration {
-            duration: start_change_http.elapsed(),
-            name: String::from("Change http lib"),
-        });
-        green_ln!("Done!");
-    }
-
-    durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Modloader installation"),
-    });
+    return Ok(());
 }
 
-fn uninstall(durations: &mut Vec<StepDuration>, linux_native: bool) {
-    cyan_ln!("Removing modloader...");
-    let start = Instant::now();
-    let save_dir = get_save_dir(linux_native);
-    // delete main.lua
-    let main_lua_path = save_dir.join("main.lua");
-    if fs::metadata(main_lua_path.as_path()).is_ok() {
-        fs::remove_file(main_lua_path.as_path()).expect("Error while deleting main.lua");
-    }
-
-    // delete balamod
-    let balamod_path = save_dir.join("balamod");
-    if fs::metadata(balamod_path.as_path()).is_ok() {
-        fs::remove_dir_all(balamod_path.as_path()).expect("Error while deleting balamod");
-    }
-
-    durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Modloader uninstallation"),
-    });
-
-    green_ln!("Done!");
-    cyan_ln!("Removing Balalib...");
-    let start = Instant::now();
-    let balalib_path = save_dir.join(dependencies::get_balalib_name(linux_native));
-    if fs::metadata(balalib_path.as_path()).is_ok() {
-        fs::remove_file(balalib_path.as_path()).expect("Error while deleting Balalib");
-    }
-
-    durations.push(StepDuration {
-        duration: start.elapsed(),
-        name: String::from("Balalib uninstallation"),
-    });
-
-    green_ln!("Done!");
+fn uninstall(save_dir: &std::path::Path, durations: &mut Timers, linux_native: bool) {
+    "Uninstalling Balamod..."
+        .cyan()
+        .italic()
+        .println();
+    let start = std::time::Instant::now();
+    "Removing `main.lua`..."
+        .bright_black()
+        .italic()
+        .println();
+    remove_file_if_exists(&save_dir.join("main.lua"));
+    "Removing modloader..."
+        .bright_black()
+        .italic()
+        .println();
+    remove_dir_if_exists(&save_dir.join("balamod"));
+    "Removing Balalib..."
+        .bright_black()
+        .italic()
+        .println();
+    remove_file_if_exists(&save_dir.join(dependencies::get_balalib_name(linux_native)));
+    durations.add(&start, "Uninstall Balamod");
+    "Done!"
+        .green()
+        .bold()
+        .println();
 }
+fn remove_file_if_exists(path: &std::path::Path) { if path.exists() { std::fs::remove_file(path).unwrap() } }
+fn remove_dir_if_exists(path: &std::path::Path) { if path.exists() { std::fs::remove_dir_all(path).unwrap() } }
 
-fn inject(mut args: Args, balatro: Balatro, durations: &mut Vec<StepDuration>) {
-    if args.input.clone().is_none() {
-        args.input = Some("Balatro.lua".to_string());
-    }
+fn inject(mut args: parser::Args, path: &std::path::Path, durations: &mut Timers) 
+    -> Result<(), Error> 
+{
+    if args.input.is_none() { args.input = Some("Balatro.lua"); }
+    if args.output.is_none() { args.output = Some("DAT1.jkr"); }
+    let input = args.input.unwrap();
+    let output = args.output.unwrap();
+    if !std::path::Path::new(input).exists() { return Ok(()); }
 
-    if args.output.clone().is_none() {
-        args.output = Some("DAT1.jkr".to_string());
-    }
-
-    let mut need_cleanup = false;
+    let mut need_cleanup = None;
     if args.compress {
-        let mut compression_output: String;
-        if args.output.clone().unwrap().ends_with(".lua") {
-            compression_output = args
-                .output
-                .clone()
-                .unwrap()
-                .split(".lua")
-                .collect::<String>();
-        } else {
-            compression_output = args.output.clone().unwrap().clone();
-        }
-        if !compression_output.ends_with(".jkr") {
-            compression_output.push_str(".jkr");
+        let compression_output = std::path::PathBuf::from(
+            strip_suffix_if_exists(
+                strip_suffix_if_exists(output, ".lua"), 
+                ".jkr"
+            ).to_string() + ".jkr"
+        );
+
+        if compression_output.exists() {
+            "Deleting existing file...".yellow().println();
+            std::fs::remove_file(&compression_output)?;
         }
 
-        if fs::metadata(compression_output.as_str()).is_ok() {
-            yellow_ln!("Deleting existing file...");
-            fs::remove_file(compression_output.as_str()).expect("Error while deleting file");
-        }
-
-        cyan_ln!("Compressing {} ...", args.input.clone().unwrap());
-        let compress_start: Instant = Instant::now();
-        balatro
-            .compress_file(
-                args.input.clone().unwrap().as_str(),
-                compression_output.as_str(),
-            )
+        format!("Compressing {} ...", input)
+            .bright_black()
+            .italic()
+            .println();
+        let compress_start = std::time::Instant::now();
+        archive::zip_utils::compress_file(std::path::Path::new(input), &compression_output)
             .expect("Error while compressing file");
-
-        durations.push(StepDuration {
-            duration: compress_start.elapsed(),
-            name: String::from("Compression"),
-        });
-        if !compression_output.eq_ignore_ascii_case(args.input.as_ref().unwrap()) {
-            need_cleanup = true;
-            args.input = Some(compression_output);
+        if !compression_output.to_str().unwrap().eq_ignore_ascii_case(&input) {
+            need_cleanup = Some(compression_output);
         }
-        green_ln!("Done!");
+        durations.add(&compress_start, "Compression");
     }
 
-    let input_bytes =
-        fs::read(args.input.clone().unwrap()).expect("Error while reading input file");
-    let input_bytes = input_bytes.as_slice();
+    let bytes = std::fs::read(
+        match &need_cleanup {
+            Some(path) => path,
+            None => std::path::Path::new(input),
+        }
+    )?;
 
-    cyan_ln!("Injecting...");
-    let inject_start = Instant::now();
+    "Injecting..."
+        .cyan()
+        .italic()
+        .println();
+    let inject_start = std::time::Instant::now();
+    archive::zip_utils::replace_file(path, output, bytes.as_slice())?;
+    durations.add(&inject_start, "Injection");
+    "Done!"
+        .green()
+        .bold()
+        .println();
 
-    balatro
-        .replace_file(args.output.clone().unwrap().as_str(), input_bytes)
-        .expect("Error while replacing file");
-
-    durations.push(StepDuration {
-        duration: inject_start.elapsed(),
-        name: String::from("Injection"),
-    });
-    green_ln!("Done!");
-
-    if need_cleanup {
-        yellow_ln!("Cleaning up...");
-        fs::remove_file(args.input.clone().unwrap()).expect("Error while deleting file");
-        green_ln!("Done!");
+    if let Some(path) = need_cleanup {
+        "Cleaning up..."
+            .cyan()
+            .italic()
+            .println();
+        std::fs::remove_file(path)?;
+        "Done!"
+            .green()
+            .bold()
+            .println();
     }
+    return Ok(());
+}
+fn strip_suffix_if_exists<'a>(str: &'a str, suff: &'a str) -> &'a str { str.strip_prefix(suff).unwrap_or(str) }
+
+fn extract_game_files(
+    game_path: &std::path::Path,
+    output_folder: Option<&str>,
+    durations: &mut Timers,
+) {
+    let output_path = std::path::PathBuf::from(output_folder.unwrap_or("decompiled"));
+    if output_path.exists() {
+        "Deleting existing output folder..."
+            .cyan()
+            .italic()
+            .println();
+        std::fs::remove_dir_all(&output_path).expect("Error while deleting folder");
+    }
+    "Decompiling..."
+        .cyan()
+        .italic()
+        .println();
+    let decompile_start = std::time::Instant::now();
+    archive::zip_utils::extract_all(game_path, &output_path).unwrap();
+    durations.add(&decompile_start, "Decompilation");
+    "Done!"
+        .green()
+        .bold()
+        .println();
 }
 
-fn decompile_game(
-    balatro: Balatro,
-    output_folder: Option<String>,
-    durations: &mut Vec<StepDuration>,
-) {
-    let mut output_folder = output_folder.unwrap_or_else(|| "decompiled".to_string());
-
-    if !output_folder.ends_with("/") {
-        output_folder.push_str("/");
+mod install {
+    use super::*;
+    pub async fn patch_lua_file
+        <T: Future<Output = Result<reqwest::Response, reqwest::Error>>>
+        (ft: T, save_dir: &std::path::Path) 
+        -> Result<Timers, SendError>
+    {
+        let mut durations = Timers::init();
+        let mut main_lua_file = smol::fs::File::create(save_dir.join("main.lua")).await?;
+        "Downloading and patching main.lua... "
+            .bright_black()
+            .italic()
+            .println();
+        let start = std::time::Instant::now();
+        let mut stream = ft.await?.bytes_stream();
+        while let Some(chunk_res) = stream.next().await {
+            main_lua_file.write_all(&chunk_res.unwrap()).await?;
+            }
+        main_lua_file.flush().await?;
+        durations.add(&start, "Install `main.lua` patch");
+        return Ok(durations);
     }
 
-    if fs::metadata(output_folder.as_str()).is_ok() {
-        yellow_ln!("Deleting existing folder...");
-        fs::remove_dir_all(output_folder.as_str()).expect("Error while deleting folder");
+    pub async fn patch_balamod
+        <T: Future<Output = Result<reqwest::Response, reqwest::Error>>>
+        (ft: T, save_dir: &std::path::Path, linux_native: bool) 
+        -> Result<Timers, SendError>
+    {
+        let mut durations = Timers::init();
+        "Downloading and extracting Balamod... "
+            .bright_black()
+            .italic()
+            .println();
+        let start = std::time::Instant::now();
+        archive::tar_utils::unpack_tar(
+            save_dir.to_string_lossy().as_ref(),
+            dependencies::finish_download(ft).await?,
+            linux_native).unwrap();
+        durations.add(&start, "Install Balamod files");
+        if cfg!(target_os = "linux") && linux_native {
+            "Changing http lib..."
+                .bright_black()
+                .italic()
+                .println();
+            let start_http = std::time::Instant::now();
+            smol::fs::rename(
+                save_dir.join("balamod").join("https.so"), 
+                save_dir.join("https.so"))
+                .await
+                .unwrap();
+            durations.add(&start_http, "Install HTTP library patch");
+        }
+        return Ok(durations);
     }
 
-    cyan_ln!("Decompiling...");
-    let decompile_start = Instant::now();
-    let paths = balatro.get_all_files().unwrap();
-    for path in paths {
-        if path.ends_with("/") {
-            continue;
+    pub async fn patch_balalib
+        <T: Future<Output = Result<reqwest::Response, reqwest::Error>>>
+        (ft: T, save_dir: &std::path::Path, linux_native: bool) 
+        -> Result<Timers, SendError>
+    {
+        let mut durations = Timers::init();
+        let mut balalib_file = smol::fs::File::create(save_dir.join(dependencies::get_balalib_name(linux_native)))
+            .await
+            .expect("Error creating `balalib` file");
+        "Downloading and installing Balalib... "
+            .bright_black()
+            .italic()
+            .println();
+        let install_balalib = std::time::Instant::now();
+        let mut stream = ft.await.unwrap().bytes_stream();
+        while let Some(chunk_res) = stream.next().await {
+            balalib_file.write_all(&chunk_res.unwrap()).await.unwrap();
         }
-        let file_bytes = balatro
-            .get_file_data(path.as_str())
-            .expect("Error while reading file");
-
-        let normalized_path = path.replace("\\", "/");
-        let mut full_path = PathBuf::from(&output_folder);
-        full_path.push(normalized_path);
-
-        if let Some(parent_dirs) = full_path.parent() {
-            if !parent_dirs.exists() {
-                fs::create_dir_all(parent_dirs).expect("Error while creating directories");
-            }
-        }
-
-        if full_path.as_path().is_dir() {
-            continue;
-        }
-
-        match File::create(&full_path) {
-            Ok(mut file) => {
-                file.write_all(&file_bytes)
-                    .expect("Error while writing to file");
-            }
-            Err(e) => {
-                println!("Error while creating file: {:?}", e);
-                println!("Failed path: {:?}", full_path);
-                break;
-            }
-        }
+        balalib_file.flush().await.unwrap();
+        durations.add(&install_balalib, "Install Balalib");
+        return Ok(durations);
     }
-
-    green_ln!("Done!");
-    durations.push(StepDuration {
-        duration: decompile_start.elapsed(),
-        name: String::from("Decompilation"),
-    });
 }
