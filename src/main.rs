@@ -125,7 +125,7 @@ fn main() -> Result<(), Error> {
 
     let balatro_path = match args.balatro_path {
         Some(path) => std::path::Path::new(path),
-        None => dependencies::get_balatro_path(&args.balatro_path, &balatros)?,
+        None => dependencies::get_balatro_path(args.balatro_path, &balatros)?,
     };
 
     let save_dir = paths::get_save_dir(args.linux_native);

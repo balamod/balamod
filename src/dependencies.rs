@@ -37,8 +37,8 @@ pub async fn finish_download
 
 pub fn get_tar_url(tag: Option<&str>, linux_native: bool) -> String {
     match tag {
-        Some(tag) => BALAMOD_LUA_RELEASES.to_string() + &tag + "/" + &get_tar_file_name(linux_native),
-        None => BALAMOD_LUA_LATEST.to_string() + &get_tar_file_name(linux_native),
+        Some(tag) => BALAMOD_LUA_RELEASES.to_string() + tag + "/" + get_tar_file_name(linux_native),
+        None => BALAMOD_LUA_LATEST.to_string() + get_tar_file_name(linux_native),
     }
 }
 
@@ -53,8 +53,8 @@ pub fn get_balalib_name(linux_native: bool) -> &'static str { LIB_FILE }
 
 pub fn get_balalib_url(tag: Option<&str>, linux_native: bool) -> String {
     match tag {
-        Some(tag) => BALALIB_RELEASES.to_string() + &tag + "/" + &get_tar_file_name(linux_native),
-        None => BALALIB_LATEST.to_string() + &get_tar_file_name(linux_native),
+        Some(tag) => BALALIB_RELEASES.to_string() + tag + "/" + get_tar_file_name(linux_native),
+        None => BALALIB_LATEST.to_string() + get_tar_file_name(linux_native),
     }
 }
 
@@ -63,7 +63,7 @@ pub fn download_file(url: &str)
 { reqwest::get(url).compat() }
 
 pub async fn balamod_version_exists(ver: &str, linux_native: bool) -> bool {
-    reqwest::get(&(BALAMOD_LUA_RELEASES.to_string() + ver + &get_tar_file_name(linux_native)))
+    reqwest::get(&(BALAMOD_LUA_RELEASES.to_string() + ver + get_tar_file_name(linux_native)))
         .compat()
         .await
         .unwrap()
@@ -72,7 +72,7 @@ pub async fn balamod_version_exists(ver: &str, linux_native: bool) -> bool {
 }
 
 pub fn get_balatro_path<'a>(
-    balatro_path: &'a Option<&str>, 
+    balatro_path: Option<&'a str>, 
     balatros: &'a Vec<std::path::PathBuf>,
 ) 
     -> Result<&'a std::path::Path, Error> 
@@ -126,7 +126,7 @@ fn multiple_balatros_found<'a>(balatros: &'a Vec<std::path::PathBuf>)
         (i + 1).to_string().yellow().print();
         "] ".green().print();
         "Balatro ".magenta().print();
-        ("v".to_string() + &crate::archive::zip_utils::get_version(&balatro_path).unwrap()).cyan().italic().print();
+        ("v".to_string() + &crate::archive::zip_utils::get_version(balatro_path).unwrap()).cyan().italic().print();
         "in ".magenta().print();
         balatro_path.display().to_string().cyan().italic().println();
     }
