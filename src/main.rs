@@ -7,7 +7,7 @@ mod paths;
 mod dependencies;
 
 type Error = Box<dyn std::error::Error>;
-type SendError = Box<dyn std::error::Error + std::marker::Send>;
+type SendError = Box<dyn std::error::Error + std::marker::Send + std::marker::Sync>;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const BIN_NAME: &'static str = env!("CARGO_BIN_NAME");
 fn print_help_info() {
@@ -125,7 +125,7 @@ fn main() -> Result<(), Error> {
 
     let balatro_path = match args.balatro_path {
         Some(path) => std::path::Path::new(path),
-        None => dependencies::get_balatro_path(args.balatro_path, &balatros)?,
+        None => dependencies::get_balatro_path(args.balatro_path, &balatros).map_err(|e| e.to_string())?,
     };
 
     let save_dir = paths::get_save_dir(args.linux_native);
@@ -364,19 +364,17 @@ mod install {
         -> Result<Timers, SendError>
     {
         let mut durations = Timers::init();
-        let mut main_lua_file = smol::fs::File::create(save_dir.join("main.lua")).await
-            .expect("Error creating `main.lua` file");
+        let mut main_lua_file = smol::fs::File::create(save_dir.join("main.lua")).await?;
         "Downloading and patching main.lua... "
             .bright_black()
             .italic()
             .println();
         let start = std::time::Instant::now();
-        let mut stream = ft.await.unwrap().bytes_stream();
+        let mut stream = ft.await?.bytes_stream();
         while let Some(chunk_res) = stream.next().await {
-            main_lua_file.write_all(&chunk_res.unwrap()).await
-                .expect("Error while writing to main.lua");
+            main_lua_file.write_all(&chunk_res.unwrap()).await?;
             }
-        main_lua_file.flush().await.unwrap();
+        main_lua_file.flush().await?;
         durations.add(&start, "Install `main.lua` patch");
         return Ok(durations);
     }
@@ -393,8 +391,8 @@ mod install {
             .println();
         let start = std::time::Instant::now();
         archive::tar_utils::unpack_tar(
-            save_dir.to_str().unwrap(),
-            dependencies::finish_download(ft).await.unwrap(),
+            save_dir.to_string_lossy().as_ref(),
+            dependencies::finish_download(ft).await?,
             linux_native).unwrap();
         durations.add(&start, "Install Balamod files");
         if cfg!(target_os = "linux") && linux_native {

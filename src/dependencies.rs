@@ -1,6 +1,6 @@
 use async_compat::CompatExt;
 use textfmt::*;
-use crate::Error;
+use crate::SendError as Error;
 
 #[cfg(target_os = "macos")]
 const TAR_FILE: &'static str = "balamod-macos.tar.gz";
@@ -108,7 +108,7 @@ fn one_balatro_found<'a>(balatros: &'a Vec<std::path::PathBuf>)
     "Balatro "
         .green()
         .print();
-    ("v".to_string() + &crate::archive::zip_utils::get_version(&balatros[0])?)
+    ("v".to_string() + &crate::archive::zip_utils::get_version(&balatros[0]).map_err(|e| e.to_string())?)
         .yellow()
         .print();
     " found!"
